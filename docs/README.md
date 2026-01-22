@@ -8,6 +8,7 @@
 | [Example Pack](./example-pack.md) | `agent-packs/example-pack/` | Starter template demonstrating pack structure | Template |
 | [Agentic Developer](./agentic-developer.md) | `agent-packs/agentic-developer/` | Workflow-first, spec-driven development system | Stable |
 | [Context Packs](./context-packs.md) | `agent-packs/context-packs/` | Multi-agent system for creating context packs from legacy codebases | Stable |
+| [Spec Creator](./spec-creator.md) | `agent-packs/spec-creator/` | AI-powered product specification writing team for Microsoft Fabric | Stable |
 
 ## Quick Start
 

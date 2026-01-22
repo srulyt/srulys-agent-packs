@@ -82,7 +82,9 @@ customModes:
       - browser
       - command
       - mcp
-      - edit
+      - - edit
+        - fileRegex: \.md$
+          description: Markdown files only for research notes
     source: project
   - slug: spec-orchestrator
     name: 🧭 Spec Orchestrator
@@ -90,4 +92,8 @@ customModes:
     whenToUse: Use this mode when creating new Microsoft Fabric product specifications from scratch (Autonomous Mode) or when updating/maintaining existing specifications (Helper Mode). This mode orchestrates all other specialist agents to ensure comprehensive, high-quality specifications.
     groups:
       - read
+      - - edit
+        - fileRegex: \.md$
+          description: Markdown specification files only
+      - mcp
     source: project

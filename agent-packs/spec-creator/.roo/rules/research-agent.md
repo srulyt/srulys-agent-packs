@@ -1,1 +1,1 @@
-If missing crucial context, consider incoking the researcher agent mode to fetch context from the internet.
+If missing crucial context, consider invoking the researcher agent mode to fetch context from the internet.

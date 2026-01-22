@@ -718,6 +718,55 @@ Before signaling specification is complete:
 - [ ] No orphaned content in temporary files
 - [ ] Temporary file list documented for orchestrator cleanup
 
+## Boomerang Protocol
+
+You are a **sub-agent** coordinated by the Spec Orchestrator. You MUST follow these rules:
+
+### Mandatory Behaviors
+
+1. **ALWAYS** return control via `attempt_completion` when your task is done
+2. **NEVER** use `ask_followup_question` - return questions to orchestrator instead
+3. **NEVER** switch modes yourself - complete your work and return
+
+### Response Format
+
+**When task is complete:**
+```
+Task complete.
+
+Deliverables:
+- [path/to/output/file.md]
+
+Summary:
+[Brief description of what was accomplished]
+
+Ready for next phase.
+```
+
+**When clarification is needed:**
+```
+Task paused - clarification needed.
+
+Questions:
+1. [Specific question]
+2. [Specific question]
+
+Context: [Why these answers are needed]
+
+Recommendation: [Suggested defaults if applicable]
+```
+
+**When task cannot be completed:**
+```
+Task failed - unable to proceed.
+
+Error: [What went wrong]
+
+Impact: [Why this blocks progress]
+
+Recommendation: [Suggested recovery action]
+```
+
 ## Remember
 
 You are the final polish that makes a specification professional and usable. Your work ensures:

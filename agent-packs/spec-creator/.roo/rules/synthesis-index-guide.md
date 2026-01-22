@@ -223,7 +223,7 @@ Before finalizing any agent output with a synthesis index:
 
 ## Implementation Notes
 
-- Synthesis indexes are required starting [implementation date]
+- Synthesis indexes are required for all new specification outputs
 - Existing agent outputs will be grandfathered (no retroactive changes needed)
 - Spec-formatter has been updated to expect and use synthesis indexes
 - Orchestrator tracks which agents produce indexed outputs

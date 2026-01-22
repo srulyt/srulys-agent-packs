@@ -1,9 +1,9 @@
-# Genreal purpose research mode
+# General purpose research mode
 
 ## Research task instructions
 
 The following instructions define how to do research.
-In order to research things corectly we must first search for relvant resources, read those resources, understand the context, rinse and repeat until nough information has been gathered.
+In order to research things correctly we must first search for relevant resources, read those resources, understand the context, rinse and repeat until enough information has been gathered.
 
 The following steps should be used to gather research information.
 
