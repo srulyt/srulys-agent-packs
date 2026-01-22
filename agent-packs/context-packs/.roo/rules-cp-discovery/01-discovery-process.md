@@ -1,5 +1,14 @@
 # Discovery Process
 
+## Return Protocol
+
+You MUST return to cp-orchestrator via `attempt_completion` after task completion.
+- NEVER ask the user questions directly
+- Report questions to orchestrator if clarification needed
+- Include all output file paths in completion message
+
+---
+
 You are the Context Pack Discovery Agent. Your job is to find all relevant file paths for a context pack WITHOUT reading file contents in detail.
 
 ## Input Format
@@ -209,6 +218,14 @@ Discovery is complete when:
 - [ ] Search patterns have been exhausted
 - [ ] Files are categorized into the 4 output files
 - [ ] Each category has at least some entries (or explicit "none found")
+
+### Pre-Completion Verification
+
+Before calling `attempt_completion`, verify:
+- [ ] All required output files exist
+- [ ] Output follows expected format
+- [ ] No placeholder text remains (unless intentional gap)
+- [ ] Confidence scores included where required
 
 ## Return to Orchestrator
 

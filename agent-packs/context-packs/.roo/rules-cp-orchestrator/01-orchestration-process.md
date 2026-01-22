@@ -48,6 +48,17 @@ Produce these files:
 
 Wait for completion, then update manifest.
 
+### Empty Discovery Handling
+
+If discovery returns no relevant files:
+1. Update manifest with `status: "no_files_found"`
+2. Report to user with:
+   - Search terms tried
+   - Directories explored
+   - Suggested modifications (broader patterns, different paths)
+3. Do NOT proceed to analysis phase
+4. Wait for user guidance before retry
+
 ### Phase 2: Analysis (Batched)
 
 Review discovery outputs and plan analysis batches:
