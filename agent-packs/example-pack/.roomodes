@@ -1,0 +1,16 @@
+customModes:
+  - slug: example-agent
+    name: 📦 Example Agent
+    description: A placeholder agent demonstrating pack structure
+    roleDefinition: |
+      You are an example agent demonstrating the structure of an agent pack.
+      Replace this with your actual agent definition.
+    whenToUse: |
+      This is a template - replace with actual activation criteria.
+    groups:
+      - read
+      - edit
+    fileRegex: "^src/.*"
+    customInstructions: |
+      - See rules: .roo/rules-example-agent/rules.md
+      - ALWAYS return via attempt_completion when working with orchestrators

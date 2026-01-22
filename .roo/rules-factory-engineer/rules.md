@@ -17,6 +17,10 @@ Your expertise includes converting architecture specs into `.roomodes` YAML, wri
 
 **Forbidden**: Do NOT use `ask_followup_question` tool. Return questions to orchestrator via `attempt_completion`.
 
+## Response Format
+
+See: `.roo/templates/factory-agents/response-schemas.md` for structured response formats.
+
 ---
 
 ## Inputs
@@ -37,6 +41,50 @@ Based on what the architecture specifies:
 3. **Skills** - `.roo/skills/{name}/SKILL.md` (if specified)
 4. **STM structure** - If architecture specifies state management
 5. **Build manifest** - `.factory/runs/{session-id}/artifacts/build-manifest.json`
+
+---
+
+## Repository Structure Verification
+
+When implementing agent packs, verify that the architecture's file structure follows repository constraints.
+
+**Authoritative Source**: See [`.roo/rules/repo-structure.md`](.roo/rules/repo-structure.md) for constraint definitions.
+
+### Pre-Implementation Checklist
+
+Before starting implementation, verify the architecture specifies:
+- [ ] Pack location under `agent-packs/{pack-name}/`
+- [ ] Documentation file `docs/{pack-name}.md`
+- [ ] TOC update for `docs/README.md`
+
+If architecture is missing any of these, return to Orchestrator with questions.
+
+### Post-Implementation Checklist
+
+Before reporting completion, verify you created:
+- [ ] `agent-packs/{pack-name}/.roomodes`
+- [ ] `agent-packs/{pack-name}/.roo/rules-{slug}/rules.md` (for each agent)
+- [ ] `agent-packs/{pack-name}/README.md`
+- [ ] `docs/{pack-name}.md` (full documentation)
+- [ ] `docs/README.md` (TOC table updated)
+
+### Build Manifest Requirements
+
+Your `build-manifest.json` must accurately reflect all files:
+
+```json
+{
+  "files_created": [
+    "agent-packs/{pack-name}/.roomodes",
+    "agent-packs/{pack-name}/.roo/rules-{slug}/rules.md",
+    "agent-packs/{pack-name}/README.md",
+    "docs/{pack-name}.md"
+  ],
+  "files_modified": [
+    "docs/README.md"
+  ]
+}
+```
 
 ---
 
@@ -80,6 +128,22 @@ Key fields:
 - `fileRegex`: File edit restrictions (if `edit` in groups)
 - `customInstructions`: Points to rules file
 
+### fileRegex Pattern Breakdown
+
+The Engineer's fileRegex pattern components:
+
+| Component | Matches |
+|-----------|---------|
+| `^\\.roomodes$` | Root .roomodes file |
+| `^\\.roo/rules(-[^/]+)?/.*$` | Rule files |
+| `^\\.roo/skills/[^/]+/.*$` | Skill files |
+| `^\\.roo/templates/[^/]+/.*$` | Template files |
+| `^\\.factory/.*$` | Factory state files |
+| `^agent-packs/[^/]+/.*$` | Pack files |
+| `^docs/.*\\.md$` | Documentation |
+
+Full pattern: See `.roomodes` line 55.
+
 ### Rule Files
 
 Create `.roo/rules-{slug}/rules.md` for each agent. See [`example-rules.md`](.roo/templates/factory-agents/example-rules.md) for structure guidance.
@@ -101,7 +165,7 @@ If architecture specifies state management, create the specified structure. Comm
 
 ### STM Implementation Expertise
 
-**Skill Reference**: Load `.roo/skills/stm-design/SKILL.md` for STM patterns.
+**Skill Reference**: See loaded `stm-design` skill for STM patterns.
 
 When architecture specifies STM, implement with these practices:
 
@@ -191,6 +255,7 @@ Before reporting complete:
 | Nested state in code | State in files only |
 | Global state files | Session-isolated files |
 
+
 ### fileRegex Patterns
 
 Every agent with `edit` capability needs a `fileRegex` pattern:
@@ -239,6 +304,17 @@ Before returning success:
 2. Verify fileRegex patterns with example paths
 3. Verify slug-directory name matches
 4. Verify all referenced files exist
+
+---
+
+## Reasoning Protocol
+
+Before implementation actions:
+
+1. **Observation**: What does architecture specify?
+2. **Analysis**: What files/structures needed?
+3. **Plan**: Implementation sequence
+4. **Action**: Create files
 
 ---
 

@@ -13,7 +13,7 @@ customModes:
       - edit
       - command
       - mcp
-    fileRegex: "^\\.factory/.*"
+    fileRegex: "^(\\.factory/.*|docs/.*\\.md)$"
     customInstructions: |
       - See rules: .roo/rules-factory-orchestrator/rules.md
       - MANDATORY: Delegate ALL work to sub-agents
@@ -52,7 +52,7 @@ customModes:
       - read
       - edit
       - command
-    fileRegex: "^(\\.roomodes|\\.factory/runs/[^/]+/artifacts/.*|\\.roo/(rules-[^/]+/.*|skills/[^/]+/.*|templates/[^/]+/.*)|\\.[^/]+-stm/.*)$"
+    fileRegex: "^(\\.roomodes|\\.roo/(rules(-[^/]+)?/.*|skills/[^/]+/.*|templates/[^/]+/.*)|\\.factory/.*|agent-packs/[^/]+/(\\.roomodes|\\.roo/(rules(-[^/]+)?/.*|skills/[^/]+/.*|templates/[^/]+/.*)|README\\.md)|docs/.*\\.md)$"
     skills:
       - stm-design
     customInstructions: |

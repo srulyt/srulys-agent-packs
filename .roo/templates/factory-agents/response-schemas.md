@@ -11,6 +11,8 @@ All agent responses via `attempt_completion` SHOULD follow these JSON-compatible
 ```json
 {
   "status": "success",
+  "confidence": "high|medium|low",
+  "confidence_notes": "Optional explanation if not high",
   "deliverables": [
     {
       "path": ".factory/runs/{session-id}/artifacts/system_architecture.md",
@@ -92,6 +94,7 @@ Before returning via `attempt_completion`:
 ```json
 {
   "status": "success",
+  "confidence": "high",
   "deliverables": [
     {
       "path": ".factory/runs/{session-id}/artifacts/system_architecture.md",
@@ -114,6 +117,7 @@ Before returning via `attempt_completion`:
 ```json
 {
   "status": "success",
+  "confidence": "high",
   "deliverables": [
     {"path": ".roomodes", "type": "config", "description": "Mode definitions"},
     {"path": ".roo/rules-pipeline-orchestrator/rules.md", "type": "rules", "description": "Orchestrator rules"},
@@ -150,7 +154,7 @@ Before returning via `attempt_completion`:
 {
   "status": "success",
   "summary": "Architecture review found 2 BLOCKING issues",
-  "verdict": "BLOCKING_ISSUES",
+  "verdict": "BLOCKING",
   "requirements_checked": 7,
   "blocking_issues": [
     {
@@ -180,3 +184,24 @@ When parsing responses, orchestrator should:
 1. First try to extract JSON if present
 2. Fall back to markdown parsing
 3. Always verify file existence for claimed deliverables
+
+## Confidence Signaling
+
+Agents MAY include confidence indicators:
+
+```json
+{
+  "status": "success",
+  "confidence": "high",
+  "confidence_notes": null,
+  ...
+}
+```
+
+| Level | Meaning |
+|-------|---------|
+| `high` | Standard case, no concerns |
+| `medium` | Some ambiguity in requirements or approach |
+| `low` | Significant uncertainty, recommend human review |
+
+Orchestrator uses confidence to decide if additional review is needed.
