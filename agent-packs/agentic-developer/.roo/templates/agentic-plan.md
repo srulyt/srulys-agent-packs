@@ -1,0 +1,256 @@
+# Implementation Plan Template
+
+## Document Metadata
+
+```yaml
+run_id: "<run-id>"
+actor: "agentic-planner"
+created: "<ISO-8601 timestamp>"
+prd_version: "1.0"
+```
+
+---
+
+# Implementation Plan: [Feature Title]
+
+## 1. Executive Summary
+
+### 1.1 Objective
+
+_One paragraph summary of what we're building_
+
+### 1.2 Approach
+
+_High-level approach in 2-3 sentences_
+
+### 1.3 Scope Summary
+
+| Metric               | Value           |
+| -------------------- | --------------- |
+| Files Affected       | ~[N]            |
+| Phases               | [N]             |
+| Estimated Complexity | Low/Medium/High |
+
+---
+
+## 2. Solution Architecture
+
+### 2.1 Current State
+
+_Brief description of current architecture relevant to this change_
+
+### 2.2 Target State
+
+_Description of architecture after changes_
+
+### 2.3 Key Changes
+
+- [Change 1]
+- [Change 2]
+
+### 2.4 Architecture Diagram (if helpful)
+
+```
+[ASCII diagram or description]
+```
+
+---
+
+## 3. Phase Breakdown
+
+### Phase 1: [Name]
+
+**Objective**: _What this phase accomplishes_
+
+**Tasks**:
+
+1. [Task 1 description]
+2. [Task 2 description]
+
+**Files Affected**:
+
+- `[file-path]` - [what changes]
+
+**Acceptance Criteria**:
+
+- [ ] [Criterion 1]
+- [ ] [Criterion 2]
+
+**Dependencies**: None
+
+**Risks**: [Any phase-specific risks]
+
+---
+
+### Phase 2: [Name]
+
+**Objective**: _What this phase accomplishes_
+
+**Tasks**:
+
+1. [Task 1 description]
+2. [Task 2 description]
+
+**Files Affected**:
+
+- `[file-path]` - [what changes]
+
+**Acceptance Criteria**:
+
+- [ ] [Criterion 1]
+- [ ] [Criterion 2]
+
+**Dependencies**: Phase 1
+
+---
+
+_[Repeat for additional phases]_
+
+---
+
+## 4. Technical Decisions
+
+### 4.1 Decision: [Decision Title]
+
+**Context**: _Why this decision is needed_
+
+**Options Considered**:
+
+1. [Option A] - [Pros/Cons]
+2. [Option B] - [Pros/Cons]
+
+**Decision**: [Chosen option]
+
+**Rationale**: [Why this option]
+
+### 4.2 ADR Creation Criteria
+
+Create a formal ADR file when a decision meets ANY of:
+
+1. **Irreversibility**: Difficult or expensive to change later
+2. **Cross-cutting**: Affects multiple components or teams
+3. **Controversial**: Multiple valid approaches with strong trade-offs
+4. **Precedent-setting**: Establishes a pattern others will follow
+5. **Risk-bearing**: Has security, performance, or reliability implications
+
+_ADR location: `.agent-memory/runs/<run-id>/adrs/<decision-name>.md`_
+
+---
+
+## 5. Risk Analysis
+
+| Risk     | Likelihood   | Impact       | Mitigation   |
+| -------- | ------------ | ------------ | ------------ |
+| [Risk 1] | Low/Med/High | Low/Med/High | [Mitigation] |
+| [Risk 2] | Low/Med/High | Low/Med/High | [Mitigation] |
+
+---
+
+## 6. Testing Strategy
+
+### 6.1 Test Plan Summary
+
+| Test Type   | Count | Coverage Area   |
+| ----------- | ----- | --------------- |
+| Unit        | [N]   | [areas covered] |
+| Integration | [N]   | [areas covered] |
+| Manual      | [N]   | [areas covered] |
+
+### 6.2 Unit Tests
+
+- [ ] `[TestClass.TestMethod]` - [what it verifies]
+- [ ] `[TestClass.TestMethod]` - [what it verifies]
+
+### 6.3 Integration Tests
+
+- [ ] `[TestClass.TestMethod]` - [what it verifies]
+
+### 6.4 Manual Verification Steps
+
+1. [ ] [Step 1 - e.g., "Deploy to test environment"]
+2. [ ] [Step 2 - e.g., "Navigate to X and verify Y"]
+3. [ ] [Step 3 - e.g., "Check logs for Z"]
+
+### 6.5 Test Commands
+
+```bash
+# Unit tests for affected area
+[command to run unit tests]
+
+# Integration tests for affected area
+[command to run integration tests]
+```
+
+---
+
+## 7. Quality Bar
+
+### 7.1 Phase Quality Bar
+
+- All phase acceptance criteria met
+- Build passes
+- Relevant tests pass
+- No regressions in affected areas
+
+### 7.2 Final Quality Bar
+
+- All PRD acceptance criteria met
+- Full test suite passes
+- PR review checklist complete
+- Documentation updated (if applicable)
+
+---
+
+## 8. Parallelization Strategy
+
+### 8.1 Parallel Opportunities
+
+_Tasks that can run concurrently:_
+
+| Group     | Tasks      | Reason                    |
+| --------- | ---------- | ------------------------- |
+| [Group 1] | [Task IDs] | [Why safe to parallelize] |
+
+### 8.2 Serialization Requirements
+
+_Tasks that MUST be sequential:_
+
+| Sequence | Tasks      | Reason               |
+| -------- | ---------- | -------------------- |
+| [Seq 1]  | [Task IDs] | [Why must be serial] |
+
+### 8.3 Lane Branch Strategy
+
+```yaml
+lane_branches:
+  - name: "lane/[task-id]-[slug]"
+    tasks: [list]
+    merge_order: [number]
+```
+
+---
+
+## 9. File Impact Summary
+
+| File     | Change Type       | Phase | Notes   |
+| -------- | ----------------- | ----- | ------- |
+| `[path]` | Add/Modify/Delete | 1     | [notes] |
+
+---
+
+## 10. Context Pack References
+
+_Pointers only; avoid copying large content_
+
+- `.context-packs/[pack]_context.md#[section]` - [how it was used]
+
+---
+
+## 11. Open Considerations
+
+- [Any items that may need attention during execution]
+
+---
+
+_Template Version: 1.1_
+_Generated by Agentic Planner_

@@ -1,0 +1,408 @@
+# Event Schema
+# This file defines all event types used in the agentic workflow
+# Events are the source of truth for state - status is derived from events
+
+# =============================================================================
+# SCHEMA DEFINITION
+# =============================================================================
+
+schema_version: "1.0"
+
+# -----------------------------------------------------------------------------
+# BASE EVENT STRUCTURE
+# -----------------------------------------------------------------------------
+# All events share this structure:
+#
+# event_type: string           # Type of event (see catalog below)
+# event_id: string             # Unique event ID (UUID)
+# timestamp: ISO8601           # When event occurred
+# run_id: string               # Run this event belongs to
+# actor: string                # Agent/entity that emitted the event
+# task_id: string (optional)   # Task ID if task-specific
+# details: object              # Event-specific payload
+
+# =============================================================================
+# EVENT CATALOG
+# =============================================================================
+
+event_types:
+  # ---------------------------------------------------------------------------
+  # RUN LIFECYCLE EVENTS
+  # ---------------------------------------------------------------------------
+  run-started:
+    description: "A new agentic run has been initiated"
+    actor: "orchestrator"
+    details:
+      run_id: string
+      feature_name: string
+      initiated_by: string
+      branch_name: string
+
+  run-completed:
+    description: "Run completed successfully"
+    actor: "orchestrator"
+    details:
+      total_tasks: integer
+      tasks_completed: integer
+      duration: string
+      pr_ready: boolean
+
+  run-failed:
+    description: "Run failed and cannot continue"
+    actor: "orchestrator"
+    details:
+      reason: string
+      failed_at_phase: string
+      recovery_possible: boolean
+
+  run-cancelled:
+    description: "Run was cancelled by user"
+    actor: "orchestrator"
+    details:
+      reason: string
+      cancelled_by: string
+      cleanup_required: boolean
+
+  # ---------------------------------------------------------------------------
+  # PHASE EVENTS
+  # ---------------------------------------------------------------------------
+  phase-started:
+    description: "A workflow phase has started"
+    actor: "orchestrator"
+    details:
+      phase: integer
+      phase_name: string
+      entry_conditions_met: boolean
+
+  phase-completed:
+    description: "A workflow phase completed successfully"
+    actor: "orchestrator"
+    details:
+      phase: integer
+      phase_name: string
+      exit_criteria_met: boolean
+      artifacts_produced: array
+
+  phase-gate-passed:
+    description: "A phase gate has been approved"
+    actor: "orchestrator"
+    details:
+      phase: integer
+      gate_type: string  # "hard" | "soft"
+      approved_by: string
+      conditions: array
+
+  # ---------------------------------------------------------------------------
+  # TASK LIFECYCLE EVENTS
+  # ---------------------------------------------------------------------------
+  task-created:
+    description: "A new task has been created"
+    actor: "task-breaker"
+    task_id: required
+    details:
+      title: string
+      area_path: string
+      dependencies: array
+      complexity: string
+
+  task-ready:
+    description: "Task dependencies met, ready for execution"
+    actor: "orchestrator"
+    task_id: required
+    details:
+      dependencies_completed: array
+
+  task-claimed:
+    description: "Task has been claimed by an executor"
+    actor: "executor"
+    task_id: required
+    details:
+      claimed_by: string
+      estimated_duration: string
+
+  task-started:
+    description: "Work has begun on a task"
+    actor: "executor"
+    task_id: required
+    details:
+      lane_branch: string (optional)
+
+  task-implemented:
+    description: "Task implementation is complete"
+    actor: "executor"
+    task_id: required
+    details:
+      files_modified: array
+      acceptance_criteria_status: array
+      ready_for_verification: boolean
+
+  task-verified:
+    description: "Task passed verification"
+    actor: "verifier"
+    task_id: required
+    details:
+      verification_summary: object
+      quality_gates_passed: array
+
+  task-verification-failed:
+    description: "Task failed verification"
+    actor: "verifier"
+    task_id: required
+    details:
+      failures: array
+      required_fixes: array
+      attempt: integer
+
+  task-completed:
+    description: "Task is fully complete (verified and accepted)"
+    actor: "orchestrator"
+    task_id: required
+    details:
+      total_attempts: integer
+      total_duration: string
+
+  task-blocked:
+    description: "Task cannot proceed due to blocker"
+    actor: "executor|verifier"
+    task_id: required
+    details:
+      blocker_type: string
+      blocker_description: string
+      blocking: boolean
+
+  # ---------------------------------------------------------------------------
+  # ESCALATION EVENTS
+  # ---------------------------------------------------------------------------
+  escalation:
+    description: "An issue requires human attention"
+    actor: "any"
+    details:
+      escalation_type: string  # "decision" | "scope" | "blocker" | "quality"
+      severity: string         # "info" | "warning" | "error" | "critical"
+      description: string
+      options: array (optional)
+      requires_response: boolean
+
+  escalation-resolved:
+    description: "An escalation has been resolved"
+    actor: "orchestrator|human"
+    details:
+      original_escalation_id: string
+      resolution: string
+      resolved_by: string
+
+  # ---------------------------------------------------------------------------
+  # ARTIFACT EVENTS
+  # ---------------------------------------------------------------------------
+  artifact-created:
+    description: "A new artifact has been created"
+    actor: "any"
+    details:
+      artifact_type: string    # "prd" | "constitution" | "plan" | "task-graph" | etc.
+      artifact_path: string
+      description: string
+
+  artifact-approved:
+    description: "An artifact has been approved"
+    actor: "orchestrator|human"
+    details:
+      artifact_type: string
+      artifact_path: string
+      approved_by: string
+      approval_type: string    # "human" | "automated"
+
+  # ---------------------------------------------------------------------------
+  # CLEANUP & PR EVENTS
+  # ---------------------------------------------------------------------------
+  cleanup-started:
+    description: "Cleanup phase has started"
+    actor: "cleanup"
+    details:
+      files_to_process: integer
+      cleanup_categories: array
+
+  cleanup-completed:
+    description: "Cleanup phase has completed"
+    actor: "cleanup"
+    details:
+      files_processed: integer
+      changes_made: integer
+      verification_status: string
+
+  pr-prep-started:
+    description: "PR preparation has started"
+    actor: "pr-prep"
+    details:
+      artifacts_to_generate: array
+
+  pr-prep-completed:
+    description: "PR preparation is complete"
+    actor: "pr-prep"
+    details:
+      pr_description_generated: boolean
+      checklist_generated: boolean
+      ready_for_human_review: boolean
+
+  ready-for-human-review:
+    description: "All automated work complete, awaiting human PR review"
+    actor: "pr-prep"
+    details:
+      branch_info: object
+      artifacts_ready: object
+      action_required: array
+
+  # ---------------------------------------------------------------------------
+  # MEMORY EVENTS
+  # ---------------------------------------------------------------------------
+  consolidation-started:
+    description: "Memory consolidation has started"
+    actor: "memory-consolidator"
+    details:
+      artifacts_to_process: integer
+
+  consolidation-completed:
+    description: "Memory consolidation is complete"
+    actor: "memory-consolidator"
+    details:
+      learnings_extracted: object
+      ltm_updated: boolean
+
+  stm-archived:
+    description: "Short-term memory has been archived"
+    actor: "memory-consolidator"
+    details:
+      archive_location: string
+      retention_policy: string
+
+  # ---------------------------------------------------------------------------
+  # ERROR & RECOVERY EVENTS
+  # ---------------------------------------------------------------------------
+  execution-error:
+    description: "An error occurred during execution"
+    actor: "any"
+    details:
+      error_type: string       # "recoverable" | "non-recoverable"
+      error: string
+      context: string
+      recovery_attempted: boolean
+
+  checkpoint-created:
+    description: "A checkpoint was created for recovery"
+    actor: "any"
+    details:
+      checkpoint_type: string
+      state_summary: object
+      resume_instructions: string
+
+  session-resumed:
+    description: "A session was resumed from checkpoint"
+    actor: "orchestrator"
+    details:
+      checkpoint_used: string
+      state_restored: object
+      continuation_point: string
+
+# =============================================================================
+# EVENT EXAMPLES
+# =============================================================================
+
+examples:
+  task_lifecycle:
+    - event_type: "task-created"
+      event_id: "evt-001-abc123"
+      timestamp: "2024-01-15T10:00:00Z"
+      run_id: "20240115-1030-feature-abc123"
+      actor: "task-breaker"
+      task_id: "T001"
+      details:
+        title: "Add null check to UserService"
+        area_path: "services/user"
+        dependencies: []
+        complexity: "low"
+
+    - event_type: "task-claimed"
+      event_id: "evt-002-def456"
+      timestamp: "2024-01-15T10:30:00Z"
+      run_id: "20240115-1030-feature-abc123"
+      actor: "executor"
+      task_id: "T001"
+      details:
+        claimed_by: "executor-session-xyz"
+        estimated_duration: "15 minutes"
+
+    - event_type: "task-implemented"
+      event_id: "evt-003-ghi789"
+      timestamp: "2024-01-15T10:45:00Z"
+      run_id: "20240115-1030-feature-abc123"
+      actor: "executor"
+      task_id: "T001"
+      details:
+        files_modified:
+          - "src/Services/UserService.cs"
+        acceptance_criteria_status:
+          - criterion: "Null check exists"
+            status: "implemented"
+        ready_for_verification: true
+
+    - event_type: "task-verified"
+      event_id: "evt-004-jkl012"
+      timestamp: "2024-01-15T11:00:00Z"
+      run_id: "20240115-1030-feature-abc123"
+      actor: "verifier"
+      task_id: "T001"
+      details:
+        verification_summary:
+          layers_checked: 5
+          all_passed: true
+        quality_gates_passed:
+          - "bronze"
+          - "silver"
+
+# =============================================================================
+# EVENT STORAGE
+# =============================================================================
+
+storage:
+  location: ".agent-memory/runs/<run-id>/events/"
+  format: "One YAML file per event, named by timestamp"
+  naming: "<timestamp>-<event-type>-<task-id-if-applicable>.yaml"
+
+  examples:
+    - "2024-01-15T10-00-00Z-task-created-T001.yaml"
+    - "2024-01-15T10-30-00Z-task-claimed-T001.yaml"
+    - "2024-01-15T11-00-00Z-phase-completed.yaml"
+
+# =============================================================================
+# STATE DERIVATION
+# =============================================================================
+
+state_derivation:
+  principle: "Task status is derived from the latest event for that task"
+
+  rules:
+    - event: "task-created"
+      sets_status: "pending"
+
+    - event: "task-ready"
+      sets_status: "ready"
+
+    - event: "task-claimed"
+      sets_status: "claimed"
+
+    - event: "task-started"
+      sets_status: "in-progress"
+
+    - event: "task-implemented"
+      sets_status: "implemented"
+
+    - event: "task-verified"
+      sets_status: "verified"
+
+    - event: "task-verification-failed"
+      sets_status: "failed"
+
+    - event: "task-blocked"
+      sets_status: "blocked"
+
+    - event: "task-completed"
+      sets_status: "completed"

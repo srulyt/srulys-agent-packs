@@ -1,0 +1,272 @@
+# Task Graph Schema
+# This file defines the structure for task-graph.yaml files
+# Catalog-only schema reference; authoritative task graph bodies are JSON files at `.agent-memory/runs/<run-id>/task-graph.json`.
+
+# =============================================================================
+# SCHEMA DEFINITION
+# =============================================================================
+
+schema_version: "1.0"
+
+# -----------------------------------------------------------------------------
+# TOP-LEVEL STRUCTURE
+# -----------------------------------------------------------------------------
+# task_graph:
+#   metadata: TaskGraphMetadata
+#   tasks: Task[]
+#   parallel_groups: ParallelGroup[]
+#   execution_order: string[]
+
+# -----------------------------------------------------------------------------
+# TaskGraphMetadata
+# -----------------------------------------------------------------------------
+# metadata:
+#   run_id: string                    # Run identifier
+#   created: ISO8601 datetime         # Creation timestamp
+#   author: string                    # Creating agent (task-breaker)
+#   source_plan: string               # Reference to plan document
+#   total_tasks: integer              # Count of tasks
+#   estimated_duration: string        # Total estimated time
+#   parallelizable_tasks: integer     # Count of parallelizable tasks
+
+# -----------------------------------------------------------------------------
+# Task
+# -----------------------------------------------------------------------------
+# task:
+#   id: string                        # Unique task ID (T001, T002, etc.)
+#   title: string                     # Human-readable title
+#   description: string               # Detailed description
+#   area_path: string                 # Codebase area (e.g., "services/user")
+#
+#   dependencies: string[]            # List of task IDs this depends on
+#   dependents: string[]              # List of task IDs that depend on this
+#
+#   files:
+#     allowed: string[]               # Files that CAN be modified
+#     forbidden: string[]             # Files that MUST NOT be modified
+#     read_only: string[]             # Files that can be read but not modified
+#
+#   acceptance_criteria: string[]     # List of criteria for completion
+#
+#   estimates:
+#     complexity: low|medium|high     # Task complexity
+#     effort: string                  # Time estimate (e.g., "30 minutes")
+#     risk: low|medium|high           # Risk level
+#
+#   verification:
+#     type: string[]                  # Types of verification needed
+#     commands: string[]              # Commands to run for verification
+#
+#   context_requirements:
+#     pinned: string[]                # Always-loaded context
+#     task_local: string[]            # Task-specific context
+#     on_demand: string[]             # Load as needed
+
+# -----------------------------------------------------------------------------
+# ParallelGroup
+# -----------------------------------------------------------------------------
+# parallel_group:
+#   id: string                        # Group identifier
+#   tasks: string[]                   # Task IDs in this group
+#   reason: string                    # Why these can run in parallel
+#   lane_branch_required: boolean     # Whether lane branches needed
+#   merge_order: integer              # Order for merging results
+
+# =============================================================================
+# EXAMPLE TASK GRAPH
+# =============================================================================
+
+example:
+  metadata:
+    run_id: "20240115-1030-user-validation-abc123"
+    created: "2024-01-15T12:00:00Z"
+    author: "task-breaker"
+    source_plan: ".agent-memory/runs/20240115-1030-user-validation-abc123/plan.md"
+    total_tasks: 8
+    estimated_duration: "4 hours"
+    parallelizable_tasks: 3
+
+  tasks:
+    - id: "T001"
+      title: "Add null check to UserService.ProcessUser"
+      description: |
+        Add explicit null parameter validation at the entry point
+        of the ProcessUser method. Should throw ArgumentNullException
+        with the parameter name when user is null.
+      area_path: "services/user"
+
+      dependencies: []
+      dependents: ["T002", "T003"]
+
+      files:
+        allowed:
+          - "src/Services/UserService.cs"
+        forbidden:
+          - "src/Services/UserService.*.cs"
+          - "*.csproj"
+        read_only:
+          - "src/Interfaces/IUserService.cs"
+
+      acceptance_criteria:
+        - "Null check exists at method entry"
+        - "ArgumentNullException thrown with parameter name"
+        - "No null propagation to downstream calls"
+
+      estimates:
+        complexity: "low"
+        effort: "15 minutes"
+        risk: "low"
+
+      verification:
+        type: ["code-review", "test-execution"]
+        commands:
+          - "dotnet build"
+          - "dotnet test --filter UserServiceTests"
+
+      context_requirements:
+        pinned:
+          - "constitution.md"
+          - "task-contract.yaml"
+        task_local:
+          - "UserService.cs method signatures"
+        on_demand:
+          - "IUserService.cs interface"
+
+    - id: "T002"
+      title: "Add unit test for null user handling"
+      description: |
+        Create unit test that verifies ProcessUser throws
+        ArgumentNullException when passed a null user parameter.
+      area_path: "tests/user"
+
+      dependencies: ["T001"]
+      dependents: []
+
+      files:
+        allowed:
+          - "tests/UserServiceTests.cs"
+        forbidden:
+          - "src/**/*.cs"
+        read_only:
+          - "src/Services/UserService.cs"
+
+      acceptance_criteria:
+        - "Test method exists with correct naming convention"
+        - "Test verifies ArgumentNullException is thrown"
+        - "Test verifies exception contains parameter name"
+
+      estimates:
+        complexity: "low"
+        effort: "15 minutes"
+        risk: "low"
+
+      verification:
+        type: ["test-execution"]
+        commands:
+          - "dotnet test --filter ProcessUser_NullUser"
+
+    - id: "T003"
+      title: "Add null check to OrderService.ValidateOrder"
+      description: |
+        Add explicit null parameter validation to ValidateOrder method.
+        This is similar to T001 but in OrderService.
+      area_path: "services/order"
+
+      dependencies: ["T001"]  # Depends on T001 to establish pattern
+      dependents: ["T004"]
+
+      files:
+        allowed:
+          - "src/Services/OrderService.cs"
+        forbidden:
+          - "*.csproj"
+        read_only:
+          - "src/Services/UserService.cs"  # Reference for pattern
+
+      acceptance_criteria:
+        - "Null check exists at method entry"
+        - "Consistent with UserService pattern"
+
+      estimates:
+        complexity: "low"
+        effort: "15 minutes"
+        risk: "low"
+
+    - id: "T004"
+      title: "Add unit test for OrderService null handling"
+      description: |
+        Create unit test for OrderService null validation.
+      area_path: "tests/order"
+
+      dependencies: ["T003"]
+      dependents: []
+
+      files:
+        allowed:
+          - "tests/OrderServiceTests.cs"
+        forbidden:
+          - "src/**/*.cs"
+
+      acceptance_criteria:
+        - "Test verifies ArgumentNullException"
+
+      estimates:
+        complexity: "low"
+        effort: "15 minutes"
+        risk: "low"
+
+  parallel_groups:
+    - id: "PG001"
+      tasks: ["T002", "T003"]
+      reason: "Different files, no overlap in modifications"
+      lane_branch_required: false
+      merge_order: 1
+
+    - id: "PG002"
+      tasks: ["T004"]
+      reason: "Depends on T003, can run after PG001"
+      lane_branch_required: false
+      merge_order: 2
+
+  execution_order:
+    # Sequential execution order respecting dependencies
+    - "T001"           # Foundation - must be first
+    - ["T002", "T003"] # Parallel group PG001
+    - "T004"           # Depends on T003
+
+# =============================================================================
+# VALIDATION RULES
+# =============================================================================
+
+validation_rules:
+  task_id:
+    pattern: "^T[0-9]{3}$"
+    description: "Task IDs must be T followed by 3 digits"
+
+  dependencies:
+    rule: "No circular dependencies allowed"
+    check: "Build dependency graph and verify DAG property"
+
+  files:
+    rule: "allowed and forbidden must not overlap"
+    check: "Intersection of allowed and forbidden must be empty"
+
+  parallel_groups:
+    rule: "Tasks in parallel group must not have dependencies on each other"
+    check: "For all tasks in group, no task depends on another in same group"
+
+# =============================================================================
+# STATUS VALUES
+# =============================================================================
+
+task_statuses:
+  - "pending"      # Not yet started, dependencies not met
+  - "ready"        # Dependencies met, can be claimed
+  - "claimed"      # Claimed by executor
+  - "in-progress"  # Active work happening
+  - "implemented"  # Work complete, awaiting verification
+  - "verifying"    # Verification in progress
+  - "verified"     # Passed verification
+  - "failed"       # Failed verification, needs rework
+  - "blocked"      # Cannot proceed due to blocker
+  - "completed"    # Fully done and verified
