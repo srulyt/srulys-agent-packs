@@ -78,6 +78,41 @@ Resume logic is defined in `.roo/rules-agentic-orchestrator/03-resume-protocol.m
    - MEDIUM: Multi-file change, some complexity → Standard planning
    - LARGE: Cross-cutting, architectural impact → Detailed planning required
 
+#### SMALL Task Shortcut
+
+For tasks assessed as SMALL (single-file, clear requirements):
+
+```yaml
+small_task_workflow:
+  skip:
+    - Detailed PRD (use inline requirements)
+    - Formal plan.md
+    - Task graph decomposition
+  
+  require:
+    - Quick scope validation
+    - Constitution creation (simplified)
+    - Single executor delegation
+    - Verification before completion
+  
+  flow: |
+    1. Validate scope is truly SMALL
+    2. Create minimal constitution (allowed files, quality bar)
+    3. Delegate directly to executor with inline requirements
+    4. Run verification
+    5. Skip cleanup if diff < 50 lines
+    6. Generate minimal PR checklist
+```
+
+**Criteria for SMALL classification**:
+- Single file modification expected
+- No architectural decisions needed
+- Requirements fit in 3-5 bullet points
+- No dependencies on other pending work
+- Estimated effort: < 30 minutes human equivalent
+
+**Escape hatch**: If executor reports unexpected complexity, escalate to MEDIUM workflow.
+
 2. **Check for PRD**:
    - If PRD provided: Validate completeness
    - If PRD missing: Delegate to `agentic-spec-writer`
@@ -170,21 +205,95 @@ Resume logic is defined in `.roo/rules-agentic-orchestrator/03-resume-protocol.m
 
 **Output**: All tasks complete, verifications pass
 
+### Task Failure Handling Protocol
+
+When a delegated task fails, apply this protocol:
+
+#### Failure Categories
+
+| Category | Example | Action |
+|----------|---------|--------|
+| **Transient** | File not found (typo) | Retry with corrected context |
+| **Blocker** | Missing requirement | Escalate to user |
+| **Technical** | Build failure | Create fix task, re-verify |
+| **Scope** | Discovered complexity | Re-plan or split task |
+
+#### Retry Protocol
+
+```yaml
+retry_protocol:
+  max_retries: 2
+  
+  on_first_failure:
+    action: "Analyze failure reason"
+    if_transient: "Retry with corrected context"
+    if_blocker: "Gather info, re-delegate"
+    if_technical: "Create fix task"
+  
+  on_second_failure:
+    action: "Escalate to user"
+    provide:
+      - "Original task description"
+      - "Both failure reasons"
+      - "Recommended path forward"
+  
+  on_third_failure:
+    action: "Mark task as blocked"
+    log: "Write failure event with full context"
+    user_message: "Request manual intervention"
+```
+
+#### Failure Event Format
+
+```yaml
+event_type: task-failure
+task_id: T003
+failure_number: 1
+category: transient
+details:
+  error: "File not found: src/Services/UserSvc.cs"
+  resolution: "Corrected path to src/Services/UserService.cs"
+  action: retry
+```
+
 ### Phase 3: Cleanup + PR Readiness
 
 **Goal**: Prepare clean, reviewable PR.
+
+**Sequence**: Cleanup MUST complete before PR Prep begins.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Step 1: CLEANUP                                            │
+│  - Remove AI artifacts                                      │
+│  - Revert cosmetic-only changes                            │
+│  - Document tech debt                                       │
+│  - OUTPUT: Clean diff, debt/*.md files                     │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+                   (Wait for completion)
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Step 2: PR PREP                                            │
+│  - Final verification                                       │
+│  - Generate PR checklist                                    │
+│  - Confirm acceptance criteria                              │
+│  - OUTPUT: pr-checklist.md                                  │
+└─────────────────────────────────────────────────────────────┘
+```
 
 1. **Delegate to `agentic-cleanup`**:
    - Review all changes
    - Remove AI artifacts and noise
    - Document tech debt
+   - **Wait for success response before proceeding**
 
-2. **Delegate to `agentic-pr-prep`**:
+2. **Delegate to `agentic-pr-prep`** (only after cleanup completes):
    - Final verification
    - Generate PR checklist
    - Confirm acceptance criteria
 
-3. **Present PR summary**:
+3. **Present PR summary** (after both complete):
 
    ```
    ═══════════════════════════════════════════════════════════
@@ -205,6 +314,26 @@ Resume logic is defined in `.roo/rules-agentic-orchestrator/03-resume-protocol.m
 
 **Goal**: Promote durable learnings to LTM.
 
+**Trigger**: This phase runs AFTER PR is merged, not immediately after PR prep.
+
+```yaml
+consolidation_trigger:
+  when: "User confirms PR merged"
+  not_when:
+    - "PR still pending review"
+    - "PR needs revisions"
+    - "PR rejected"
+  
+  user_prompt: |
+    PR is ready for submission.
+    
+    After your PR is merged, say "merged" to trigger memory consolidation.
+    This will promote learnings to context packs for future runs.
+    
+    (Skip consolidation with "skip consolidation" if not needed)
+```
+
+**On trigger**:
 1. **Delegate to `agentic-memory-consolidator`**:
    - Review run artifacts
    - Identify promotion candidates
@@ -267,12 +396,52 @@ Use the `new_task` tool to delegate to another mode. This is the standard Roo Co
 3. **Reference artifacts by path** rather than embedding content
 4. **Wait for completion** before delegating the next task
 
+### Processing Delegation Returns
+
+When a delegated agent returns via `attempt_completion`, parse the response:
+
+```yaml
+return_processing:
+  on_success:
+    steps:
+      - Verify claimed deliverables exist
+      - Log success event with task_id
+      - Update task state to "done"
+      - Check for runnable dependent tasks
+      - Continue workflow
+    
+    example: |
+      Executor returns: "Task T003 complete. Modified src/UserService.cs"
+      Action: Verify file modified, log event, mark T003 done
+  
+  on_questions:
+    steps:
+      - Parse questions from response
+      - Determine if orchestrator can answer
+      - If yes: re-delegate with answers
+      - If no: escalate to user
+    
+    example: |
+      Executor returns: "Clarification needed: Should UserService implement IDisposable?"
+      Action: Check plan.md for guidance, or ask user
+  
+  on_failure:
+    steps:
+      - Apply failure handling protocol
+      - Determine failure category
+      - Execute retry protocol if applicable
+    
+    reference: "See Task Failure Handling Protocol above"
+```
+
+**Key Principle**: Never assume success—always verify deliverables exist before proceeding.
+
 ## Progress Tracking
 
 After each significant action, log an event:
 
 - Use directory: `events/orchestrator/`
-- File naming: `<timestamp>.jsonl`
+- File naming: `YYYYMMDD-HHMMSS.jsonl` (e.g., `20260115-143000.jsonl`)
 - Include: action, result, next_step, timestamp
 
 Report progress to user at:

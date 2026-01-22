@@ -69,45 +69,73 @@ estimated_complexity: low | medium | high
 conflict_risk: low | medium | high (for parallelization)
 ```
 
-### Step 3.5: Ensure Test Task Pairing
+### Step 3.5: Comprehensive Test Planning (MANDATORY)
 
-**MANDATORY**: Every implementation task that modifies production code MUST have a corresponding test task.
+**Every implementation task MUST have explicit test requirements.**
 
-#### Test Task Requirements
+#### 3.5.1 Test Analysis Per Implementation Task
 
-1. **Identify test needs for each implementation task**:
-   - What new tests are needed?
-   - What existing tests need updating?
-   - What test file(s) will be modified or created?
+For each implementation task, answer:
 
-2. **Create paired test tasks**:
-   - Test task MUST depend on its implementation task
-   - Test task contract MUST reference:
-     - The test file location from discovery notes
-     - The test patterns identified during planning
-     - The test utilities available
+1. **Existing Test Impact**:
+   - Which existing tests might break? (list files)
+   - Which existing tests need updating? (list files + reason)
+   - Are there integration tests affected?
 
-3. **Test task structure**:
+2. **New Test Requirements**:
+   - What unit tests are needed?
+   - What integration tests are needed?
+   - What edge cases must be covered?
 
-   ```yaml
-   id: T<NNN>-TEST (e.g., T003-TEST for T003)
-   title: "Tests for <implementation task title>"
-   type: test
-   dependencies: ["T<NNN>"] # The implementation task
-   ```
+3. **Test File Locations** (from discovery):
+   - Where do tests for this component live?
+   - What test utilities are available?
+   - What naming convention for test methods?
 
-4. **If no existing test file exists**:
-   - Implementation task acceptance criteria MUST include: "Test file created at <path>"
-   - OR: Separate test infrastructure task precedes the test task
+#### 3.5.2 Test Task Types
 
-#### Validation
+Create explicit test tasks:
 
-Before finalizing task graph, verify:
+| Task Type | ID Pattern | When to Use |
+|-----------|------------|-------------|
+| Update existing tests | T<NNN>-TEST-UPDATE | Existing tests need modification |
+| New unit tests | T<NNN>-TEST-UNIT | New functionality needs unit coverage |
+| New integration tests | T<NNN>-TEST-INT | New functionality needs integration coverage |
 
-- [ ] Every `type: implementation` task has a corresponding `type: test` task
-- [ ] Test tasks depend on their implementation tasks
-- [ ] Test task contracts include Implementation Context (test locations, patterns)
-- [ ] No implementation task is marked complete without its test task also being planned
+#### 3.5.3 Test Task Contract Requirements
+
+Every test task contract MUST include:
+
+```yaml
+# Test Context (MANDATORY)
+test_files:
+  existing: ["path/to/existing/tests.cs"]  # Tests to update
+  new: ["path/to/new/tests.cs"]            # Tests to create
+test_framework: "xUnit|NUnit|MSTest"
+mocking_framework: "Moq|NSubstitute|None"
+test_utilities: ["path/to/helpers"]
+test_patterns:
+  naming: "MethodName_Scenario_ExpectedResult"
+  arrangement: "Arrange-Act-Assert"
+
+# Acceptance Criteria (MANDATORY - be specific)
+acceptance_criteria:
+  - "Test for happy path: [specific scenario]"
+  - "Test for edge case: [specific scenario]"
+  - "Test for error case: [specific scenario]"
+  - "Existing test [TestName] updated to handle [change]"
+```
+
+#### 3.5.4 Validation Checklist
+
+Before finalizing task graph:
+
+- [ ] Every `type: implementation` task references test requirements
+- [ ] Existing test updates are explicitly identified
+- [ ] New test locations match codebase patterns
+- [ ] Test acceptance criteria are specific (not "add tests")
+- [ ] Test tasks have correct dependencies (after implementation)
+- [ ] No implementation task can complete without addressing its tests
 
 ### Step 4: Build Dependency Graph
 

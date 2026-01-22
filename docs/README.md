@@ -6,6 +6,7 @@
 |------|----------|-------------|--------|
 | [Factory](./factory.md) | Root | Multi-agent factory for creating agent systems | Stable |
 | [Example Pack](./example-pack.md) | `agent-packs/example-pack/` | Starter template demonstrating pack structure | Template |
+| [Agentic Developer](./agentic-developer.md) | `agent-packs/agentic-developer/` | Workflow-first, spec-driven development system | Stable |
 
 ## Quick Start
 

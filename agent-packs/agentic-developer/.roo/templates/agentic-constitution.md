@@ -197,28 +197,18 @@ _Aspirational quality:_
 
 ## 5. Commit Standards
 
-> Default commit/PR hygiene is defined in `.roo/rules/agentic-global.md`. Only record run-specific additions or stricter rules here.
+> **Reference**: See `.roo/rules/agentic-global.md` Section 6 for full commit/PR hygiene rules.
 
-### 5.1 Commit Message Format
+Only document run-specific additions or stricter requirements below:
 
+```yaml
+run_specific_commit_rules:
+  # Add only rules that are STRICTER than global defaults
+  # Examples:
+  # - require_issue_reference: true
+  # - required_reviewers: ["@security-team"]
+  # - branch_protection: "require-linear-history"
 ```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types:** feat, fix, refactor, test, docs, chore
-
-**Scope:** Component or area affected
-
-### 5.2 Commit Rules
-
-- [ ] Each commit is atomic (single purpose)
-- [ ] Commit message explains WHY, not just WHAT
-- [ ] No WIP commits in final PR
-- [ ] No merge commits (rebase instead)
 
 ---
 

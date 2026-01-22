@@ -84,6 +84,26 @@ Go beyond context packs to verify and extend your understanding:
    - Note shared utilities or base classes
    - Identify cross-cutting concerns (logging, auth, validation)
 
+6. **Convention Discovery** (MANDATORY)
+   - Open 3-5 similar files to what you'll create
+   - Document observed conventions in discovery notes:
+     - Naming conventions (variables, methods, classes)
+     - Commenting style (XML docs? inline? minimal?)
+     - Code organization (regions? method ordering?)
+     - Error handling patterns
+     - Logging patterns
+   - Note any INCONSISTENCIES within the codebase
+   - Record the MAJORITY pattern for each convention
+
+7. **Test Infrastructure Discovery** (ENHANCED)
+   - Find ALL test projects in the solution
+   - Document test framework (xUnit, NUnit, MSTest)
+   - Find test utilities, base classes, fixtures
+   - Document mocking frameworks used
+   - Find example tests for similar functionality
+   - Note test naming conventions
+   - Document test data patterns (builders, fixtures, inline)
+
 #### Phase C: Discovery Notes
 
 Create `.agent-memory/runs/<run-id>/discovery-notes.md` documenting:
@@ -128,6 +148,32 @@ Create `.agent-memory/runs/<run-id>/discovery-notes.md` documenting:
 
 - [Context pack]: Add section on [topic]
 - [Context pack]: Update [section] with [info]
+
+## Convention Snapshot
+
+<!-- Fill this out for every planning session -->
+
+| Convention | Observed Pattern | Source Files | Notes |
+|------------|------------------|--------------|-------|
+| Variable naming | | | |
+| Method naming | | | |
+| XML comments | Yes/No/Partial | | |
+| Inline comments | | | |
+| Brace style | | | |
+| File organization | | | |
+| Error handling | | | |
+| Logging style | | | |
+
+## Test Infrastructure
+
+| Aspect | Observed | Location |
+|--------|----------|----------|
+| Framework | | |
+| Mocking library | | |
+| Base test class | | |
+| Test utilities | | |
+| Naming convention | | |
+| Data patterns | | |
 ```
 
 These notes will be used by the Memory Consolidator to improve context packs.

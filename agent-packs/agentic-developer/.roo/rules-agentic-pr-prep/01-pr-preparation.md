@@ -81,6 +81,48 @@ Identify focus areas for reviewers:
 - Future improvements noted during implementation
 - Known limitations
 
+### 5. Test Hygiene Verification (MANDATORY)
+
+Before PR submission, perform final test audit:
+
+#### 5.1 Test Purpose Audit
+
+For each new/modified test:
+
+| Question | Action if "No" |
+|----------|----------------|
+| Does this test verify a requirement? | Mark for removal |
+| Is this test non-redundant? | Consolidate with similar test |
+| Does this test have value post-PR? | Mark for removal |
+| Is the test name accurate? | Rename |
+
+#### 5.2 Redundant Test Identification
+
+Look for:
+- Tests testing the same code path differently
+- Tests that are subsets of other tests
+- Tests that were scaffolding during development
+- Tests for removed/changed functionality that weren't updated
+
+#### 5.3 Test Cleanup Actions
+
+| Issue | Action |
+|-------|--------|
+| Redundant tests | Remove or consolidate |
+| Orphaned tests | Remove |
+| Overly complex tests | Simplify or split |
+| Misleading test names | Rename to match behavior |
+
+#### 5.4 Final Test Checklist
+
+- [ ] All tests serve a clear purpose
+- [ ] No redundant tests
+- [ ] No orphaned tests from refactoring
+- [ ] Test names match actual test behavior
+- [ ] Tests cover requirements from PRD/plan
+- [ ] Edge cases have explicit tests
+- [ ] Error paths have tests
+
 ## Key Constraints
 
 - **Accurate summary**: PR description must match actual changes

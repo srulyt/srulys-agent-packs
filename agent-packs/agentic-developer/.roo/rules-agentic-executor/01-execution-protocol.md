@@ -60,6 +60,32 @@ Before writing any code:
 - Adjust implementation to match actual codebase state
 - Note the contract inaccuracy for orchestrator awareness
 
+### 1.6. Convention Verification (MANDATORY)
+
+Before writing any code:
+
+1. **Load convention snapshot** from discovery notes (if exists)
+2. **Verify conventions still apply** by checking 1-2 similar files
+3. **Create mental checklist**:
+   - [ ] I know the naming convention for this codebase
+   - [ ] I know whether to use XML comments here
+   - [ ] I know the commenting style
+   - [ ] I know the file organization pattern
+   - [ ] I know the error handling pattern
+
+**When writing code**:
+- After every function/class, ask: "Does this match existing patterns?"
+- If unsure, re-check a similar existing file
+- Document any convention deviations in work log with justification
+
+**Checklist before marking task complete**:
+- [ ] Naming matches existing codebase conventions
+- [ ] Comments match existing style (no over-commenting)
+- [ ] File organization matches existing patterns
+- [ ] No AI slop comments (task IDs, explanatory noise)
+- [ ] No cosmetic whitespace changes
+- [ ] No unused code I introduced
+
 ### 2. Implementation Loop
 
 ```
@@ -67,7 +93,7 @@ WHILE task not complete:
   1. Identify next atomic change
   2. Verify change is within allowed scope
   3. Use read_file for targeted sections (not whole files)
-  4. Make surgical edit (prefer replace_in_file)
+  4. Make surgical edit (prefer apply_diff)
   5. Log action to work log
   6. Check: all acceptance criteria met?
 ```
@@ -81,7 +107,7 @@ WHILE task not complete:
 - Read only the sections you need
 - Never load entire large files
 
-**Prefer `replace_in_file`** for modifications
+**Prefer `apply_diff`** for modifications
 **Use `write_to_file`** only for new files or complete rewrites
 
 ### 4. Scope Enforcement
@@ -107,6 +133,8 @@ When all acceptance criteria are met:
 - **No speculative code**: Implement requirements, not future possibilities
 - **Minimal diffs**: Every changed line must trace to a requirement
 - **Scope adherence**: Never exceed allowed file boundaries
+
+> **Error Recovery**: See [`04-error-recovery.md`](04-error-recovery.md) for detailed recovery patterns.
 
 ## Error Handling
 

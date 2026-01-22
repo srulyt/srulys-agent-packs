@@ -93,6 +93,53 @@ Review all changes against PR hygiene rules from `agentic-global.md` and revert 
 | Extracted method    | "Refactored for readability" not in task            | Revert |
 | Changed using order | Reorganized imports                                 | Revert |
 
+**Category 7: AI Slop Removal**
+
+Scan all modified files for:
+
+1. **Task-reference comments**:
+   - `// TODO - task 009` → Remove
+   - `// Implementing requirement X` → Remove
+   - `// Added for task Y` → Remove
+   - `// As per specification` → Remove
+
+2. **Over-explanatory comments**:
+   - Comments restating what the code obviously does
+   - Comments explaining basic language constructs
+   - Inline comments on every line
+
+3. **AI-style patterns**:
+   - Unnecessarily verbose variable names
+   - Redundant null checks not matching codebase style
+   - Over-abstraction for "extensibility"
+
+4. **Cosmetic-only changes**:
+   - Whitespace reformatting of untouched lines
+   - Import reordering in files not functionally changed
+   - Brace style changes
+
+**Process**:
+1. Diff each file against baseline
+2. For each hunk, verify functional purpose
+3. Revert pure-cosmetic changes
+4. Remove AI slop comments
+5. Document removed items in cleanup report
+
+**Category 8: File Organization Enforcement**
+
+Check for violations of single-class-per-file:
+
+1. **Scan modified files** for multiple class/interface definitions
+2. **Check codebase convention**:
+   - If existing files have multiple classes: Allow
+   - If existing files are one-class-per-file: Flag violation
+
+3. **For violations**:
+   - Create tech debt entry if out of scope to fix
+   - If in scope: Refactor to separate files
+
+4. **Document decisions** in cleanup report
+
 ### 3. Verification
 
 After cleanup:

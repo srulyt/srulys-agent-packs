@@ -17,9 +17,18 @@ task_id: "<task-id>"
 
 ### Acceptance Criteria
 
-- [ ] <Criterion 1>
-- [ ] <Criterion 2>
-- [ ] <Criterion 3>
+> **Criteria Source**: Constitution > Task Contract > Plan > PRD
+> See [`.roo/rules/agentic-global.md`](.roo/rules/agentic-global.md) Section 9 for hierarchy details.
+
+| # | Criterion | Source | Verification |
+|---|-----------|--------|--------------|
+| 1 | <Criterion 1> | <constitution\|plan\|prd\|task-specific> | <how to verify> |
+| 2 | <Criterion 2> | <source> | <verification> |
+| 3 | <Criterion 3> | <source> | <verification> |
+
+**Inherited from Constitution**:
+- Quality gate level: <Bronze\|Silver\|Gold>
+- Required standards: <list applicable constitution sections>
 
 ### Dependencies
 

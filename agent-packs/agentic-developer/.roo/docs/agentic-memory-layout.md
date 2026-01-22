@@ -13,16 +13,13 @@ This document describes the memory architecture for the agentic development syst
 │       │   ├── 0001-run-started.yaml
 │       │   ├── 0002-phase-entered.yaml
 │       │   └── ...
-│       ├── artifacts/              # Generated documents
-│       │   ├── prd.md
-│       │   ├── constitution.md
-│       │   ├── plan.md
-│       │   └── task-graph.yaml
+│       ├── prd.md                  # Product requirements
+│       ├── constitution.md         # Immutable constraints
+│       ├── plan.md                 # Implementation plan
+│       ├── task-graph.yaml         # Task dependencies
 │       ├── tasks/                  # Task-specific data
-│       │   └── <task-id>/
-│       │       ├── contract.yaml
-│       │       ├── work-log.md
-│       │       └── verification.yaml
+│       │   ├── <task-id>.md        # Task contract
+│       │   └── <task-id>-work.md   # Work log (optional)
 │       ├── lanes/                  # Parallel execution lanes
 │       │   └── <lane-id>/
 │       │       └── ...
@@ -140,11 +137,11 @@ Events are stored as append-only JSONL files per actor under the `events/<actor>
 ```
 events/
 ├── orchestrator/
-│   └── 2024-01-15T10-00-00Z.jsonl
+│   └── 20260115-100000.jsonl
 ├── executor/
-│   └── 2024-01-15T10-30-00Z.jsonl
+│   └── 20260115-103000.jsonl
 └── verifier/
-    └── 2024-01-15T11-00-00Z.jsonl
+    └── 20260115-110000.jsonl
 ```
 
 Each line is one event JSON object. Event types and fields follow `agentic-event-schema.yaml` (schema catalog only; storage is JSONL).
@@ -153,19 +150,19 @@ Each line is one event JSON object. Event types and fields follow `agentic-event
 - **Per-actor files**: One file per actor to avoid merge conflicts
 - **Self-describing**: Each event contains all context needed
 
-### Task Directories
+### Task Files
 
-Each task gets its own directory under `tasks/<task-id>/`:
+Each task gets a contract file at `tasks/<task-id>.md`:
 
 ```yaml
-# tasks/TASK-003/contract.md
+# tasks/TASK-003.md
 task_id: "TASK-003"
 title: "Implement EmailValidator class"
 # ... full contract as per .roo/templates/task-contract-template.md
 ```
 
 ```markdown
-# tasks/TASK-003/work-log.md
+# tasks/TASK-003-work.md
 
 ## Work Log - TASK-003
 

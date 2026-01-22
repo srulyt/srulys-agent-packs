@@ -1,5 +1,8 @@
 # Executor Mode: Context Boundaries
 
+> **Related**: For tool usage patterns, see [`03-tool-usage.md`](03-tool-usage.md).
+> For error recovery, see [`04-error-recovery.md`](04-error-recovery.md).
+
 ## Context Budget Management
 
 > **Note:** Token numbers in this document are approximate guidelines for models with ~128K context windows. Adjust proportionally for different context sizes. These are behavioral guidelines, not hard limits—the goal is efficient context usage.
@@ -108,7 +111,7 @@ For files > 500 lines, follow this protocol:
    - Never request "rest of file"
 
 4. **Minimal Edit**
-   - Use replace_in_file with exact matches
+   - Use apply_diff with exact matches
    - Include just enough context for unique match
    - Verify edit boundaries before applying
 ```

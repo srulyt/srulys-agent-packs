@@ -97,6 +97,40 @@ If no specific test commands are available:
 - No forbidden patterns from constitution
 - Code follows existing patterns in the codebase
 
+**Check 6: Code Quality Standards**
+
+Verify against global rules Section 10:
+
+| Standard | Verification Method | Pass Criteria |
+|----------|---------------------|---------------|
+| Convention matching | Compare with similar files | Naming/commenting matches |
+| XML comments | Check codebase has them | Added only if existing |
+| Clean Code | Code review | No magic numbers, meaningful names |
+| SOLID | Design review | No obvious violations |
+| Single class/file | File scan | One public class per file (or matches existing) |
+
+**Check 7: AI Artifact Absence**
+
+Verify all AI artifacts removed:
+
+| Artifact | Detection Method | Fail if Found |
+|----------|------------------|---------------|
+| Task-ID comments | Grep for `// TODO - task`, `// task-` | Yes |
+| AI comments | Grep for `// AI:`, `// Generated` | Yes |
+| Over-commenting | Manual review | Excessive explanatory comments |
+| Cosmetic diffs | Diff analysis | Whitespace-only changes |
+
+**Check 8: Test Completeness**
+
+Verify test requirements addressed:
+
+| Aspect | Verification | Pass Criteria |
+|--------|--------------|---------------|
+| Existing tests updated | Compare test file diffs | Tests modified per task |
+| New tests created | File existence check | Required tests exist |
+| Tests pass | Execute test suite | All green |
+| Coverage | Review test cases | Edge cases covered |
+
 ### 3. Generate Result
 
 | All Checks Pass | Result  | Action                                    |
