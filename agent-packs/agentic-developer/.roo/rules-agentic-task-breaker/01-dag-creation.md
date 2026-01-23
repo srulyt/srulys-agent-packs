@@ -10,10 +10,23 @@ Transform implementation plans into DAGs (Directed Acyclic Graphs) of small, wel
 
 You receive from the orchestrator:
 
-- Plan artifact path (`.agent-memory/runs/<run-id>/plan.md`)
+- Plan artifact path: **Either**:
+  - `.agent-memory/runs/<run-id>/plan.md` (standard planning workflow)
+  - `.agent-memory/runs/<run-id>/bootstrap-plan.md` (bootstrap workflow)
 - Run ID and run directory path
 - PRD for reference
 - Any context pack pointers (follow pointers only; do not load unrelated sections)
+
+### Input Type Detection
+
+1. **Check which plan file exists**:
+   - If `bootstrap-plan.md` exists → Bootstrap workflow (see "Bootstrap Task Decomposition" section)
+   - If `plan.md` exists → Standard workflow (continue with normal process)
+   
+2. **Bootstrap plans are structurally different**:
+   - They contain technology stack decisions, not codebase modifications
+   - They specify project structure creation, not file changes
+   - They may reference ADRs for major technology choices
 
 ## Output Contract
 
@@ -288,6 +301,141 @@ Use format: `T<NNN>` where NNN is zero-padded sequential number.
 - `T001`, `T002`, ..., `T999`
 - Quality tasks: `Q<NNN>` (e.g., `Q001`)
 - Hotfix tasks: `H<NNN>` (e.g., `H001`)
+- Bootstrap tasks: `B<NNN>` (e.g., `B001`) - See Bootstrap Task Decomposition below
+
+## Bootstrap Task Decomposition
+
+When input is `bootstrap-plan.md`, use this specialized decomposition process.
+
+### Bootstrap Task Types
+
+| Type | ID Pattern | Purpose | Example |
+|------|------------|---------|---------|
+| `bootstrap-init` | `B001` | Initialize project scaffolding | Run `npm init`, `dotnet new`, `cargo init` |
+| `bootstrap-config` | `B002-B0XX` | Create configuration files | `.gitignore`, `tsconfig.json`, `eslint.config.js` |
+| `bootstrap-structure` | `B0XX` | Create directory structure | `src/`, `tests/`, `docs/` folders |
+| `bootstrap-base-files` | `B0XX` | Create initial source files | Entry points, type definitions, index files |
+| `bootstrap-verify` | `B999` | Verify project builds/runs | `npm run build`, `dotnet build`, test commands |
+
+### Bootstrap Task Attributes
+
+Bootstrap tasks have slightly different attributes:
+
+```yaml
+id: B001
+title: Initialize Node.js project
+phase: 1
+type: bootstrap-init
+description: Run npm init and create package.json with specified configuration
+dependencies: []
+creates:
+  - package.json
+  - package-lock.json
+commands:
+  - "npm init -y"
+  - "npm install typescript --save-dev"
+acceptance_criteria:
+  - "package.json exists with correct name and version"
+  - "TypeScript installed as dev dependency"
+estimated_complexity: low
+requires_discovery: false  # Bootstrap tasks don't need codebase discovery
+```
+
+### Bootstrap Plan Parsing
+
+When parsing `bootstrap-plan.md`:
+
+1. **Extract technology decisions** from each category section
+2. **Map decisions to initialization commands**:
+   - Language/Runtime → project initialization
+   - Package Management → dependency installation
+   - Framework → framework-specific setup
+   - Testing → test framework installation
+   - Tooling → linter/formatter configuration
+
+3. **Create ordered task sequence**:
+   ```
+   B001: Project initialization (creates manifest file)
+   B002: Core dependencies installation
+   B003: Dev dependencies installation
+   B004: Directory structure creation
+   B005: Configuration files (.gitignore, etc.)
+   B006: Tooling configuration (linter, formatter)
+   B007: Base source files (entry points)
+   B008: Test infrastructure setup
+   B999: Verification task (build + test run)
+   ```
+
+4. **Reference ADRs** in task contracts for context on why decisions were made
+
+### Bootstrap Task Contract Example
+
+```markdown
+# Task Contract: B004
+
+## Overview
+| Attribute | Value |
+|-----------|-------|
+| Phase | 1 - Project Setup |
+| Type | bootstrap-structure |
+| Complexity | Low |
+
+## Description
+Create the standard project directory structure as defined in the bootstrap plan.
+
+## Creates (not modifies)
+- `src/` - Main source directory
+- `src/lib/` - Library/shared code
+- `tests/` - Test files
+- `tests/unit/` - Unit tests
+- `docs/` - Documentation
+
+## Commands
+```bash
+mkdir -p src/lib tests/unit docs
+```
+
+## Dependencies
+- B001 (project initialized)
+- B002 (core dependencies installed)
+
+## Acceptance Criteria
+- [ ] All directories exist
+- [ ] Directory structure matches bootstrap plan specification
+
+## ADR References
+- ADR-001: Project structure rationale
+```
+
+### Key Differences from Standard Tasks
+
+| Aspect | Standard Tasks | Bootstrap Tasks |
+|--------|----------------|-----------------|
+| Discovery | Required | Not needed (empty workspace) |
+| File operations | Modify existing | Create new only |
+| Dependencies | Code dependencies | Setup sequence |
+| Verification | Tests pass | Project builds |
+| Complexity assessment | Based on changes | Based on tooling complexity |
+
+### Bootstrap Verification Task (B999)
+
+The final bootstrap task should always verify the project is functional:
+
+```yaml
+id: B999
+title: Verify project setup
+type: bootstrap-verify
+description: Confirm project builds and runs successfully
+dependencies: [all previous B-tasks]
+verification_commands:
+  - "npm run build"      # or equivalent
+  - "npm test"           # if test framework installed
+  - "npm run lint"       # if linter configured
+acceptance_criteria:
+  - "Build completes without errors"
+  - "All configured tools run successfully"
+  - "Project is ready for feature development"
+```
 
 ## Task Sizing Guidelines
 

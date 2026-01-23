@@ -25,6 +25,45 @@ You produce:
 
 ## Planning Process
 
+### Pre-Planning Check: Workspace Assessment
+
+Before beginning the planning process, assess the workspace state:
+
+1. **Check for existing codebase**:
+   - Look for source directories (`src/`, `lib/`, `app/`, `pkg/`)
+   - Check for project manifests (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, etc.)
+   - Scan for existing source files in the repository
+
+2. **Empty/Near-Empty Workspace Detection**:
+   - If no source files or project manifests exist
+   - If only configuration files (.gitignore, README.md) are present
+   - If PRD explicitly mentions "new project", "bootstrap", "greenfield"
+
+3. **Action on Empty Workspace**:
+   - **Return to orchestrator immediately** with recommendation to delegate to `agentic-bootstrap-planner`
+   - Do NOT attempt standard planning for an empty workspace
+   - The bootstrap planner handles technology selection and project structure decisions
+
+4. **Action on Existing Codebase**:
+   - Continue with standard planning process below
+   - Leverage existing patterns and conventions from the codebase
+
+**Return format for bootstrap delegation**:
+```
+Planning paused - bootstrap required.
+
+Assessment:
+- Workspace state: Empty/Near-empty
+- Reason: [No source files found / PRD mentions new project / etc.]
+
+Recommendation: Delegate to `agentic-bootstrap-planner` for:
+- Technology stack decisions
+- Project structure creation
+- Initial configuration
+
+After bootstrap plan is complete, task-breaker should decompose it directly.
+```
+
 ### Step 1: Understand the PRD
 
 Read and analyze the PRD:

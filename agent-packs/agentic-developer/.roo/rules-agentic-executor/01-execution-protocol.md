@@ -11,6 +11,13 @@ The Executor implements individual tasks from the task graph. Each execution is 
 - Global rules from `.roo/rules/agentic-global.md` (loaded automatically)
 - Relevant context pack sections as pointed to by the task contract
 
+### Detecting Bootstrap Tasks
+
+Bootstrap tasks have task IDs starting with `B` (e.g., `B001`, `B002`). These require different handling:
+- No codebase discovery needed (workspace is empty)
+- Focus on creation, not modification
+- May involve running shell commands for project initialization
+
 ## Output
 
 - Modified source files (within allowed scope)
@@ -125,6 +132,87 @@ When all acceptance criteria are met:
 1. Update work log with final status
 2. Create verification request (see template)
 3. Emit `task-implemented` event
+
+---
+
+## Bootstrap Task Execution
+
+When executing tasks with IDs starting with `B` (bootstrap tasks), follow this specialized process instead of the standard verification steps.
+
+### Bootstrap-Specific Rules
+
+1. **Skip codebase discovery** - The workspace is empty, there's nothing to discover
+2. **Skip convention verification** - You're establishing conventions, not following existing ones
+3. **Skip pattern verification** - There are no existing patterns to match
+4. **Focus on creation** - Use `write_to_file` primarily, not `apply_diff`
+
+### Bootstrap Task Type Handling
+
+| Task Type | Action | Notes |
+|-----------|--------|-------|
+| `bootstrap-init` | Run project initialization commands | `npm init`, `dotnet new`, `cargo init`, etc. |
+| `bootstrap-config` | Create configuration files | `.gitignore`, `tsconfig.json`, `eslint.config.js` |
+| `bootstrap-structure` | Create directories | Use `mkdir` commands or create placeholder files |
+| `bootstrap-base-files` | Create initial source files | Entry points, index files, type definitions |
+| `bootstrap-verify` | Run build/test commands | Verify project compiles and runs |
+
+### Bootstrap Pre-Execution (Simplified)
+
+For bootstrap tasks, the pre-execution steps are:
+
+1. **Load task contract** - Same as standard
+2. **Verify dependencies completed** - Same as standard
+3. **Skip all verification steps** - No codebase exists to verify against
+
+### Bootstrap Implementation Loop
+
+```
+WHILE task not complete:
+  1. Identify next file or command
+  2. If command: execute using execute_command
+  3. If file creation: use write_to_file
+  4. Verify created file exists or command succeeded
+  5. Check: all acceptance criteria met?
+```
+
+### Command Execution for Bootstrap
+
+Bootstrap tasks often require running shell commands. Use `execute_command` for:
+
+- Package manager initialization (`npm init -y`, `pip init`, etc.)
+- Dependency installation (`npm install typescript`, `pip install pytest`)
+- Directory creation (`mkdir -p src/lib tests/unit`)
+- Git initialization (`git init`)
+
+**Always check command output** for errors before proceeding.
+
+### Bootstrap File Creation
+
+When creating files in a bootstrap context:
+
+- Use `write_to_file` (not `apply_diff` - there's nothing to diff against)
+- Follow the bootstrap plan's specified technology choices
+- Apply the conventions established in the bootstrap plan
+- Reference ADRs for rationale on structural decisions
+
+### Bootstrap Exit Criteria
+
+- [ ] All acceptance criteria in task contract addressed
+- [ ] All specified files created
+- [ ] All specified commands executed successfully
+- [ ] For `bootstrap-verify` tasks: build/test commands pass
+- [ ] Completion event emitted
+
+### Bootstrap Error Handling
+
+| Error Type | Action |
+|------------|--------|
+| Command fails | Check error output, attempt fix, report if blocked |
+| Package not found | Verify package name, check registry, report if blocked |
+| Permission denied | Report to orchestrator (likely system issue) |
+| Disk space | Report to orchestrator (user intervention needed) |
+
+---
 
 ## Key Constraints
 

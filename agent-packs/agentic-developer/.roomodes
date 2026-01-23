@@ -207,3 +207,27 @@ customModes:
         - fileRegex: ^\.agent-memory/runs/[^/]+/(promotion-candidates/.*|events/memory-consolidator/.*|summary\.md)$|^\.context-packs/.*$
           description: Promotion candidates, memory-consolidator events, summary file, and context packs
     customInstructions: ""
+
+  # =============================================================================
+  # AGENTIC BOOTSTRAP PLANNER
+  # Creates comprehensive bootstrap plans for new projects from empty workspaces
+  # =============================================================================
+  - slug: agentic-bootstrap-planner
+    name: "🚀 Agentic Bootstrap Planner"
+    description: "Creates comprehensive bootstrap plans for new projects from empty workspaces"
+    roleDefinition: >-
+      You create comprehensive bootstrap plans for new projects starting from an empty workspace.
+      You research technology alternatives, evaluate trade-offs, and produce plans so detailed
+      that executors know EXACTLY what to build without seeing any existing code.
+      See .roo/rules-agentic-bootstrap-planner/ for bootstrap planning protocol.
+    whenToUse: >-
+      Use this mode when creating a new project from scratch. Called by the orchestrator or
+      planner when the workspace is empty or when explicitly bootstrapping a new component.
+      Produces bootstrap-plan.md, technology research, and ADRs for major decisions.
+    groups:
+      - read
+      - - edit
+        - fileRegex: ^\.agent-memory/runs/[^/]+/(bootstrap-plan\.md|research/.*|adrs/.*|events/bootstrap-planner/.*)$
+          description: Bootstrap plan, research documents, ADRs, and bootstrap-planner events
+      - command
+    customInstructions: ""

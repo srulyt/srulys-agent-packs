@@ -126,6 +126,58 @@ small_task_workflow:
 
 **Output**: PRD artifact ready, context identified
 
+### Phase 0.5: Bootstrap Detection
+
+**Goal**: Determine if this is a new project bootstrap or existing codebase work.
+
+1. **Check request intent**:
+   - Does PRD/request explicitly mention "new project", "bootstrap", "create from scratch", "greenfield"?
+   - If yes → Bootstrap workflow
+
+2. **Scan workspace** (if intent unclear):
+   - Look for existing source files in common locations (`src/`, `lib/`, `app/`)
+   - Check for project manifests (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, etc.)
+   - If workspace is empty or near-empty → Bootstrap workflow
+
+3. **Route appropriately**:
+   - **Bootstrap needed** → Delegate to `agentic-bootstrap-planner`
+   - **Existing codebase** → Continue to Phase 1 (standard planning)
+
+**Bootstrap Detection Triggers**:
+- Explicit: User mentions "create new project", "bootstrap", "start from scratch", "greenfield"
+- Implicit: Workspace has no source files or project manifests
+
+**Bootstrap Planner Delegation**:
+
+```
+<new_task>
+<mode>agentic-bootstrap-planner</mode>
+<message>
+## Task
+Create comprehensive bootstrap plan for new project.
+
+## Context
+- Run ID: <run-id>
+- Run Directory: .agent-memory/runs/<run-id>/
+- PRD: .agent-memory/runs/<run-id>/prd.md
+
+## Constraints
+- [Any user-specified technology constraints]
+
+## Expected Outputs
+- .agent-memory/runs/<run-id>/bootstrap-plan.md
+- .agent-memory/runs/<run-id>/research/technology-evaluation.md
+- .agent-memory/runs/<run-id>/adrs/ADR-*.md (for major decisions)
+</message>
+</new_task>
+```
+
+**After Bootstrap Plan**:
+- Proceed to Phase 1 with `agentic-task-breaker` (skip standard planner)
+- Task-breaker will decompose the bootstrap plan into executable tasks
+
+**Output**: Workflow mode determined (bootstrap or standard), routed to appropriate planner
+
 ### Phase 1: Planning (GATE)
 
 **Goal**: Create approved plan and task breakdown.
@@ -381,6 +433,7 @@ Use the `new_task` tool to delegate to another mode. This is the standard Roo Co
 | Agent               | Mode Slug                     |
 | ------------------- | ----------------------------- |
 | Spec Writer         | `agentic-spec-writer`         |
+| Bootstrap Planner   | `agentic-bootstrap-planner`   |
 | Planner             | `agentic-planner`             |
 | Task Breaker        | `agentic-task-breaker`        |
 | Executor            | `agentic-executor`            |

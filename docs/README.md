@@ -9,6 +9,7 @@
 | [Agentic Developer](./agentic-developer.md) | `agent-packs/agentic-developer/` | Workflow-first, spec-driven development system | Stable |
 | [Context Packs](./context-packs.md) | `agent-packs/context-packs/` | Multi-agent system for creating context packs from legacy codebases | Stable |
 | [Spec Creator](./spec-creator.md) | `agent-packs/spec-creator/` | AI-powered product specification writing team for Microsoft Fabric | Stable |
+| [Simple Agent Factory](./simple-agent-factory.md) | `agent-packs/simple-agent-factory/` | Single-task prompt generation for AI platforms | Stable |
 
 ## Quick Start
 
