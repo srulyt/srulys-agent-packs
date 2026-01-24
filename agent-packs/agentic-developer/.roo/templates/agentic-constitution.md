@@ -164,34 +164,58 @@ security_forbidden:
 
 ---
 
-## 4. Quality Gates
+## 4. Quality Levels
 
-### 4.1 Bronze Level (Minimum Required)
+Quality levels define the expected standards for different types of work. The constitution specifies which level applies to this run.
 
-_Must pass for any task to be considered complete:_
+### 4.1 Bronze (Minimum Viable)
 
-- [ ] Code compiles without errors
-- [ ] No new compiler warnings
-- [ ] Existing tests still pass
-- [ ] No forbidden patterns introduced
+_Quick fixes, prototypes, or low-risk changes:_
 
-### 4.2 Silver Level (Standard)
+- [ ] Code compiles/runs without errors
+- [ ] Basic functionality works
+- [ ] No tests required
+- [ ] Linter warnings allowed
 
-_Expected for normal development:_
+**Use when**: Prototyping, spike solutions, internal tools
+
+### 4.2 Silver (Standard)
+
+_Normal development work:_
 
 - [ ] All Bronze requirements
-- [ ] New tests for new functionality
-- [ ] Code review checklist complete
-- [ ] Documentation updated where required
+- [ ] Unit tests required for new code
+- [ ] Integration tests optional
+- [ ] Build must pass
+- [ ] No new linter warnings
 
-### 4.3 Gold Level (Excellence)
+**Use when**: Regular feature development, bug fixes
 
-_Aspirational quality:_
+### 4.3 Gold (Production Ready)
+
+_Production releases, public APIs, critical paths:_
 
 - [ ] All Silver requirements
-- [ ] Test coverage maintained or improved
-- [ ] Performance benchmarks met
+- [ ] Comprehensive test coverage (>80%)
+- [ ] Integration tests required
+- [ ] Performance benchmarks pass
+- [ ] Documentation complete
 - [ ] Security review passed
+
+**Use when**: Production releases, breaking changes, security-sensitive code
+
+### 4.4 Quality Level Selection
+
+```yaml
+# Set in constitution based on run scope
+quality_level: <Bronze|Silver|Gold>
+rationale: "<Why this level was selected>"
+```
+
+**Selection Criteria:**
+- Bronze: Internal tool, spike, prototype
+- Silver: Regular feature, non-breaking change (default)
+- Gold: Public API, breaking change, security-sensitive
 
 ---
 

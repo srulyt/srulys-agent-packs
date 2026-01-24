@@ -26,40 +26,47 @@ Bootstrap tasks have task IDs starting with `B` (e.g., `B001`, `B002`). These re
 
 ## Process
 
-### 1. Pre-Execution
+### 1. Pre-Execution (Required)
 
-Before writing any code:
+```markdown
+## Pre-Implementation Decision Tree
 
-1. Load and understand task contract (treat acceptance criteria there as the single source of truth)
+1. Load task contract ✓
+2. Check deps complete ✓
+3. IF modifying existing code:
+   - Verify patterns (Step 1.5)
+   - Match conventions (Step 1.6)
+4. IF bootstrap task (B-prefix):
+   - Skip verification (empty workspace)
+   - Proceed to implementation
+5. IF creating new files only:
+   - Verify test locations
+   - Skip pattern verification
+```
+
+**Core Steps** (always required):
+1. Load and understand task contract (single source of truth)
 2. Verify all dependencies are completed (check events)
-3. Confirm target files exist
-4. Load relevant context pack sections (follow the pointers listed in the task contract; do not load whole packs)
+
+**Conditional Steps** (based on task type):
 
 ### 1.5. Pre-Implementation Verification
 
-**CRITICAL**: Before writing any code, verify the task contract assumptions:
+> **Skip if**: Bootstrap task (B-prefix) or empty workspace
 
-1. **Pattern Verification**
-   - Read the reference implementation files cited in the task contract
-   - Confirm the patterns described still match the current code
-   - If patterns have changed, note discrepancy and proceed with current patterns
-   - Do NOT implement based on outdated pattern descriptions
+**For existing code modifications only**:
 
-2. **Schema Verification** (if task involves data access)
-   - Check that database columns/tables referenced actually exist
-   - Verify entity classes match expected schema
-   - Check ORM mappings if applicable
-   - **NEVER assume a column exists** - verify it in the actual entity/schema
+| Check | When Required | Action |
+|-------|---------------|--------|
+| Pattern Verification | Modifying existing code | Read reference files, confirm patterns match |
+| Schema Verification | Data access tasks | Verify columns/tables exist |
+| Test Location | Adding/modifying tests | Confirm test files exist |
+| Interface Verification | Implementing interfaces | Verify signatures match |
 
-3. **Test Location Verification**
-   - Confirm test files referenced in task contract exist
-   - If test file doesn't exist, task must include creating it
-   - Verify test utilities and helpers are available
-
-4. **Interface Verification**
-   - Check that interfaces/contracts you'll implement still match
-   - Verify method signatures, parameter types, return types
-   - Check for any recent changes to shared types
+**Quick verification for simple tasks:**
+- Single file modification → Verify only that file's patterns
+- Adding to existing class → Check class conventions only
+- New standalone file → Skip pattern verification
 
 **If verification fails:**
 

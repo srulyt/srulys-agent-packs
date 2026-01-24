@@ -27,7 +27,10 @@ task_id: "<task-id>"
 | 3 | <Criterion 3> | <source> | <verification> |
 
 **Inherited from Constitution**:
-- Quality gate level: <Bronze\|Silver\|Gold>
+- Quality level: <Bronze|Silver|Gold> (inherited from constitution)
+  - Bronze: Code runs, basic functionality works
+  - Silver: Unit tests required, build passes, no linter warnings
+  - Gold: >80% coverage, integration tests, docs, security review
 - Required standards: <list applicable constitution sections>
 
 ### Dependencies

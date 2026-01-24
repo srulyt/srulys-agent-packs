@@ -111,7 +111,27 @@ small_task_workflow:
 - No dependencies on other pending work
 - Estimated effort: < 30 minutes human equivalent
 
+```yaml
+small_task_shortcut:
+  constitution_contains:
+    - quality_bar: bronze
+    - allowed_files: [single file path]
+    - forbidden_patterns: [from global rules]
+    
+  escape_hatch_triggers:
+    - executor reports: "Needs additional files"
+    - executor reports: "Architectural decision needed"
+    - diff exceeds 100 lines
+    - task duration exceeds 10 minutes
+```
+
 **Escape hatch**: If executor reports unexpected complexity, escalate to MEDIUM workflow.
+
+**Auto-escalation triggers** (immediately switch to MEDIUM):
+1. Executor discovers need for additional files
+2. Executor reports architectural decision needed
+3. Generated diff exceeds 100 lines
+4. Multiple related changes identified
 
 2. **Check for PRD**:
    - If PRD provided: Validate completeness
@@ -126,64 +146,36 @@ small_task_workflow:
 
 **Output**: PRD artifact ready, context identified
 
-### Phase 0.5: Bootstrap Detection
+### Phase 1: Workflow Routing
 
-**Goal**: Determine if this is a new project bootstrap or existing codebase work.
+**Goal**: Determine workflow path based on project state.
 
 1. **Check request intent**:
    - Does PRD/request explicitly mention "new project", "bootstrap", "create from scratch", "greenfield"?
-   - If yes → Bootstrap workflow
 
 2. **Scan workspace** (if intent unclear):
    - Look for existing source files in common locations (`src/`, `lib/`, `app/`)
    - Check for project manifests (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, etc.)
-   - If workspace is empty or near-empty → Bootstrap workflow
 
 3. **Route appropriately**:
-   - **Bootstrap needed** → Delegate to `agentic-bootstrap-planner`
-   - **Existing codebase** → Continue to Phase 1 (standard planning)
+   - **Bootstrap needed** → Follow [Bootstrap Workflow](04-bootstrap-workflow.md)
+   - **Existing codebase** → Continue to Phase 2 (Development Planning)
 
-**Bootstrap Detection Triggers**:
-- Explicit: User mentions "create new project", "bootstrap", "start from scratch", "greenfield"
-- Implicit: Workspace has no source files or project manifests
+> **📘 Bootstrap Workflow**: For new project setup, see [04-bootstrap-workflow.md](04-bootstrap-workflow.md) which covers dependency checking, technology selection, and project scaffolding. Returns here after bootstrap approval.
 
-**Bootstrap Planner Delegation**:
+**Output**: Workflow mode determined, routed to appropriate next phase
 
-```
-<new_task>
-<mode>agentic-bootstrap-planner</mode>
-<message>
-## Task
-Create comprehensive bootstrap plan for new project.
+### Phase 2: Development Planning
 
-## Context
-- Run ID: <run-id>
-- Run Directory: .agent-memory/runs/<run-id>/
-- PRD: .agent-memory/runs/<run-id>/prd.md
+**Goal**: Create development plan and task breakdown.
 
-## Constraints
-- [Any user-specified technology constraints]
-
-## Expected Outputs
-- .agent-memory/runs/<run-id>/bootstrap-plan.md
-- .agent-memory/runs/<run-id>/research/technology-evaluation.md
-- .agent-memory/runs/<run-id>/adrs/ADR-*.md (for major decisions)
-</message>
-</new_task>
-```
-
-**After Bootstrap Plan**:
-- Proceed to Phase 1 with `agentic-task-breaker` (skip standard planner)
-- Task-breaker will decompose the bootstrap plan into executable tasks
-
-**Output**: Workflow mode determined (bootstrap or standard), routed to appropriate planner
-
-### Phase 1: Planning (GATE)
-
-**Goal**: Create approved plan and task breakdown.
+**Trigger**: Runs when:
+- User completed bootstrap workflow and chose "approve and continue"
+- Or Phase 1 determined existing codebase (development-only workflow)
 
 1. **Delegate to `agentic-planner`**:
    - Provide: PRD, context pack pointers, constraints
+   - For unified workflow: Also provide bootstrap-plan.md for context
    - Expect: plan.md with phases, architecture, risks, acceptance criteria
 
 2. **Review plan**:
@@ -193,43 +185,98 @@ Create comprehensive bootstrap plan for new project.
 
 3. **Delegate to `agentic-task-breaker`**:
    - Provide: plan.md
+   - For unified workflow: Add D-tasks to existing task-graph.json
+   - For development-only: Create new task-graph.json with D-tasks
    - Expect: task-graph.json + task contracts
 
-4. **Present plan summary to user**
+**Output**: Development plan ready, D-tasks in task-graph.json
 
-5. **🚦 GATE: STOP AND WAIT FOR APPROVAL**
+### Phase 3: Development Approval Gate
 
-   ```
-   ═══════════════════════════════════════════════════════════
-   PLANNING COMPLETE - AWAITING APPROVAL
+**Goal**: Get approval for development plan before execution.
 
-   Plan Summary:
-   - Phases: X
-   - Tasks: Y
-   - Estimated files affected: Z
-   - Key risks: [list]
+**Trigger**:
+- For unified workflow: Runs after Phase 2 completes
+- For development-only workflow: Also runs after Phase 2
 
-   Please review plan.md and task-graph.json
+**🚦 GATE: STOP AND WAIT FOR APPROVAL**
 
-   Reply with:
-   - "approve" to proceed to execution
-   - "revise: <feedback>" to update the plan
-   - "cancel" to abort
-   ═══════════════════════════════════════════════════════════
-   ```
+**For Unified Workflow (bootstrap + development)**:
 
-6. **On approval**: Create `constitution.md` (immutable task identity)
+```
+═══════════════════════════════════════════════════════════
+DEVELOPMENT PLANNING COMPLETE - AWAITING APPROVAL
+
+Bootstrap Plan: ✅ Approved (N tasks ready)
+Development Plan: Ready for review
+
+Artifacts:
+- .agent-memory/runs/<run-id>/plan.md
+- .agent-memory/runs/<run-id>/task-graph.json (B-tasks + D-tasks)
+
+Summary:
+- Development Phases: X
+- Development Tasks: Y
+- Total Tasks (Bootstrap + Development): Z
+
+Execution Order:
+1. Bootstrap tasks (B001-B0XX) - Project setup
+2. Development tasks (D001-DXXX) - Feature implementation
+
+Reply with:
+- "approve" - Begin unified execution
+- "revise: <feedback>" - Update development plan
+- "cancel" - Abort (bootstrap artifacts preserved)
+═══════════════════════════════════════════════════════════
+```
+
+**For Development-Only Workflow**:
+
+```
+═══════════════════════════════════════════════════════════
+PLANNING COMPLETE - AWAITING APPROVAL
+
+Plan Summary:
+- Phases: X
+- Tasks: Y
+- Estimated files affected: Z
+- Key risks: [list]
+
+Please review plan.md and task-graph.json
+
+Reply with:
+- "approve" to proceed to execution
+- "revise: <feedback>" to update the plan
+- "cancel" to abort
+═══════════════════════════════════════════════════════════
+```
+
+**On approval**:
+- Create `constitution.md` (immutable task identity)
+- For unified workflow: Constitution covers both bootstrap and development scopes
+- Update workflow-state.json with development approval
 
 **Output**: Approved plan, task graph, constitution
 
-### Phase 2: Execution + Verification Loop
+### Phase 4: Unified Execution + Verification Loop
 
 **Goal**: Implement all tasks with quality checks.
+
+**Execution Order for Unified Workflow**:
+1. Execute all B-tasks (bootstrap) first
+2. After all B-tasks complete, execute D-tasks (development)
+3. Verification runs throughout
+
+**Task Type Prefixes**:
+- `B001-B999`: Bootstrap tasks (project setup) - See [04-bootstrap-workflow.md](04-bootstrap-workflow.md) for B-task definitions
+- `D001-D999`: Development tasks (feature implementation)
+- `Q001-Q999`: Quality tasks (fixes from verification)
 
 1. **Compute runnable tasks**:
    - Check task-graph.json for tasks with deps satisfied
    - Exclude completed tasks (check events)
-   - Prioritize by phase, then by graph order
+   - For unified workflow: All B-tasks must complete before D-tasks start
+   - Prioritize by type (B before D), then phase, then graph order
 
 2. **For each runnable task**:
    - Delegate to `agentic-executor` with task-id
@@ -247,7 +294,12 @@ Create comprehensive bootstrap plan for new project.
    - If quality bar met: proceed to next phase
    - If not: create quality tasks, continue execution
 
-5. **Repeat until all phases complete**
+5. **Bootstrap-to-Development Transition** (unified workflow):
+   - When all B-tasks complete, log `bootstrap_phase_complete` event
+   - Update workflow-state.json
+   - Continue to D-tasks
+
+6. **Repeat until all phases complete**
 
 **Parallelization** (if enabled):
 
@@ -295,6 +347,22 @@ retry_protocol:
     user_message: "Request manual intervention"
 ```
 
+### Escalation to User
+
+After max retries (3 attempts):
+
+```yaml
+escalation_ladder:
+  retry_1: "Analyze failure, adjust context, retry"
+  retry_2: "Add diagnostic logging, retry"
+  escalate_user: "Present options: retry/skip/abort"
+  final_state: "Mark blocked, continue other tasks if possible"
+```
+
+1. Present concise failure summary (not full logs)
+2. Offer: "Retry with guidance" / "Skip and continue" / "Abort run"
+3. If user chooses skip: Add to debt registry, continue
+
 #### Failure Event Format
 
 ```yaml
@@ -308,7 +376,7 @@ details:
   action: retry
 ```
 
-### Phase 3: Cleanup + PR Readiness
+### Phase 5: Cleanup + PR Readiness
 
 **Goal**: Prepare clean, reviewable PR.
 
@@ -362,7 +430,7 @@ details:
 
 **Output**: Clean PR, checklist complete
 
-### Phase 4: Memory Consolidation
+### Phase 6: Memory Consolidation
 
 **Goal**: Promote durable learnings to LTM.
 

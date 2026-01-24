@@ -105,15 +105,23 @@ For each implementation task, answer:
    - What test utilities are available?
    - What naming convention for test methods?
 
-#### 3.5.2 Test Task Types
+#### 3.5.2 Test Task Decision Table
 
-Create explicit test tasks:
+For each implementation task, create the appropriate test task:
 
-| Task Type | ID Pattern | When to Use |
-|-----------|------------|-------------|
-| Update existing tests | T<NNN>-TEST-UPDATE | Existing tests need modification |
-| New unit tests | T<NNN>-TEST-UNIT | New functionality needs unit coverage |
-| New integration tests | T<NNN>-TEST-INT | New functionality needs integration coverage |
+| Implementation Task | Test Action | Task Type |
+|---------------------|-------------|-----------|
+| New public method | Create unit test | T-TEST-UNIT |
+| Modify existing method | Update existing tests | T-TEST-UPDATE |
+| New integration point | Create integration test | T-TEST-INT |
+| Bug fix | Add regression test | T-TEST-UNIT |
+| Breaking API change | Update consumer tests | T-TEST-UPDATE |
+| New data model | Create validation tests | T-TEST-UNIT |
+
+**Task ID Pattern**: `T<NNN>-TEST-<TYPE>`
+- `T003-TEST-UNIT` - Unit test for task T003
+- `T003-TEST-UPDATE` - Update existing tests for T003
+- `T003-TEST-INT` - Integration test for T003
 
 #### 3.5.3 Test Task Contract Requirements
 

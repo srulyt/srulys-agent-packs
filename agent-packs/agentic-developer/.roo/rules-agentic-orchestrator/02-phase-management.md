@@ -4,13 +4,67 @@ This document details how the orchestrator manages phase transitions and quality
 
 ## Phase Overview
 
-| Phase | Name                 | Gate Type     | Key Artifacts                  |
-| ----- | -------------------- | ------------- | ------------------------------ |
-| 0     | Intake & Validation  | Soft          | PRD ready                      |
-| 1     | Planning             | **HARD GATE** | Plan, Task Graph, Constitution |
-| 2     | Execution            | Per-task      | Completed tasks, Verifications |
-| 3     | Cleanup + PR Prep    | Soft          | PR Checklist                   |
-| 4     | Memory Consolidation | Soft          | Promotion candidates           |
+| Phase | Name                     | Gate Type       | Key Artifacts                       |
+| ----- | ------------------------ | --------------- | ----------------------------------- |
+| 0     | Intake & Validation      | Soft            | PRD ready                           |
+| 1     | PRD Creation             | Soft            | prd.md created                      |
+| 2     | Bootstrap Detection      | Soft            | Workflow mode determined            |
+| 3     | Dependency Check         | **HARD (wait)** | Dependency report, install script   |
+| 4     | Bootstrap Planning       | Soft            | bootstrap-plan.md                   |
+| 5     | Bootstrap Task Breakdown | Soft            | B-tasks in task-graph.json          |
+| 6     | Bootstrap Approval       | **HARD GATE**   | Bootstrap approved, workflow chosen |
+| 7     | Development Planning     | Soft            | plan.md                             |
+| 8     | Development Approval     | **HARD GATE**   | Both plans approved                 |
+| 9     | Execution                | Per-task        | Completed tasks, Verifications      |
+| 10    | Cleanup + PR Prep        | Soft            | PR Checklist                        |
+| 11    | Memory Consolidation     | Soft            | Promotion candidates                |
+
+## Phase Flow Diagram
+
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PHASE FLOW OVERVIEW                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Phase 0: Intake                                                         │
+│      ↓                                                                   │
+│  Phase 1: PRD Creation (if needed)                                       │
+│      ↓                                                                   │
+│  Phase 2: Bootstrap Detection                                            │
+│      │                                                                   │
+│      ├──── Existing Codebase ─────────────────────┐                      │
+│      │                                            │                      │
+│      ▼ (New Project)                              │                      │
+│  Phase 3: Dependency Check ◄──┐                   │                      │
+│      │                        │                   │                      │
+│      ├─ Missing deps ─────────┤ (restart loop)    │                      │
+│      │                        │                   │                      │
+│      ▼ (All deps OK)                              │                      │
+│  Phase 4: Bootstrap Planning                      │                      │
+│      ↓                                            │                      │
+│  Phase 5: Bootstrap Task Breakdown                │                      │
+│      ↓                                            │                      │
+│  Phase 6: Bootstrap Approval 🚦                   │                      │
+│      │                                            │                      │
+│      ├─ "approve bootstrap" ──────────┐           │                      │
+│      │                                │           │                      │
+│      ▼ ("approve and continue")       │           │                      │
+│  Phase 7: Development Planning ◄──────┼───────────┘                      │
+│      ↓                                │                                  │
+│  Phase 8: Development Approval 🚦     │                                  │
+│      ↓                                │                                  │
+│  Phase 9: Execution ◄─────────────────┘                                  │
+│      │                                                                   │
+│      ├─ B-tasks first (if unified)                                       │
+│      ├─ D-tasks second (if unified)                                      │
+│      │                                                                   │
+│      ↓                                                                   │
+│  Phase 10: Cleanup + PR Prep                                             │
+│      ↓                                                                   │
+│  Phase 11: Memory Consolidation (post-merge)                             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Phase 0: Intake & Validation
 
@@ -68,231 +122,364 @@ For SMALL tasks with clear requirements:
 - May skip formal PRD (inline requirements sufficient)
 - Must still create minimal task contract
 
-## Phase 1: Planning (HARD GATE)
+## Phase 1: PRD Creation
+
+### Entry Conditions
+
+- Phase 0 complete
+- PRD not yet provided or needs creation
+
+### Activities
+
+1. **Delegate to `agentic-spec-writer`**:
+   - Provide user request context
+   - Expect: prd.md with requirements, acceptance criteria
+
+2. **PRD validation**:
+   - Check completeness
+   - Verify acceptance criteria are testable
+
+### Exit Conditions
+
+- PRD artifact exists at `.agent-memory/runs/<run-id>/prd.md`
+- Requirements are clear and complete
+
+## Phase 2: Bootstrap Detection
 
 ### Entry Conditions
 
 - PRD is ready
-- Context discovery complete
+- Workspace state unknown
 
 ### Activities
 
-1. **Planning delegation**:
-   - Send PRD + context to `agentic-planner`
-   - Receive plan.md with:
-     - Solution approach
-     - Phase breakdown
-     - Risk analysis
-     - Acceptance criteria
+1. **Check request intent**:
+   - Look for "new project", "bootstrap", "greenfield" keywords
+   
+2. **Scan workspace**:
+   - Check for source files in `src/`, `lib/`, `app/`
+   - Check for project manifests (`package.json`, `pyproject.toml`, etc.)
 
-2. **Task breakdown delegation**:
-   - Send plan.md to `agentic-task-breaker`
-   - Receive:
-     - task-graph.json (DAG)
-     - tasks/\*.md (contracts)
+3. **Determine workflow mode**:
+   - Empty/near-empty workspace → Bootstrap workflow (Phase 3)
+   - Existing codebase → Development workflow (Phase 7)
 
-3. **Plan validation**:
-   - Check all PRD requirements are addressed
-   - Verify acceptance criteria are testable
-   - Confirm risks have mitigations
-   - Validate task dependencies are correct
+### Exit Conditions
 
-4. **Plan presentation**:
-   - Summarize for user review
-   - Highlight key decisions
-   - Note any assumptions made
-   - Present risks and mitigations
+- Workflow mode determined and logged
+- Routed to appropriate next phase
+
+## Phase 3: Dependency Check (HARD - WAIT)
+
+### Entry Conditions
+
+- Bootstrap workflow detected
+- PRD specifies technology requirements
+
+### Activities
+
+1. **Delegate dependency check to Bootstrap Planner**:
+   - Mode: `dependency_check_only: true`
+   - Expect: dependency-report.md
+
+2. **Evaluate report**:
+   - If all tools present: Continue to Phase 4
+   - If tools missing: Generate install script, STOP
+
+3. **If stopping for dependencies**:
+   - Present dependency report to user
+   - Provide install script path
+   - Instruct: Run elevated, restart VS Code, resume
+
+### Gate Behavior (if deps missing)
+
+**THIS IS A HARD GATE. STOP AND WAIT FOR USER ACTION.**
+
+User must:
+1. Run the installation script with elevated permissions
+2. Restart VS Code
+3. Resume with "continue"
+
+### Exit Conditions
+
+- All required tools detected
+- OR user notified and run suspended
+
+## Phase 4: Bootstrap Planning
+
+### Entry Conditions
+
+- Dependencies verified (Phase 3 passed)
+
+### Activities
+
+1. **Delegate to `agentic-bootstrap-planner`** (full mode):
+   - Provide PRD
+   - Expect: bootstrap-plan.md, technology-evaluation.md, ADRs
+
+2. **Plan validation**:
+   - All 12 technology categories addressed
+   - Every tool has specific version
+   - Initialization commands are complete
+
+### Exit Conditions
+
+- bootstrap-plan.md created
+- ADRs for major decisions documented
+
+## Phase 5: Bootstrap Task Breakdown
+
+### Entry Conditions
+
+- Bootstrap plan ready
+
+### Activities
+
+1. **Delegate to `agentic-task-breaker`**:
+   - Provide: bootstrap-plan.md
+   - Expect: task-graph.json with B-tasks (B001, B002, etc.)
+
+2. **Validate task graph**:
+   - Dependencies are correct
+   - Tasks are properly sized
+   - Execution order is logical
+
+### Exit Conditions
+
+- B-tasks in task-graph.json
+- Task contracts in tasks/
+
+## Phase 6: Bootstrap Approval (HARD GATE)
+
+### Entry Conditions
+
+- Bootstrap plan ready
+- B-tasks created
 
 ### Gate Behavior
 
 **THIS IS A HARD GATE. STOP AND WAIT.**
 
 ```
-🚦 PLANNING GATE
-
-Status: AWAITING USER APPROVAL
+🚦 BOOTSTRAP APPROVAL GATE
 
 Artifacts Ready:
-- .agent-memory/runs/<run-id>/prd.md
-- .agent-memory/runs/<run-id>/plan.md
-- .agent-memory/runs/<run-id>/task-graph.json
-- .agent-memory/runs/<run-id>/tasks/*.md
+- .agent-memory/runs/<run-id>/bootstrap-plan.md
+- .agent-memory/runs/<run-id>/task-graph.json (B-tasks)
 
 Summary:
-- Total Phases: N
-- Total Tasks: M
-- Estimated Files: K
-- Key Risks: [brief list]
+- Technology Stack: [summary]
+- Bootstrap Tasks: N
+- Estimated files: M
 
-To proceed, please respond with one of:
-- "approve" - Accept plan and begin execution
-- "approve with: <notes>" - Accept with additional guidance
-- "revise: <feedback>" - Request plan changes
-- "cancel" - Abort this run
+Choose:
+1. "approve bootstrap" - Execute bootstrap only, then stop
+2. "approve and continue" - Also plan development features
+3. "revise: <feedback>" - Request changes
+4. "cancel" - Abort
 ```
 
-**DO NOT proceed past this gate without explicit user approval.**
+### Response Handling
 
-### Post-Approval Actions
+**On "approve bootstrap"**:
+- Set `workflow_mode: "bootstrap-only"`
+- Proceed to Phase 9 with B-tasks only
 
-1. Create `constitution.md`:
-   - Immutable record of approved scope
-   - Snapshot of acceptance criteria
-   - Reference to approved plan version
-
-2. Log approval event with any user notes
-
-3. Transition to Phase 2
+**On "approve and continue"**:
+- Set `workflow_mode: "unified"`
+- Continue to Phase 7
 
 ### Exit Conditions
 
-- User has explicitly approved
-- Constitution created
-- Approval event logged
+- User approval recorded
+- Workflow mode set in workflow-state.json
 
-## Phase 2: Execution + Verification Loop
+## Phase 7: Development Planning
 
 ### Entry Conditions
 
-- Plan approved
+- Either:
+  - User chose "approve and continue" at Phase 6, OR
+  - Phase 2 detected existing codebase (skip to here)
+
+### Activities
+
+1. **Delegate to `agentic-planner`**:
+   - Provide PRD, context packs
+   - For unified: Also provide bootstrap-plan.md
+   - Expect: plan.md with phases, risks, acceptance criteria
+
+2. **Delegate to `agentic-task-breaker`**:
+   - Provide: plan.md
+   - For unified: Add D-tasks to existing task-graph.json
+   - Expect: D-tasks (D001, D002, etc.)
+
+### Exit Conditions
+
+- plan.md created
+- D-tasks in task-graph.json
+
+## Phase 8: Development Approval (HARD GATE)
+
+### Entry Conditions
+
+- Development plan ready
+- D-tasks created
+
+### Gate Behavior
+
+**THIS IS A HARD GATE. STOP AND WAIT.**
+
+**For Unified Workflow:**
+```
+🚦 DEVELOPMENT APPROVAL GATE
+
+Bootstrap Plan: ✅ Approved (N tasks)
+Development Plan: Ready for review
+
+Artifacts:
+- .agent-memory/runs/<run-id>/plan.md
+- .agent-memory/runs/<run-id>/task-graph.json
+
+Execution Order:
+1. Bootstrap tasks (B001-B0XX)
+2. Development tasks (D001-DXXX)
+
+Reply: "approve", "revise: <feedback>", or "cancel"
+```
+
+**For Development-Only:**
+```
+🚦 PLANNING GATE
+
+Summary:
+- Phases: X
+- Tasks: Y
+- Key risks: [list]
+
+Reply: "approve", "revise: <feedback>", or "cancel"
+```
+
+### Post-Approval Actions
+
+1. Create `constitution.md`
+2. Log approval event
+3. Proceed to Phase 9
+
+### Exit Conditions
+
+- User approval received
+- Constitution created
+
+## Phase 9: Execution + Verification Loop
+
+### Entry Conditions
+
+- Plan(s) approved
 - Constitution exists
 - Task graph ready
+
+### Execution Order (Unified Workflow)
+
+1. Execute all B-tasks first (bootstrap)
+2. After B-tasks complete: Execute D-tasks (development)
+3. Verification runs throughout
 
 ### Execution Loop
 
 ```
 WHILE (incomplete_tasks exist):
-    1. Compute runnable tasks (deps satisfied, not done)
-    2. Select next task (by phase, then priority)
+    1. Compute runnable tasks
+       - For unified: B-tasks before D-tasks
+       - Check deps satisfied, not done
+    2. Select next task
     3. Delegate to executor
     4. Wait for completion
     5. Log completion event
 
-    IF (tasks_since_verification >= VERIFICATION_INTERVAL):
+    IF (tasks_since_verification >= 3):
         6. Delegate to verifier
-        7. Process any quality tasks created
-        8. Reset verification counter
+        7. Process quality tasks
+        8. Reset counter
 
     IF (phase_complete):
         9. Run phase verification
-        10. Check quality bar
-        11. IF quality bar met: advance phase pointer
-        12. ELSE: create quality tasks, continue
+        10. Log phase completion
 ```
-
-### Verification Intervals
-
-- Default: Every 3 tasks (or after any HIGH complexity task)
-- Adjustable based on task complexity
-- Always verify at phase boundaries
-
-### Quality Task Handling
-
-When verifier creates quality tasks:
-
-1. Add to task graph with `type: "quality"`
-2. Set dependencies appropriately
-3. Prioritize in next execution cycle
-4. Track separately for reporting
-
-### Phase Boundary Checks
-
-At each phase boundary:
-
-1. All phase tasks complete
-2. All quality tasks for phase complete
-3. Verification report passes
-4. No blocking issues remain
 
 ### Exit Conditions
 
-- All execution phases complete
-- All tasks (including quality tasks) done
-- Phase boundary verifications pass
+- All tasks complete
+- Verifications pass
 
-## Phase 3: Cleanup + PR Readiness
+## Phase 10: Cleanup + PR Readiness
 
 ### Entry Conditions
 
-- All execution complete
-- Final verification passed
+- Phase 9 complete
+- All verifications passed
 
 ### Activities
 
-1. **Cleanup delegation**:
-   - Full diff review
+1. **Delegate to `agentic-cleanup`**:
    - AI artifact removal
-   - Dead code removal
    - Tech debt documentation
 
-2. **PR prep delegation**:
-   - Final acceptance criteria check
-   - Build/test verification design
+2. **Delegate to `agentic-pr-prep`**:
+   - Final verification
    - PR checklist generation
-   - Change summary creation
-
-3. **Final review**:
-   - Verify PR size targets
-   - Confirm no unrelated changes
-   - Validate all criteria met
 
 ### Exit Conditions
 
 - PR checklist complete
-- All checks pass
 - Tech debt documented
-- Clean diff confirmed
 
-## Phase 4: Memory Consolidation
+## Phase 11: Memory Consolidation
 
 ### Entry Conditions
 
 - PR ready for submission
-- (Ideally) PR merged (but can run earlier)
+- (Ideally) PR merged
 
 ### Activities
 
-1. **Review run artifacts**:
-   - Events for patterns
-   - Verifications for learnings
-   - Decisions for documentation
-
-2. **Identify promotables**:
-   - New patterns discovered
-   - Gotchas encountered
-   - Architectural insights
-   - Process improvements
-
-3. **Create promotion candidates**:
-   - One file per candidate
-   - Clear value proposition
-   - Target context pack identified
-
-4. **Execute promotions**:
-   - Update relevant context packs
-   - Keep changes minimal
-   - Update index if used
-
-5. **Archive/cleanup STM**:
-   - Mark run as complete
-   - Optionally archive run folder
-   - Preserve for audit trail
+1. Review run artifacts for patterns
+2. Identify promotion candidates
+3. Update context packs
+4. Archive STM
 
 ### Exit Conditions
 
 - Promotions complete
-- Context packs updated
 - Run marked complete
 
 ## Handling Phase Failures
 
-### Failure in Phase 0/1 (Pre-approval)
+### Failure in Phase 0-2 (Pre-bootstrap Detection)
 
 - Report issue to user
 - Request guidance
-- May restart planning
+- May restart from intake
 
-### Failure in Phase 2 (Execution)
+### Failure in Phase 3 (Dependency Check)
+
+- Re-present dependency report
+- User may need to manually install tools
+- Resume when dependencies satisfied
+
+### Failure in Phase 4-5 (Bootstrap Planning)
+
+- Log failure event
+- Report to user
+- May re-run planning with adjustments
+
+### Failure in Phase 6-8 (Approval Gates)
+
+- User can revise and resubmit
+- Previous artifacts preserved
+- Revision feedback incorporated
+
+### Failure in Phase 9 (Execution)
 
 - Log failure event
 - Preserve all state
@@ -301,7 +488,7 @@ At each phase boundary:
   - Skip and continue
   - Abort run
 
-### Failure in Phase 3/4
+### Failure in Phase 10-11 (Cleanup/Consolidation)
 
 - Less critical; can retry
 - Preserve code changes

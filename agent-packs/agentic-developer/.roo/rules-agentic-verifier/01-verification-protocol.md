@@ -171,6 +171,44 @@ When verification fails, provide actionable feedback:
 Only fix the issues above. Do not modify other parts.
 ```
 
+### Structured Failure Handoff
+
+For orchestrator processing, include machine-readable failure summary:
+
+```yaml
+verification_failure_handoff:
+  task_id: T003
+  result: FAILED
+  issues:
+    - id: I001
+      type: missing-test
+      file: "src/UserService.cs"
+      line: 42
+      suggested_fix: "Add unit test for null case"
+      effort: small
+    - id: I002
+      type: pattern-violation
+      file: "src/UserService.cs"
+      line: 78
+      suggested_fix: "Use existing ErrorHandler pattern"
+      effort: small
+  suggested_quality_task:
+    id: Q001
+    title: "Fix T003 verification issues"
+    acceptance_criteria:
+      - "Issue I001 resolved"
+      - "Issue I002 resolved"
+    estimated_effort: small
+```
+
+**Issue Types**:
+- `missing-test`: Required test not present
+- `pattern-violation`: Code doesn't match codebase patterns
+- `incomplete-implementation`: Requirement not fully addressed
+- `scope-violation`: Changes outside allowed files
+- `build-failure`: Code doesn't compile
+- `test-failure`: Existing tests broken
+
 ## Key Constraints
 
 - **Verify only what's claimed**: Check acceptance criteria, not imagined requirements

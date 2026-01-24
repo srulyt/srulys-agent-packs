@@ -163,6 +163,49 @@ Document what was cleaned:
 - **Conservative approach**: When in doubt, leave it
 - **No refactoring**: Cleanup, not improvement
 
+## Cleanup Safeguards
+
+```yaml
+cleanup_safeguards:
+  never_delete:
+    - "*.csproj"
+    - "*.sln"
+    - "package.json"
+    - ".gitignore"
+    - "*.lock"
+    - "Dockerfile"
+    - "docker-compose*.yml"
+  
+  require_confirmation:
+    - file_deletions > 5
+    - directory_deletions
+    - config_file_modifications
+  
+  dry_run_first: true  # Log intended changes before applying
+```
+
+### Safeguard Checklist
+
+Before any deletion:
+- [ ] File is NOT in `never_delete` list
+- [ ] File was created during this run OR is explicitly in scope
+- [ ] File is not a project manifest or config file
+- [ ] If >5 files being deleted, escalate for confirmation
+
+### Dry Run Protocol
+
+1. **Log intended changes** before applying:
+   ```
+   Cleanup Plan:
+   - DELETE: [list files to delete]
+   - MODIFY: [list files to modify]
+   - REVERT: [list changes to revert]
+   ```
+
+2. **Verify no critical files** in delete list
+3. **Execute changes** only after dry run passes
+4. **Log actual changes** after completion
+
 ## Risk Levels
 
 | Risk   | Examples                                  | Action                |

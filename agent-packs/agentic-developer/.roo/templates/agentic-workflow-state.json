@@ -1,0 +1,332 @@
+# Workflow State Template
+
+This template defines the schema for `.agent-memory/runs/<run-id>/workflow-state.json`.
+
+## Purpose
+
+The workflow state file tracks the progress of a unified bootstrap + development workflow session. It enables:
+
+1. **Resume capability**: Pick up where you left off after interruption
+2. **Phase tracking**: Know exactly which phase the workflow is in
+3. **Approval gates**: Record user approvals for bootstrap and development
+4. **Audit trail**: Track when phases started and completed
+
+---
+
+## Schema
+
+```json
+{
+  "$schema": "agentic-workflow-state-v1",
+  "run_id": "{{RUN_ID}}",
+  "created_at": "{{CREATED_AT}}",
+  "updated_at": "{{UPDATED_AT}}",
+  "version": 1,
+  
+  "workflow": {
+    "type": "unified",
+    "current_phase": 0,
+    "phase_name": "intake",
+    "status": "in_progress"
+  },
+  
+  "phases": {
+    "phase_0_intake": {
+      "status": "completed",
+      "started_at": "{{ISO_TIMESTAMP}}",
+      "completed_at": "{{ISO_TIMESTAMP}}"
+    },
+    "phase_1_prd": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null
+    },
+    "phase_2_bootstrap_detection": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "result": null
+    },
+    "phase_3_dependency_check": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "missing_tools": [],
+      "script_generated": false,
+      "script_path": null
+    },
+    "phase_4_bootstrap_planning": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null
+    },
+    "phase_5_bootstrap_tasks": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "task_count": 0,
+      "tasks_completed": 0
+    },
+    "phase_6_bootstrap_approval": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "approval_type": null,
+      "approved_at": null
+    },
+    "phase_7_development_planning": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null
+    },
+    "phase_8_development_approval": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "approved_at": null
+    },
+    "phase_9_execution": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "b_tasks_completed": 0,
+      "d_tasks_completed": 0,
+      "total_b_tasks": 0,
+      "total_d_tasks": 0
+    },
+    "phase_10_cleanup": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null
+    },
+    "phase_11_consolidation": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null
+    }
+  },
+  
+  "approvals": {
+    "bootstrap": {
+      "approved": false,
+      "approved_at": null,
+      "approval_type": null,
+      "notes": null
+    },
+    "development": {
+      "approved": false,
+      "approved_at": null,
+      "notes": null
+    }
+  },
+  
+  "artifacts": {
+    "prd": null,
+    "dependency_report": null,
+    "install_script": null,
+    "bootstrap_plan": null,
+    "development_plan": null,
+    "consolidated_log": null
+  },
+  
+  "flags": {
+    "bootstrap_required": null,
+    "dependencies_missing": false,
+    "continue_after_bootstrap": false
+  }
+}
+```
+
+---
+
+## Field Definitions
+
+### Top-Level Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `$schema` | string | Schema identifier for validation |
+| `run_id` | string | Unique run identifier (format: `YYYY-MM-DD-xxxxxxxx`) |
+| `created_at` | string | ISO-8601 timestamp of creation |
+| `updated_at` | string | ISO-8601 timestamp of last update |
+| `version` | number | State file version (for migrations) |
+
+### Workflow Object
+
+| Field | Type | Values |
+|-------|------|--------|
+| `type` | string | `unified`, `bootstrap-only`, `development-only` |
+| `current_phase` | number | 0-11 |
+| `phase_name` | string | Human-readable phase name |
+| `status` | string | `pending`, `in_progress`, `completed`, `failed`, `paused` |
+
+### Phase Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Not yet started |
+| `in_progress` | Currently active |
+| `completed` | Successfully finished |
+| `failed` | Error occurred |
+| `skipped` | Deliberately bypassed (e.g., no bootstrap needed) |
+| `waiting_approval` | Waiting for user approval |
+| `waiting_user` | Waiting for user action (e.g., run install script) |
+
+### Approval Types (Phase 6)
+
+| Type | Meaning |
+|------|---------|
+| `approve_bootstrap` | User approves bootstrap, workflow pauses |
+| `approve_and_continue` | User approves bootstrap AND development in one step |
+
+---
+
+## State Transitions
+
+### Phase 3 (Dependency Check)
+
+```json
+// Before check
+"phase_3_dependency_check": {
+  "status": "in_progress",
+  "started_at": "2026-01-24T15:00:00Z"
+}
+
+// After check - tools missing
+"phase_3_dependency_check": {
+  "status": "waiting_user",
+  "started_at": "2026-01-24T15:00:00Z",
+  "missing_tools": ["node", "docker"],
+  "script_generated": true,
+  "script_path": "install-dependencies.ps1"
+}
+
+// After user runs script and confirms
+"phase_3_dependency_check": {
+  "status": "completed",
+  "started_at": "2026-01-24T15:00:00Z",
+  "completed_at": "2026-01-24T15:10:00Z",
+  "missing_tools": [],
+  "script_generated": true,
+  "script_path": "install-dependencies.ps1"
+}
+```
+
+### Phase 6 (Bootstrap Approval Gate)
+
+```json
+// Waiting for approval
+"phase_6_bootstrap_approval": {
+  "status": "waiting_approval",
+  "started_at": "2026-01-24T16:00:00Z"
+}
+
+// Approved with "approve bootstrap" (workflow pauses)
+"phase_6_bootstrap_approval": {
+  "status": "completed",
+  "started_at": "2026-01-24T16:00:00Z",
+  "completed_at": "2026-01-24T16:05:00Z",
+  "approval_type": "approve_bootstrap",
+  "approved_at": "2026-01-24T16:05:00Z"
+}
+
+// Approved with "approve and continue" (workflow continues to dev)
+"phase_6_bootstrap_approval": {
+  "status": "completed",
+  "approval_type": "approve_and_continue",
+  // ...
+}
+```
+
+---
+
+## Usage Examples
+
+### Reading Current Phase
+
+```javascript
+const state = JSON.parse(fs.readFileSync('workflow-state.json'));
+console.log(`Current phase: ${state.workflow.current_phase} (${state.workflow.phase_name})`);
+```
+
+### Updating Phase
+
+```javascript
+state.workflow.current_phase = 4;
+state.workflow.phase_name = "bootstrap_planning";
+state.phases.phase_3_dependency_check.status = "completed";
+state.phases.phase_3_dependency_check.completed_at = new Date().toISOString();
+state.phases.phase_4_bootstrap_planning.status = "in_progress";
+state.phases.phase_4_bootstrap_planning.started_at = new Date().toISOString();
+state.updated_at = new Date().toISOString();
+
+fs.writeFileSync('workflow-state.json', JSON.stringify(state, null, 2));
+```
+
+### Checking Approval Status
+
+```javascript
+if (state.approvals.bootstrap.approved && state.approvals.bootstrap.approval_type === 'approve_and_continue') {
+  // Skip development approval gate
+  state.approvals.development.approved = true;
+  state.approvals.development.notes = "Auto-approved via approve_and_continue";
+}
+```
+
+---
+
+## Initialization Template
+
+When creating a new workflow state file, use this initial state:
+
+```json
+{
+  "$schema": "agentic-workflow-state-v1",
+  "run_id": "{{RUN_ID}}",
+  "created_at": "{{NOW}}",
+  "updated_at": "{{NOW}}",
+  "version": 1,
+  "workflow": {
+    "type": "unified",
+    "current_phase": 0,
+    "phase_name": "intake",
+    "status": "in_progress"
+  },
+  "phases": {
+    "phase_0_intake": { "status": "in_progress", "started_at": "{{NOW}}", "completed_at": null },
+    "phase_1_prd": { "status": "pending", "started_at": null, "completed_at": null },
+    "phase_2_bootstrap_detection": { "status": "pending", "started_at": null, "completed_at": null, "result": null },
+    "phase_3_dependency_check": { "status": "pending", "started_at": null, "completed_at": null, "missing_tools": [], "script_generated": false, "script_path": null },
+    "phase_4_bootstrap_planning": { "status": "pending", "started_at": null, "completed_at": null },
+    "phase_5_bootstrap_tasks": { "status": "pending", "started_at": null, "completed_at": null, "task_count": 0, "tasks_completed": 0 },
+    "phase_6_bootstrap_approval": { "status": "pending", "started_at": null, "completed_at": null, "approval_type": null, "approved_at": null },
+    "phase_7_development_planning": { "status": "pending", "started_at": null, "completed_at": null },
+    "phase_8_development_approval": { "status": "pending", "started_at": null, "completed_at": null, "approved_at": null },
+    "phase_9_execution": { "status": "pending", "started_at": null, "completed_at": null, "b_tasks_completed": 0, "d_tasks_completed": 0, "total_b_tasks": 0, "total_d_tasks": 0 },
+    "phase_10_cleanup": { "status": "pending", "started_at": null, "completed_at": null },
+    "phase_11_consolidation": { "status": "pending", "started_at": null, "completed_at": null }
+  },
+  "approvals": {
+    "bootstrap": { "approved": false, "approved_at": null, "approval_type": null, "notes": null },
+    "development": { "approved": false, "approved_at": null, "notes": null }
+  },
+  "artifacts": {
+    "prd": null,
+    "dependency_report": null,
+    "install_script": null,
+    "bootstrap_plan": null,
+    "development_plan": null,
+    "consolidated_log": null
+  },
+  "flags": {
+    "bootstrap_required": null,
+    "dependencies_missing": false,
+    "continue_after_bootstrap": false
+  }
+}
+```
+
+---
+
+*Template version: 1.0.0*
+*Compatible with: Agentic Developer Unified Workflow v2.0*

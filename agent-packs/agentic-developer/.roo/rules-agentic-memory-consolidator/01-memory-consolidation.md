@@ -98,6 +98,32 @@ Extract learnings in these categories:
 4. **Architectural**: Affects system design decisions or constraints
 5. **Safety-critical**: Prevents data loss, security issues, or production failures
 
+### 2.5 Promotion Rules and Limits
+
+```yaml
+promotion_rules:
+  minimum_occurrences: 2  # Pattern seen twice before promotion
+  confidence_threshold: HIGH  # Only promote HIGH confidence learnings
+  duplicate_check: "Search target pack for similar entries before adding"
+  
+pack_limits:
+  max_entries_per_section: 20
+  max_pack_size_kb: 50
+  rotation_policy: "Archive oldest when limit reached"
+
+before_promotion:
+  1. Verify pattern observed at least twice
+  2. Check for existing similar entry in target pack
+  3. If duplicate found: merge/update instead of add
+  4. If pack limit reached: archive oldest entries first
+```
+
+**Pre-Promotion Checklist**:
+- [ ] Pattern observed ≥2 times in run history
+- [ ] Confidence level is HIGH (not MEDIUM or LOW)
+- [ ] Searched target pack for duplicates
+- [ ] Pack size within limits
+
 ### 3. Update Context Packs
 
 For each learning:

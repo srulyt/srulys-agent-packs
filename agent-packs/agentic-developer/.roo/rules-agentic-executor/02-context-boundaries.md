@@ -5,21 +5,24 @@
 
 ## Context Budget Management
 
-> **Note:** Token numbers in this document are approximate guidelines for models with ~128K context windows. Adjust proportionally for different context sizes. These are behavioral guidelines, not hard limits—the goal is efficient context usage.
+> **Note:** Token allocations are expressed as percentages of available context. These are behavioral guidelines, not hard limits—the goal is efficient context usage regardless of model context window size.
 
 ### Token Budget Allocation
 
-Each Executor session operates within strict token limits:
+Each Executor session operates within proportional token limits:
 
 ```yaml
-# Context Budget for Executor (approximate, ~128K model)
-total_budget: 100000 tokens # Approximate working context
+# Context Budget for Executor (percentage-based)
+allocation_strategy:
+  pinned: "~15% - Always load first, never evict"
+  working: "~60% - Active files and references"
+  output: "~20% - Space for edits"
+  safety: "~5% - Unexpected needs"
 
-allocation:
-  pinned_context: 15000 # 15% - Constitution, task contract, global rules
-  working_context: 60000 # 60% - Files being modified, reference code
-  output_buffer: 20000 # 20% - Space for edits and responses
-  safety_margin: 5000 # 5% - Buffer for unexpected needs
+# Example for 128K model:
+#   pinned: ~15K, working: ~60K, output: ~20K, safety: ~5K
+# Example for 200K model:
+#   pinned: ~25K, working: ~100K, output: ~35K, safety: ~10K
 ```
 
 ### Context Tiers

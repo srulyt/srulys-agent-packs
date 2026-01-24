@@ -407,3 +407,87 @@ Remove during your task (if in scope):
 **Do NOT remove**:
 - Existing unused code (document as tech debt instead)
 - Code that appears unused but may have reflection/dynamic usage
+
+---
+
+## 12. ADR Creation Policy
+
+Create an Architecture Decision Record (ADR) when ANY of:
+
+1. **Technology choice affects >3 files** - Framework, library, or tool selection impacting multiple components
+2. **Breaking change to existing API** - Any change that breaks backward compatibility
+3. **New pattern introduction** - Design patterns not already established in codebase
+4. **Security-relevant decision** - Authentication, authorization, encryption choices
+5. **Performance-critical choice** - Caching strategies, database indexing, algorithm selection
+
+### ADR Format
+
+Create ADRs in `.agent-memory/runs/<run-id>/adrs/ADR-<NNN>-<title>.md`:
+
+```markdown
+# ADR-<NNN>: <Title>
+
+## Status
+Proposed | Accepted | Deprecated | Superseded
+
+## Context
+What is the issue that we're seeing that is motivating this decision?
+
+## Decision
+What is the change that we're proposing?
+
+## Consequences
+What becomes easier or more difficult because of this change?
+```
+
+### Quick Decision (No ADR)
+- Single-file scope
+- Following existing patterns
+- Internal implementation details
+- Naming conventions (follow codebase)
+
+---
+
+## 13. Event Writing Protocol
+
+Before emitting any event:
+
+1. **Verify all required fields present** per `.roo/templates/agentic-event-schema.yaml`
+2. **Use correct event_type** from schema
+3. **Include timestamp** in ISO-8601 format
+4. **Verify task_id** matches active task
+5. **Include session_id** for traceability
+
+### Event Validation Checklist
+
+```yaml
+event_validation:
+  required_fields:
+    - event_type    # From allowed types list
+    - timestamp     # ISO-8601 format
+    - actor         # Agent slug that emitted event
+    - run_id        # Current run identifier
+  
+  conditional_fields:
+    - task_id       # Required for task-* events
+    - session_id    # Required for session-* events
+    - details       # Required for error/failure events
+```
+
+### Event Types Reference
+
+| Event Type | When Used | Required Fields |
+|------------|-----------|-----------------|
+| `task-started` | Executor begins task | task_id |
+| `task-completed` | Executor finishes successfully | task_id, files_modified |
+| `task-failed` | Executor cannot complete | task_id, error, retry_count |
+| `task-verified` | Verifier approves task | task_id, result |
+| `phase-transition` | Moving between phases | from_phase, to_phase |
+| `run-started` | New run initialized | run_id, prd_path |
+| `run-completed` | Run finished | run_id, status, summary |
+
+### Event Location
+
+Write to: `.agent-memory/runs/<run-id>/events/<actor>/<timestamp>.jsonl`
+
+Example: `.agent-memory/runs/20260124-1234-feature-x/events/executor/20260124-143000.jsonl`
