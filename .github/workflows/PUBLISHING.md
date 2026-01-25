@@ -4,23 +4,25 @@ This guide explains how to publish new versions of the `@srulyt/agent-packs` npm
 
 ## Prerequisites
 
-### One-Time Setup on npm
+### One-Time Setup on npm (REQUIRED)
 
-You must configure **Trusted Publishing** on npm to allow GitHub Actions to publish:
+You **must** configure **Trusted Publishing** on npm to allow GitHub Actions to publish without tokens:
 
 1. Go to: https://www.npmjs.com/package/@srulyt/agent-packs/access
-2. Scroll to **"Publishing access"** section
-3. Click **"Configure trusted publishers"**
+2. Look for **"Publishing access"** section
+3. Click **"Configure trusted publishers"** or **"Link GitHub repository"**
 4. Click **"Add trusted publisher"**
-5. Fill in:
+5. Fill in the form:
    - **Provider**: GitHub Actions
    - **Repository owner**: `srulyt`
    - **Repository name**: `srulys-agent-packs`
    - **Workflow filename**: `publish-installer.yml`
    - **Environment**: (leave empty)
-6. Click **"Add"**
+6. Click **"Add"** or **"Save"**
 
-This allows GitHub Actions from this specific repository to publish without needing a token.
+✅ Once configured, you'll see the trusted publisher listed on the package access page.
+
+**This setup enables OIDC authentication** - GitHub Actions proves its identity to npm without using any tokens. This is the most secure publishing method.
 
 ## How to Publish a New Version
 
