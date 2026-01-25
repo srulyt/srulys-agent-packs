@@ -4,25 +4,34 @@ This guide explains how to publish new versions of the `@srulyt/agent-packs` npm
 
 ## Prerequisites
 
-### One-Time Setup on npm (REQUIRED)
+### One-Time Setup: Create NPM_TOKEN Secret (REQUIRED)
 
-You **must** configure **Trusted Publishing** on npm to allow GitHub Actions to publish without tokens:
+You **must** add an npm access token to GitHub Secrets for automated publishing:
 
-1. Go to: https://www.npmjs.com/package/@srulyt/agent-packs/access
-2. Look for **"Publishing access"** section
-3. Click **"Configure trusted publishers"** or **"Link GitHub repository"**
-4. Click **"Add trusted publisher"**
-5. Fill in the form:
-   - **Provider**: GitHub Actions
-   - **Repository owner**: `srulyt`
-   - **Repository name**: `srulys-agent-packs`
-   - **Workflow filename**: `publish-installer.yml`
-   - **Environment**: (leave empty)
-6. Click **"Add"** or **"Save"**
+#### Step 1: Create a Granular Access Token on npm
 
-✅ Once configured, you'll see the trusted publisher listed on the package access page.
+1. Go to: https://www.npmjs.com/settings/srulyt/tokens
+2. Click **"Generate New Token"**
+3. Select **"Granular Access Token"** (more secure than Classic tokens)
+4. Fill in:
+   - **Token name**: `GitHub Actions - agent-packs`
+   - **Expiration**: 365 days (or your preference)
+   - **Packages and scopes**: Select **"Only select packages"** → choose `@srulyt/agent-packs`
+   - **Permissions**: **Read and Write**
+5. Click **"Generate Token"**
+6. **Copy the token** (starts with `npm_...`) - you won't see it again!
 
-**This setup enables OIDC authentication** - GitHub Actions proves its identity to npm without using any tokens. This is the most secure publishing method.
+#### Step 2: Add Token to GitHub Secrets
+
+1. Go to: https://github.com/srulyt/srulys-agent-packs/settings/secrets/actions
+2. Click **"New repository secret"**
+3. **Name**: `NPM_TOKEN`
+4. **Value**: Paste the token from Step 1
+5. Click **"Add secret"**
+
+✅ Once added, the workflow can publish to npm using this token.
+
+**Security**: The Granular Access Token is scoped to only `@srulyt/agent-packs` and will expire after 1 year. Renew before expiration.
 
 ## How to Publish a New Version
 
