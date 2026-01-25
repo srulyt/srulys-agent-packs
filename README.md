@@ -40,11 +40,38 @@ Factory agents:
 
 See [docs/factory.md](docs/factory.md) for full documentation.
 
-## Using Other Packs
+## Installing Agent Packs
 
-Packs under `agent-packs/` are self-contained Roo Code configurations.
+### Quick Install with NPX (Recommended)
 
-### Option 1: Open Directly (Recommended)
+Install agent packs directly into your project using the CLI installer:
+
+```bash
+# Install a single pack
+npx @srulyt/agent-packs install agentic-developer
+
+# Install multiple packs
+npx @srulyt/agent-packs install agentic-developer context-packs spec-creator
+
+# List available packs
+npx @srulyt/agent-packs list
+
+# Uninstall packs
+npx @srulyt/agent-packs uninstall agentic-developer
+```
+
+**Features:**
+- 🚀 Zero-config installation with `npx`
+- 🔐 Multiple authentication methods (GCM, GitHub CLI, env vars)
+- 📦 Always installs latest from GitHub main branch
+- 🔄 Safe reinstallation (removes old files first)
+- 🗑️ Clean uninstallation
+
+See [installer/README.md](installer/README.md) for full documentation.
+
+### Alternative: Manual Installation
+
+#### Option 1: Open Directly
 
 Open the pack folder as your VS Code workspace:
 
@@ -52,14 +79,14 @@ Open the pack folder as your VS Code workspace:
 code agent-packs/{pack-name}
 ```
 
-### Option 2: Copy to Project
+#### Option 2: Copy to Project
 
 ```bash
 cp agent-packs/{pack-name}/.roomodes /path/to/your/project/
 cp -r agent-packs/{pack-name}/.roo /path/to/your/project/
 ```
 
-### Option 3: Symlink
+#### Option 3: Symlink
 
 ```bash
 # From your target project

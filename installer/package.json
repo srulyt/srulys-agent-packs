@@ -1,0 +1,48 @@
+{
+  "name": "@srulyt/agent-packs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CLI installer for Roo Code agent packs",
+  "keywords": [
+    "roo-code",
+    "agent-packs",
+    "ai-agents",
+    "cli"
+  ],
+  "author": "srulyt",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srulyt/srulys-agent-packs.git",
+    "directory": "installer"
+  },
+  "bin": {
+    "agent-packs": "./bin/agent-packs.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "echo \"Tests coming soon\"",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "yaml": "^2.4.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3"
+  }
+}
