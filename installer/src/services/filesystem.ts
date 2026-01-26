@@ -82,37 +82,29 @@ export class FilesystemService {
       .map(item => item.name);
   }
 
-  // Global rules operations (merge, not replace)
-  writeGlobalRulesFiles(files: Array<{ path: string; content: string }>): string[] {
-    const basePath = path.join(this.cwd, '.roo', 'rules');
-    const writtenFiles: string[] = [];
+  // Merged files operations (merge behavior - write if owned by this pack or doesn't exist)
+  writeMergedFile(filePath: string, content: string, ownedFiles: Set<string>): boolean {
+    const fullPath = path.join(this.cwd, filePath);
+    const fileDir = path.dirname(fullPath);
     
-    // Create the base folder
-    fs.mkdirSync(basePath, { recursive: true });
-
-    // Write each file (only if it doesn't exist - merge behavior)
-    for (const file of files) {
-      const filePath = path.join(basePath, file.path);
-      const fileDir = path.dirname(filePath);
-      
-      // Ensure directory exists
-      if (!fs.existsSync(fileDir)) {
-        fs.mkdirSync(fileDir, { recursive: true });
-      }
-      
-      // Only write if file doesn't exist (preserve existing files)
-      if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, file.content, 'utf-8');
-        writtenFiles.push(file.path);
-      }
+    // Ensure directory exists
+    if (!fs.existsSync(fileDir)) {
+      fs.mkdirSync(fileDir, { recursive: true });
     }
-
-    return writtenFiles;
+    
+    // Write if file doesn't exist OR if this pack owns it
+    const fileExists = fs.existsSync(fullPath);
+    if (!fileExists || ownedFiles.has(filePath)) {
+      fs.writeFileSync(fullPath, content, 'utf-8');
+      return true; // File was written
+    }
+    
+    return false; // File skipped (owned by another pack)
   }
 
-  deleteGlobalRulesFiles(filePaths: string[]): void {
+  deleteMergedFiles(filePaths: string[]): void {
     for (const filePath of filePaths) {
-      const fullPath = path.join(this.cwd, '.roo', 'rules', filePath);
+      const fullPath = path.join(this.cwd, filePath);
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
       }

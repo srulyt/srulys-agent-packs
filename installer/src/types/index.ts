@@ -36,7 +36,7 @@ export interface PackRegistry {
       version: string;
       slugs: string[];
       rulesFolders: string[];
-      globalRulesFiles?: string[]; // Files contributed to .roo/rules/
+      mergedFiles?: string[]; // All merged files (not in rules-{slug}/) owned by this pack
     };
   };
 }

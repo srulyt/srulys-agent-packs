@@ -42,18 +42,21 @@ export async function uninstallCommand(packNames: string[]): Promise<void> {
 
       spinner.succeed('Loaded pack info');
 
-      // Delete rules folders
-      spinner.start('Removing rules folders...');
+      // Delete rules folders and merged files
+      spinner.start('Removing files...');
+      
+      // 1. Delete agent-specific rules folders
       for (const folder of packInfo.rulesFolders) {
         fs.deleteRulesFolder(folder);
       }
       
-      // Delete global rules files (if any)
-      if (packInfo.globalRulesFiles && packInfo.globalRulesFiles.length > 0) {
-        fs.deleteGlobalRulesFiles(packInfo.globalRulesFiles);
+      // 2. Delete merged files owned by this pack
+      if (packInfo.mergedFiles && packInfo.mergedFiles.length > 0) {
+        fs.deleteMergedFiles(packInfo.mergedFiles);
       }
       
-      spinner.succeed(`Removed ${packInfo.rulesFolders.length} rules folders`);
+      const totalRemoved = packInfo.rulesFolders.length + (packInfo.mergedFiles?.length || 0);
+      spinner.succeed(`Removed ${packInfo.rulesFolders.length} agent folders and ${packInfo.mergedFiles?.length || 0} merged files`);
 
       // Remove modes from .roomodes
       spinner.start('Updating .roomodes...');

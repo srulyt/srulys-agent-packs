@@ -31,7 +31,7 @@ export class RegistryService {
     version: string,
     slugs: string[],
     rulesFolders: string[],
-    globalRulesFiles?: string[]
+    mergedFiles?: string[]
   ): void {
     const registry = this.load();
     registry.installedPacks[packName] = {
@@ -39,7 +39,7 @@ export class RegistryService {
       version,
       slugs,
       rulesFolders,
-      globalRulesFiles
+      mergedFiles
     };
     this.save(registry);
   }

@@ -86,11 +86,15 @@ export async function installCommand(
       const slugs = roomodes.getSlugs(packRoomodes);
       const rulesFolders = roomodes.extractRulesFolders(packRoomodes);
 
-      // Write rules folders
-      spinner.start('Installing rules...');
+      // Categorize files
+      spinner.start('Installing files...');
       fs.ensureRooDirectory();
 
-      // Install mode-specific rules (rules-{slug}/)
+      // Get existing merged files owned by this pack (for reinstall)
+      const existingPackInfo = registry.getPackInfo(packName);
+      const ownedFiles = new Set<string>(existingPackInfo?.mergedFiles || []);
+
+      // 1. Install mode-specific rules folders (rules-{slug}/) - REPLACE entirely
       for (const folder of rulesFolders) {
         const folderFiles = files.filter(f => f.path.startsWith(`.roo/${folder}/`));
         if (folderFiles.length > 0) {
@@ -102,20 +106,29 @@ export async function installCommand(
         }
       }
 
-      // Install global rules (rules/ folder) - merge, don't replace
-      const globalRulesFiles = files.filter(f => f.path.startsWith('.roo/rules/'));
-      const writtenGlobalFiles: string[] = [];
-      if (globalRulesFiles.length > 0) {
-        const globalFiles = globalRulesFiles.map(f => ({
-          path: f.path.substring('.roo/rules/'.length),
-          content: f.content
-        }));
-        const written = fs.writeGlobalRulesFiles(globalFiles);
-        writtenGlobalFiles.push(...written);
+      // 2. Install all other files - MERGE (skip .roomodes, README.md)
+      const mergedFiles: string[] = [];
+      const filesToMerge = files.filter(f => {
+        // Skip .roomodes (handled separately)
+        if (f.path === '.roomodes' || f.path === 'README.md') {
+          return false;
+        }
+        // Skip files in rules-{slug}/ folders (already handled)
+        if (rulesFolders.some(folder => f.path.startsWith(`.roo/${folder}/`))) {
+          return false;
+        }
+        return true;
+      });
+
+      for (const file of filesToMerge) {
+        const wasWritten = fs.writeMergedFile(file.path, file.content, ownedFiles);
+        if (wasWritten) {
+          mergedFiles.push(file.path);
+        }
       }
 
-      const totalRules = rulesFolders.length + (writtenGlobalFiles.length > 0 ? 1 : 0);
-      spinner.succeed(`Installed ${totalRules} rules folder${totalRules !== 1 ? 's' : ''}`);
+      const totalItems = rulesFolders.length + mergedFiles.length;
+      spinner.succeed(`Installed ${rulesFolders.length} agent-specific folders and ${mergedFiles.length} merged files`);
 
       // Merge .roomodes
       spinner.start('Updating .roomodes...');
@@ -130,7 +143,7 @@ export async function installCommand(
 
       // Update registry
       const version = await github.getLatestCommitHash();
-      registry.registerPack(packName, version, slugs, rulesFolders, writtenGlobalFiles.length > 0 ? writtenGlobalFiles : undefined);
+      registry.registerPack(packName, version, slugs, rulesFolders, mergedFiles.length > 0 ? mergedFiles : undefined);
 
       logger.success(`Successfully installed ${packName}`);
       logger.dim(`  Modes: ${slugs.join(', ')}`);
