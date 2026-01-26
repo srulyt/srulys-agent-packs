@@ -9,6 +9,11 @@
 # Pattern: .{pack-name}-stm/ or any *-stm/ directory
 agent-packs/**/*-stm/
 
+# SaaS Design Studio - Short-Term Memory
+# Generated files, workflow state, and component output
+agent-packs/**/.design-studio/
+
+
 # ===========================================
 # IDE & System Files
 # ===========================================
