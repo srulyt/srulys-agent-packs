@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spec-writer-completion.json",
+  "title": "Spec Writer Completion Response",
+  "description": "Structured completion response from the Spec Writer agent",
+  "type": "object",
+  "required": ["status", "prd_path", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "prd_path": {
+      "type": "string",
+      "description": "Path to the prd.md artifact"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of the PRD"
+    },
+    "requirements_count": {
+      "type": "object",
+      "properties": {
+        "functional": { "type": "integer" },
+        "non_functional": { "type": "integer" }
+      },
+      "description": "Count of requirements by type"
+    },
+    "acceptance_criteria_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of acceptance criteria defined"
+    },
+    "scope_boundaries": {
+      "type": "object",
+      "properties": {
+        "in_scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Scope boundaries defined in PRD"
+    },
+    "clarifications_needed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic": { "type": "string" },
+          "question": { "type": "string" },
+          "default_assumption": { "type": "string" }
+        }
+      },
+      "description": "Questions that need user clarification"
+    },
+    "blocker": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["insufficient_input", "contradictory_requirements", "missing_context"]
+        },
+        "description": { "type": "string" },
+        "recommendation": { "type": "string" }
+      },
+      "description": "Blocker details (when status is BLOCKED)"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    }
+  }
+}

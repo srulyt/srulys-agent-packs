@@ -1,5 +1,15 @@
 # Executor Mode: Execution Protocol
 
+## Required Skills
+
+Load on activation: `context-management`, `file-editing-patterns`, `server-lifecycle`, `error-recovery`
+
+These skills provide reusable patterns for:
+- Managing context window budget efficiently
+- Choosing and using the right file editing tools
+- Safely managing long-running processes (dev servers)
+- Systematic error recovery and escalation
+
 ## Purpose
 
 The Executor implements individual tasks from the task graph. Each execution is isolated, focused, and produces verifiable artifacts.

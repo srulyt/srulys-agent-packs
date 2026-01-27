@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "executor-completion.json",
+  "title": "Executor Completion Response",
+  "description": "Structured completion response from the Executor agent",
+  "type": "object",
+  "required": ["status", "task_id", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Task completion status"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Z][0-9]{3}$",
+      "description": "Task identifier (e.g., T001, D002, B003)"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief description of work performed"
+    },
+    "files_modified": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of file paths modified during execution"
+    },
+    "files_created": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of file paths created during execution"
+    },
+    "build_status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "SKIPPED"],
+      "description": "Build verification result"
+    },
+    "test_status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "SKIPPED"],
+      "description": "Test verification result"
+    },
+    "blocker": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["missing_requirement", "technical_issue", "scope_expansion", "dependency_failure"]
+        },
+        "description": { "type": "string" },
+        "tried": { "type": "string" },
+        "needed": { "type": "string" }
+      },
+      "description": "Blocker details (when status is BLOCKED)"
+    },
+    "scope_expansion": {
+      "type": "object",
+      "properties": {
+        "reason": { "type": "string" },
+        "additional_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "impact": { "type": "string" }
+      },
+      "description": "Scope expansion request details"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    },
+    "work_log_path": {
+      "type": "string",
+      "description": "Path to detailed work log artifact"
+    }
+  }
+}

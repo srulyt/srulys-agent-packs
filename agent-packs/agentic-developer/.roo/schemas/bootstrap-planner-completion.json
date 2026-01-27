@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "bootstrap-planner-completion.json",
+  "title": "Bootstrap Planner Completion Response",
+  "description": "Structured completion response from the Bootstrap Planner agent",
+  "type": "object",
+  "required": ["status", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["dependency_check", "full_planning"],
+      "description": "What mode the planner was invoked in"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of the bootstrap plan"
+    },
+    "dependency_report_path": {
+      "type": "string",
+      "description": "Path to dependency-report.md (if dependency check mode)"
+    },
+    "bootstrap_plan_path": {
+      "type": "string",
+      "description": "Path to bootstrap-plan.md (if full planning mode)"
+    },
+    "technology_evaluation_path": {
+      "type": "string",
+      "description": "Path to technology-evaluation.md"
+    },
+    "dependencies_status": {
+      "type": "object",
+      "properties": {
+        "all_present": { "type": "boolean" },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "required_version": { "type": "string" },
+              "install_command": { "type": "string" }
+            }
+          }
+        },
+        "install_script_path": { "type": "string" }
+      },
+      "description": "Dependency check results"
+    },
+    "technology_stack": {
+      "type": "object",
+      "properties": {
+        "runtime": { "type": "string" },
+        "framework": { "type": "string" },
+        "package_manager": { "type": "string" },
+        "test_framework": { "type": "string" },
+        "build_tool": { "type": "string" }
+      },
+      "description": "Selected technology stack"
+    },
+    "adrs_created": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to ADR files created"
+    },
+    "bootstrap_tasks_estimate": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Estimated number of B-tasks needed"
+    },
+    "blocker": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["missing_dependencies", "unclear_requirements", "conflicting_constraints"]
+        },
+        "description": { "type": "string" },
+        "recommendation": { "type": "string" }
+      },
+      "description": "Blocker details (when status is BLOCKED)"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    }
+  }
+}

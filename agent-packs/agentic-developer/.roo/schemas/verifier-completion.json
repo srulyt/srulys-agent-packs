@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "verifier-completion.json",
+  "title": "Verifier Completion Response",
+  "description": "Structured completion response from the Verifier agent",
+  "type": "object",
+  "required": ["status", "task_id", "result", "report_path"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Z][0-9]{3}$",
+      "description": "Task identifier that was verified"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["PASSED", "FAILED", "BLOCKED"],
+      "description": "Verification result for the task"
+    },
+    "report_path": {
+      "type": "string",
+      "description": "Path to verification report artifact"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of verification findings"
+    },
+    "issues_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of issues found"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "file", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^I[0-9]{3}$",
+            "description": "Issue identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "missing-test",
+              "pattern-violation",
+              "incomplete-implementation",
+              "scope-violation",
+              "build-failure",
+              "test-failure",
+              "ai-artifact"
+            ]
+          },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "description": { "type": "string" },
+          "suggested_fix": { "type": "string" },
+          "effort": {
+            "type": "string",
+            "enum": ["trivial", "small", "medium", "large"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["blocker", "major", "minor"]
+          }
+        }
+      },
+      "description": "List of issues found during verification"
+    },
+    "suggested_quality_task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^Q[0-9]{3}$"
+        },
+        "title": { "type": "string" },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "estimated_effort": {
+          "type": "string",
+          "enum": ["trivial", "small", "medium", "large"]
+        }
+      },
+      "description": "Suggested Q-task to fix issues"
+    },
+    "build_output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "test_output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "passed": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "skipped": { "type": "integer" },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "test_name": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

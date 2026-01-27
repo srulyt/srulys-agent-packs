@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "memory-consolidator-completion.json",
+  "title": "Memory Consolidator Completion Response",
+  "description": "Structured completion response from the Memory Consolidator agent",
+  "type": "object",
+  "required": ["status", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of consolidation performed"
+    },
+    "promotions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "STM artifact path" },
+          "destination": { "type": "string", "description": "LTM context pack path" },
+          "type": {
+            "type": "string",
+            "enum": ["pattern", "decision", "convention", "architecture", "test_pattern"]
+          },
+          "summary": { "type": "string" }
+        }
+      },
+      "description": "Items promoted from STM to LTM"
+    },
+    "context_packs_updated": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Context packs that were updated"
+    },
+    "context_packs_created": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "New context packs created"
+    },
+    "stm_cleanup": {
+      "type": "object",
+      "properties": {
+        "archived": { "type": "boolean" },
+        "archive_path": { "type": "string" },
+        "items_archived": { "type": "integer" }
+      },
+      "description": "STM cleanup status"
+    },
+    "discovery_notes_processed": {
+      "type": "boolean",
+      "description": "Whether discovery-notes.md was processed"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    }
+  }
+}

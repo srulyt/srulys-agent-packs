@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "orchestrator-delegation.json",
+  "title": "Orchestrator Delegation Message",
+  "description": "Structured delegation message from Orchestrator to sub-agents",
+  "type": "object",
+  "required": ["target_agent", "task_type", "run_id", "context"],
+  "properties": {
+    "target_agent": {
+      "type": "string",
+      "enum": [
+        "agentic-spec-writer",
+        "agentic-bootstrap-planner",
+        "agentic-planner",
+        "agentic-task-breaker",
+        "agentic-executor",
+        "agentic-verifier",
+        "agentic-cleanup",
+        "agentic-pr-prep",
+        "agentic-memory-consolidator"
+      ],
+      "description": "Target agent mode slug"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "create_prd",
+        "check_dependencies",
+        "create_bootstrap_plan",
+        "create_plan",
+        "break_tasks",
+        "execute_task",
+        "verify_task",
+        "verify_phase",
+        "cleanup",
+        "prepare_pr",
+        "consolidate_memory"
+      ],
+      "description": "Type of task being delegated"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}-[0-9]{4}-[a-z0-9-]+-[a-z0-9]{4}$",
+      "description": "Run identifier"
+    },
+    "run_directory": {
+      "type": "string",
+      "description": "Path to run directory"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "prd_path": { "type": "string" },
+        "plan_path": { "type": "string" },
+        "task_graph_path": { "type": "string" },
+        "constitution_path": { "type": "string" },
+        "task_id": { "type": "string" },
+        "task_contract_path": { "type": "string" },
+        "context_packs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "user_constraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Context artifacts and references"
+    },
+    "expected_outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "description": "Expected output artifacts"
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Special constraints for this delegation"
+    },
+    "retry_context": {
+      "type": "object",
+      "properties": {
+        "attempt_number": { "type": "integer", "minimum": 1 },
+        "previous_failure": { "type": "string" },
+        "additional_context": { "type": "string" },
+        "alternative_approach": { "type": "string" }
+      },
+      "description": "Context for retry attempts"
+    }
+  }
+}

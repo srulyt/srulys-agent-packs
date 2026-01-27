@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "planner-completion.json",
+  "title": "Planner Completion Response",
+  "description": "Structured completion response from the Planner agent",
+  "type": "object",
+  "required": ["status", "plan_path", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "plan_path": {
+      "type": "string",
+      "description": "Path to the plan.md artifact"
+    },
+    "discovery_notes_path": {
+      "type": "string",
+      "description": "Path to discovery-notes.md artifact"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of the plan"
+    },
+    "phase_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of phases in the plan"
+    },
+    "estimated_files": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Estimated number of files affected"
+    },
+    "risk_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of risks identified"
+    },
+    "high_risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "mitigation": { "type": "string" }
+        }
+      },
+      "description": "List of high-priority risks"
+    },
+    "adrs_created": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to ADR files created"
+    },
+    "context_packs_used": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Context packs referenced during planning"
+    },
+    "bootstrap_required": {
+      "type": "boolean",
+      "description": "True if workspace is empty and bootstrap is needed"
+    },
+    "blocker": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["empty_workspace", "unclear_requirements", "missing_context", "conflicting_requirements"]
+        },
+        "description": { "type": "string" },
+        "recommendation": { "type": "string" }
+      },
+      "description": "Blocker details (when status is BLOCKED)"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    }
+  }
+}

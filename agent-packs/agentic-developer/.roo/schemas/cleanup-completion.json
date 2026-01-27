@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "cleanup-completion.json",
+  "title": "Cleanup Agent Completion Response",
+  "description": "Structured completion response from the Cleanup agent",
+  "type": "object",
+  "required": ["status", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of cleanup performed"
+    },
+    "files_cleaned": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of files that had cleanup applied"
+    },
+    "ai_artifacts_removed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of AI artifacts removed"
+    },
+    "cosmetic_changes_reverted": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of cosmetic-only changes reverted"
+    },
+    "tech_debt_documented": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "description": { "type": "string" },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      },
+      "description": "Tech debt items documented"
+    },
+    "debt_directory": {
+      "type": "string",
+      "description": "Path to debt/ directory"
+    },
+    "issues_found": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "issue": { "type": "string" },
+          "action_taken": { "type": "string" }
+        }
+      },
+      "description": "Issues found during cleanup"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    }
+  }
+}

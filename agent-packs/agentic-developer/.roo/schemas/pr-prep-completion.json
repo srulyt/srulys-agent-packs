@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pr-prep-completion.json",
+  "title": "PR Prep Agent Completion Response",
+  "description": "Structured completion response from the PR Prep agent",
+  "type": "object",
+  "required": ["status", "pr_checklist_path", "summary"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "BLOCKED", "PARTIAL", "FAILED"],
+      "description": "Return status to orchestrator"
+    },
+    "pr_checklist_path": {
+      "type": "string",
+      "description": "Path to pr-checklist.md artifact"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of PR readiness"
+    },
+    "pr_ready": {
+      "type": "boolean",
+      "description": "Whether PR is ready for submission"
+    },
+    "files_changed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of files changed in the PR"
+    },
+    "lines_added": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lines_removed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tests_affected": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of test files affected"
+    },
+    "acceptance_criteria_status": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer" },
+        "satisfied": { "type": "integer" },
+        "not_satisfied": { "type": "integer" }
+      },
+      "description": "Status of acceptance criteria from constitution"
+    },
+    "final_verification": {
+      "type": "object",
+      "properties": {
+        "build": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "tests": { "type": "string", "enum": ["PASS", "FAIL", "PARTIAL"] },
+        "scope": { "type": "string", "enum": ["COMPLIANT", "EXCEEDED"] }
+      },
+      "description": "Final verification results"
+    },
+    "tech_debt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of tech debt items documented"
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "issue": { "type": "string" },
+          "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+          "recommendation": { "type": "string" }
+        }
+      },
+      "description": "Blocking issues for PR submission"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Suggested next step for orchestrator"
+    }
+  }
+}
