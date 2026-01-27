@@ -13,6 +13,10 @@ agent-packs/**/*-stm/
 # Generated files, workflow state, and component output
 agent-packs/**/.design-studio/
 
+# Customer Sentiment Analysis - Memory
+# Sentiment analysis session data and workflow state
+agent-packs/**/.sentiment-memory/
+
 
 # ===========================================
 # IDE & System Files
