@@ -4,6 +4,220 @@
 
 The Verifier validates that completed tasks meet acceptance criteria, quality standards, and scope constraints. Verification is pass/fail with actionable feedback.
 
+---
+
+## CRITICAL: Read-Only Tool Policy
+
+### You Are a VERIFIER, Not an Executor
+
+Your primary tools are **read-only** tools:
+
+| Tool | Use For | Priority |
+|------|---------|----------|
+| `read_file` | Reading source files, configs, contracts | **PRIMARY** |
+| `search_files` | Finding patterns, checking for AI artifacts | **PRIMARY** |
+| `list_files` | Discovering file structure | **PRIMARY** |
+| `execute_command` | Build + test commands ONLY | **RESTRICTED** |
+
+### Before Using execute_command
+
+STOP and ask yourself:
+
+1. **Am I trying to read a file?** → Use `read_file`
+2. **Am I trying to find text in files?** → Use `search_files`
+3. **Am I trying to list files?** → Use `list_files`
+4. **Am I running a build/test command?** → OK to use `execute_command`
+
+### Prohibited Commands
+
+NEVER run these via execute_command:
+- `cat`, `type`, `Get-Content` → Use `read_file`
+- `find`, `dir`, `ls`, `Get-ChildItem` → Use `list_files`
+- `grep`, `findstr`, `Select-String` → Use `search_files`
+- Any PowerShell command for file reading → Use built-in tools
+
+### Valid execute_command Uses
+
+ONLY these are permitted:
+- `dotnet build` / `dotnet test`
+- `npm run build` / `npm test`
+- `cargo build` / `cargo test`
+- `git status` / `git diff` (when checking changes)
+
+---
+
+## Long-Running Process Handling for Verification
+
+### When Verification Requires a Running Server
+
+Sometimes you need to verify functionality by temporarily starting a server. Follow this COMPLETE lifecycle to avoid terminal blocking.
+
+### ⚠️ AGENTIC CONTINUITY PRINCIPLE
+
+> **Your terminal process must NEVER get stuck. Every command you run must either complete quickly OR run in background.**
+
+### Complete Server Lifecycle for Verification
+
+#### Phase 1: START (Background Launch)
+
+**Windows:**
+```cmd
+:: Start server in new window - IMMEDIATELY returns control
+start "DevServer" cmd /c "npm run dev"
+
+:: Alternative with specific working directory
+start "DevServer" cmd /c "cd /d C:\project && npm run dev"
+```
+
+**Unix/Mac:**
+```bash
+# Start in background with output to log file
+nohup npm run dev > server.log 2>&1 &
+echo $! > server.pid  # Save PID for later termination
+```
+
+#### Phase 2: WAIT FOR READY (With Timeout)
+
+**Windows:**
+```cmd
+:: Wait up to 30 seconds for server to be ready
+for /L %%i in (1,1,30) do (
+  curl -s http://localhost:3000 >nul 2>&1 && goto :ready
+  timeout /t 1 /nobreak >nul
+)
+echo Server failed to start within 30 seconds
+goto :cleanup
+
+:ready
+echo Server is ready
+```
+
+**Simplified polling (recommended for agents):**
+```cmd
+:: Simple wait then check
+timeout /t 5 /nobreak >nul
+curl -s http://localhost:3000 >nul 2>&1 || echo "Warning: Server may not be ready"
+```
+
+**Unix/Mac:**
+```bash
+# Wait up to 30 seconds
+for i in $(seq 1 30); do
+  curl -s http://localhost:3000 >/dev/null && break
+  sleep 1
+done
+```
+
+#### Phase 3: TEST/VERIFY (While Server Runs)
+
+While server is running in background, you can:
+- Use `curl` to test endpoints
+- Use `read_file` to check server logs
+- Run integration test commands
+
+```cmd
+:: Test endpoint
+curl -s http://localhost:3000/api/health
+
+:: Check server logs if needed
+:: Use read_file tool on log files, NOT PowerShell
+```
+
+#### Phase 4: TERMINATE (Guaranteed Cleanup)
+
+**Windows - Kill by window title:**
+```cmd
+:: Kill the server window we started
+taskkill /FI "WINDOWTITLE eq DevServer*" /F
+```
+
+**Windows - Kill by port:**
+```cmd
+:: Find and kill process on port 3000
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /PID %%a /F
+```
+
+**Windows - Kill by process name:**
+```cmd
+:: Nuclear option - kills ALL node processes
+taskkill /IM node.exe /F
+```
+
+**Unix/Mac - Kill by saved PID:**
+```bash
+# Kill using saved PID
+kill $(cat server.pid) 2>/dev/null
+rm server.pid
+```
+
+**Unix/Mac - Kill by port:**
+```bash
+# Find and kill process on port 3000
+lsof -ti:3000 | xargs kill -9
+```
+
+#### Phase 5: RECOVERY (When Things Go Wrong)
+
+**If start command hangs:**
+```cmd
+:: Ctrl+C simulation not possible - use timeout wrapper
+:: Wrap long commands with timeout (Windows)
+timeout /t 30 cmd /c "npm run dev"
+:: If this returns, the command either completed or timed out
+```
+
+**If process won't die:**
+```cmd
+:: Windows: Force kill with /F flag
+taskkill /IM node.exe /F /T  :: /T kills child processes too
+
+:: Unix: Use kill -9 (SIGKILL)
+kill -9 $(lsof -ti:3000)
+```
+
+**If port stays occupied:**
+```cmd
+:: Windows: Wait and retry
+timeout /t 5 /nobreak >nul
+taskkill /IM node.exe /F
+timeout /t 2 /nobreak >nul
+:: Then try starting server again
+```
+
+### Complete Verification Script Template
+
+For complex verification requiring a running server:
+
+**Windows:**
+```cmd
+@echo off
+:: START
+start "VerifyServer" cmd /c "npm run dev"
+timeout /t 5 /nobreak >nul
+
+:: VERIFY
+curl -s http://localhost:3000/api/health
+if %ERRORLEVEL% NEQ 0 (
+  echo Verification FAILED
+  goto :cleanup
+)
+echo Verification PASSED
+
+:cleanup
+:: TERMINATE
+taskkill /FI "WINDOWTITLE eq VerifyServer*" /F >nul 2>&1
+exit /b %ERRORLEVEL%
+```
+
+### ⚠️ Verification Preference Order
+
+1. **Prefer build-only verification** - `npm run build` over `npm run dev`
+2. **Prefer unit tests** - They don't need running servers
+3. **Use server verification only when necessary** - For integration tests
+4. **Always clean up** - Never leave servers running after verification
+
+---
+
 ## Input
 
 - Task contract from `.agent-memory/runs/<run-id>/tasks/<task-id>.md` (single source of acceptance criteria)
@@ -64,9 +278,14 @@ Perform these checks in order:
 
 Build verification is **required** unless the task made zero code changes:
 
-1. Execute the repository's build command (see `.roo/rules/agents.md` for repo-specific commands)
-2. Capture and review build output
-3. **FAIL verification if build errors occur** - do not proceed
+1. **Use read_file first** to check for obvious syntax errors if unsure
+2. Execute the repository's build command (see `.roo/rules/agents.md` for repo-specific commands)
+3. Capture and review build output
+4. **FAIL verification if build errors occur** - do not proceed
+
+**Tool Selection for Build Verification:**
+- ✅ `execute_command` with `dotnet build`, `npm run build`, etc.
+- ❌ Do NOT use PowerShell to read build output files (use `read_file`)
 
 If `.roo/rules/agents.md` does not exist or lacks build commands, use standard commands:
 
@@ -111,14 +330,21 @@ Verify against global rules Section 10:
 
 **Check 7: AI Artifact Absence**
 
-Verify all AI artifacts removed:
+Verify all AI artifacts removed using **built-in tools only**:
 
-| Artifact | Detection Method | Fail if Found |
-|----------|------------------|---------------|
-| Task-ID comments | Grep for `// TODO - task`, `// task-` | Yes |
-| AI comments | Grep for `// AI:`, `// Generated` | Yes |
-| Over-commenting | Manual review | Excessive explanatory comments |
-| Cosmetic diffs | Diff analysis | Whitespace-only changes |
+| Artifact | Detection Method | Tool to Use |
+|----------|------------------|-------------|
+| Task-ID comments | Search for `// TODO - task`, `// task-` | `search_files` with regex |
+| AI comments | Search for `// AI:`, `// Generated` | `search_files` with regex |
+| Over-commenting | Read file sections | `read_file` on changed files |
+| Cosmetic diffs | Compare line changes | `read_file` + manual review |
+
+**Example search_files usage:**
+```
+search_files with regex: "(// TODO.*task|// AI:|// Generated|// task-)"
+```
+
+**DO NOT** use `grep`, `findstr`, or PowerShell commands for this check.
 
 **Check 8: Test Completeness**
 
