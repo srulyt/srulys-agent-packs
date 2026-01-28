@@ -17,6 +17,11 @@ agent-packs/**/.design-studio/
 # Sentiment analysis session data and workflow state
 agent-packs/**/.sentiment-memory/
 
+# Product Feedback Gatherer - STM and LTM
+# Feedback gathering session data and trend history
+agent-packs/**/.feedback-stm/
+agent-packs/**/.feedback-ltm/
+
 
 # ===========================================
 # IDE & System Files
