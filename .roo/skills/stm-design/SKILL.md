@@ -1,3 +1,8 @@
+---
+name: stm-design
+description: Comprehensive expertise for designing and implementing git-friendly, multi-user Short-Term Memory (STM) systems. Load this skill when designing state management for multi-agent workflows, implementing session isolation patterns, or creating recovery-capable agent systems.
+---
+
 # STM Design Skill
 
 Comprehensive expertise for designing and implementing git-friendly, multi-user Short-Term Memory (STM) systems.

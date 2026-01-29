@@ -1,3 +1,8 @@
+---
+name: verification-patterns
+description: Provide detailed verification procedures for the Agentic Verifier mode. Load this skill during verification phase (Phase 4), when detailed check procedures are needed, or when generating verification reports.
+---
+
 # Verification Patterns
 
 ## Purpose

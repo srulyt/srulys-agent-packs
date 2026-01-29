@@ -1,3 +1,8 @@
+---
+name: error-recovery
+description: Handle errors during task execution with systematic recovery strategies, distinguishing between self-recoverable issues and those requiring escalation. Load this skill when encountering any error during task execution, after build failures, test failures, or file operation errors, when deciding whether to retry, fix, or escalate, or before reporting task status to orchestrator.
+---
+
 # Error Recovery
 
 ## Purpose

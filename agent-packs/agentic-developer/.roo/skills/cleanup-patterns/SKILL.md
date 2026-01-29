@@ -1,3 +1,8 @@
+---
+name: cleanup-patterns
+description: Provide detailed cleanup procedures for the Agentic Cleanup mode. Load this skill during cleanup phase (Phase 5), when removing AI artifacts and debug code, or when preparing code for PR.
+---
+
 # Cleanup Patterns
 
 ## Purpose

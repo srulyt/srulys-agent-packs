@@ -1,3 +1,8 @@
+---
+name: system-design
+description: Domain knowledge for designing multi-agent systems. Use this skill when architecting agent boundaries, determining orchestration patterns, assigning tool permissions, or evaluating whether single or multi-agent approaches are appropriate.
+---
+
 # System Design Skill
 
 Domain knowledge for designing multi-agent systems.

@@ -1,3 +1,8 @@
+---
+name: skill-template
+description: Template showing the structure and format for skill files. Use this skill when creating new skills or understanding the expected format for SKILL.md files. Skills are reusable knowledge packages that can be attached to agents.
+---
+
 # Skill Template
 
 This template shows the structure and format for skill files.

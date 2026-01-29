@@ -1,3 +1,8 @@
+---
+name: pack-documentation
+description: Provides templates and guidance for creating consistent pack documentation. Load this skill when creating documentation for a new agent pack, updating existing pack documentation, or reviewing documentation for completeness.
+---
+
 # Pack Documentation Skill
 
 ## Purpose

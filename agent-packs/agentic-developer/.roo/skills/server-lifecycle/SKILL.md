@@ -1,3 +1,8 @@
+---
+name: server-lifecycle
+description: Manage long-running processes (dev servers, watchers) safely to prevent terminal blocking and ensure guaranteed cleanup. Load this skill before starting any dev server (npm run dev, dotnet watch, etc.), before any command that won't exit naturally, when managing processes that open ports, or when commands contain dev, watch, serve, hot, or start.
+---
+
 # Server Lifecycle Management
 
 ## Purpose

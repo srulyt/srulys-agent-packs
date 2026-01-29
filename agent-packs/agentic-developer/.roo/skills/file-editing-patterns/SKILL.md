@@ -1,3 +1,8 @@
+---
+name: file-editing-patterns
+description: Choose the right editing tool and technique for each file modification to minimize context usage and maximize reliability. Load this skill before any file modification operation, when deciding between apply_diff and write_to_file, when editing large files, or when making surgical changes to existing code.
+---
+
 # File Editing Patterns
 
 ## Purpose

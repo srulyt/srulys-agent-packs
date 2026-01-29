@@ -1,3 +1,8 @@
+---
+name: context-management
+description: Manage context window budget efficiently to maximize productive work within token limits. Load this skill before loading files into context, when context pressure reaches warning thresholds, when working with large files (> 200 lines), or before long-running tasks that may exhaust context.
+---
+
 # Context Management
 
 ## Purpose
