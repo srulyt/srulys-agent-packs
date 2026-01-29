@@ -282,7 +282,88 @@ if %ERRORLEVEL% NEQ 0 exit /b 1
 2. User: Ctrl+C or restart terminal
 3. Cleanup: `taskkill /IM node.exe /F /T`
 
-## References
+---
 
-- Source: [`01-command-execution.md`](../../rules/01-command-execution.md)
-- Source: [`03-tool-usage.md`](../03-tool-usage.md)
+## Quick Health Check (Copy-Paste Ready)
+
+### Windows
+
+```cmd
+@echo off
+:: Start server in background
+start "DevServer" cmd /c "npm run dev"
+
+:: Wait for server to be ready
+timeout /t 5 /nobreak >nul
+
+:: Check if server responds
+curl -s http://localhost:3000 >nul 2>&1 && echo OK || echo FAIL
+
+:: Cleanup - always terminate
+taskkill /FI "WINDOWTITLE eq DevServer*" /F >nul 2>&1
+```
+
+### Unix/Mac
+
+```bash
+#!/bin/bash
+# Start server in background
+npm run dev > /dev/null 2>&1 &
+PID=$!
+
+# Wait for server to be ready
+sleep 5
+
+# Check if server responds
+curl -s http://localhost:3000 > /dev/null && echo OK || echo FAIL
+
+# Cleanup - always terminate
+kill $PID 2>/dev/null
+```
+
+### Node.js Project Quick Verify
+
+```cmd
+:: Windows - Full verify cycle
+start "DevServer" cmd /c "npm run dev"
+timeout /t 8 /nobreak >nul
+curl -s -o NUL -w "%%{http_code}" http://localhost:3000 | findstr "200" >nul && echo "Health: OK" || echo "Health: FAIL"
+taskkill /FI "WINDOWTITLE eq DevServer*" /F >nul 2>&1
+```
+
+### .NET Project Quick Verify
+
+```cmd
+:: Windows - dotnet run with health check
+start "DotNetServer" cmd /c "dotnet run --project ./src/MyApp"
+timeout /t 10 /nobreak >nul
+curl -s http://localhost:5000/health >nul 2>&1 && echo OK || echo FAIL
+taskkill /FI "WINDOWTITLE eq DotNetServer*" /F >nul 2>&1
+```
+
+---
+
+## Common Port Check Commands
+
+### Windows
+
+```cmd
+:: Check if port 3000 is in use
+netstat -an | findstr :3000 | findstr LISTENING
+
+:: Find process using port 3000
+for /f "tokens=5" %a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do @echo PID: %a
+
+:: Kill process on port 3000
+for /f "tokens=5" %a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /PID %a /F
+```
+
+### Unix/Mac
+
+```bash
+# Check if port 3000 is in use
+lsof -i :3000
+
+# Kill process on port 3000
+lsof -ti:3000 | xargs kill -9
+```

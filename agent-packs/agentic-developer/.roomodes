@@ -117,6 +117,7 @@ customModes:
         - fileRegex: .*
           description: All files (scoped by task contract)
       - command
+      - mcp
     customInstructions: ""
 
   # =============================================================================
@@ -140,6 +141,7 @@ customModes:
         - fileRegex: ^\.agent-memory/runs/[^/]+/(verifications/.*|tasks/Q[0-9]+-.*|events/verifier/.*)$
           description: Verification files, quality tasks, and verifier event files
       - command
+      - mcp
     customInstructions: ""
 
   # =============================================================================
