@@ -4,6 +4,7 @@
 
 # Factory STM (root level)
 /.factory/
+/.prompts/
 
 # Pack STM directories under agent-packs/
 # Pattern: .{pack-name}-stm/ or any *-stm/ directory
@@ -21,6 +22,10 @@ agent-packs/**/.sentiment-memory/
 # Feedback gathering session data and trend history
 agent-packs/**/.feedback-stm/
 agent-packs/**/.feedback-ltm/
+
+# Ralph Copilot CLI - STM (testing)
+# Note: Ralph STM is typically created in user projects, not under agent-packs/
+agent-packs/**/.ralph-stm/
 
 
 # ===========================================
