@@ -19,7 +19,7 @@ You receive a task from the orchestrator:
 Task: Analyze files for {section_name}
 
 Context Pack: {name}
-Section Target: {e.g., "architecture", "contracts", "patterns", "tests"}
+Section Target: {e.g., "architecture", "contracts", "patterns", "tests", "error_handling"}
 Task Directory: .context-packs/_temp/{task_id}/
 
 Files to Analyze:
@@ -76,7 +76,16 @@ Extract:
 - Control flow patterns
 - Transaction boundaries
 
-### For Entry Points & Triggers (Section 3)
+### For Key Files & Locations (Section 3)
+Extract:
+- Entry points / Controllers
+- Managers / Orchestrators
+- Domain Logic / Services
+- Data Access components
+- Models / Contracts
+- Categorize each file by its role
+
+### For Entry Points & Triggers (Section 4)
 Extract:
 - API endpoints (routes, methods, parameters)
 - Event handlers (topics, triggers)
@@ -110,15 +119,33 @@ Extract:
 - Business invariants
 - Error conditions
 - Performance considerations
+- Rate limits, thresholds, boundaries
 
-### For Test Strategy (Section 10)
+### For Error Handling (Section 10)
+Extract:
+- Exception types defined/thrown
+- HTTP status code mappings
+- Error codes and their meanings
+- Try-catch patterns
+- Error propagation strategies
+- Recovery mechanisms
+- Logging patterns for errors
+
+### For Test Strategy (Section 11)
 Extract:
 - Test organization
 - Testing frameworks used
 - Mock/stub patterns
 - Coverage indicators
 
-### For Change Guidance (Section 11)
+### For Common Development Tasks (Section 12)
+Extract:
+- Patterns for adding new fields
+- Patterns for adding new endpoints
+- Common modification workflows
+- Domain-specific task patterns
+
+### For Change Guidance (Section 13)
 Extract:
 - Extension points
 - Modification patterns
@@ -231,3 +258,4 @@ Key findings: {count}
 Confidence range: {min}/5 - {max}/5
 
 Output: .context-packs/_temp/{task_id}/analysis/{filename}.md
+```
