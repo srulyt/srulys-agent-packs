@@ -3,11 +3,12 @@
 # Ralph External Loop - Manages the Ralph agentic developer lifecycle.
 #
 # This script manages the Ralph agent's execution loop, handling:
-# - STM initialization
+# - Multi-run STM initialization with session isolation
 # - Agent restarts between tasks
 # - Heartbeat monitoring and timeout detection
 # - User communication (questions, approval)
 # - Progress display
+# - 3-consecutive-complete pattern for reliable termination
 #
 # Usage:
 #   ./ralph-loop.sh "Add user authentication with JWT"  # Start new task
@@ -18,12 +19,18 @@ set -e
 
 # Configuration
 STM_DIR=".ralph-stm"
-STATE_FILE="$STM_DIR/state.json"
-HEARTBEAT_FILE="$STM_DIR/heartbeat.json"
-QUESTION_FILE="$STM_DIR/communication/pending-question.md"
-RESPONSE_FILE="$STM_DIR/communication/user-response.md"
-APPROVAL_FILE="$STM_DIR/communication/approval.md"
-REJECTION_FILE="$STM_DIR/communication/rejection.md"
+ACTIVE_RUN_FILE="$STM_DIR/active-run.json"
+RUNS_DIR="$STM_DIR/runs"
+HISTORY_DIR="$STM_DIR/history"
+
+# Dynamic paths (set after session resolution)
+SESSION_DIR=""
+STATE_FILE=""
+HEARTBEAT_FILE=""
+QUESTION_FILE=""
+RESPONSE_FILE=""
+APPROVAL_FILE=""
+REJECTION_FILE=""
 
 TIMEOUT_MINUTES=15
 RESUME=false
@@ -128,18 +135,51 @@ generate_session_id() {
     echo "${date_part}-${uuid_part}"
 }
 
+set_session_paths() {
+    local session_id="$1"
+    SESSION_DIR="$RUNS_DIR/$session_id"
+    STATE_FILE="$SESSION_DIR/state.json"
+    HEARTBEAT_FILE="$SESSION_DIR/heartbeat.json"
+    QUESTION_FILE="$SESSION_DIR/communication/pending-question.md"
+    RESPONSE_FILE="$SESSION_DIR/communication/user-response.md"
+    APPROVAL_FILE="$SESSION_DIR/communication/approval.md"
+    REJECTION_FILE="$SESSION_DIR/communication/rejection.md"
+}
+
+get_active_run() {
+    if [[ -f "$ACTIVE_RUN_FILE" ]]; then
+        json_get "$ACTIVE_RUN_FILE" "current_run"
+    else
+        echo ""
+    fi
+}
+
 initialize_stm() {
     local user_task="$1"
     
     echo -e "  ${WHITE}Initializing STM directory...${NC}"
     
-    # Create directories
-    mkdir -p "$STM_DIR/events"
-    mkdir -p "$STM_DIR/communication"
-    
     # Generate session ID
     local session_id=$(generate_session_id)
     local timestamp=$(get_timestamp)
+    
+    # Create directory structure
+    mkdir -p "$STM_DIR"
+    mkdir -p "$RUNS_DIR/$session_id/events"
+    mkdir -p "$RUNS_DIR/$session_id/communication"
+    mkdir -p "$HISTORY_DIR"
+    
+    # Set session paths
+    set_session_paths "$session_id"
+    
+    # Create active-run.json
+    cat > "$ACTIVE_RUN_FILE" << EOF
+{
+  "current_run": "$session_id",
+  "started_at": "$timestamp",
+  "last_activity": "$timestamp"
+}
+EOF
     
     # Create initial state
     cat > "$STATE_FILE" << EOF
@@ -182,6 +222,19 @@ update_heartbeat() {
   "pid": $$
 }
 EOF
+
+    # Also update active-run last_activity
+    if [[ -f "$ACTIVE_RUN_FILE" ]]; then
+        local current_run=$(json_get "$ACTIVE_RUN_FILE" "current_run")
+        local started_at=$(json_get "$ACTIVE_RUN_FILE" "started_at")
+        cat > "$ACTIVE_RUN_FILE" << EOF
+{
+  "current_run": "$current_run",
+  "started_at": "$started_at",
+  "last_activity": "$timestamp"
+}
+EOF
+    fi
 }
 
 get_heartbeat_age() {
@@ -252,26 +305,29 @@ EOF
 handle_approval() {
     write_header "Approval Required"
     
+    local spec_file="$SESSION_DIR/spec.md"
+    local plan_file="$SESSION_DIR/plan.md"
+    
     # Display spec summary
-    if [[ -f "$STM_DIR/spec.md" ]]; then
+    if [[ -f "$spec_file" ]]; then
         echo -e "  ${MAGENTA}=== SPECIFICATION ===${NC}"
         echo ""
-        head -50 "$STM_DIR/spec.md" | sed 's/^/  /'
-        local spec_lines=$(wc -l < "$STM_DIR/spec.md")
+        head -50 "$spec_file" | sed 's/^/  /'
+        local spec_lines=$(wc -l < "$spec_file")
         if [[ $spec_lines -gt 50 ]]; then
-            echo -e "  ${YELLOW}... (truncated, see $STM_DIR/spec.md for full spec)${NC}"
+            echo -e "  ${YELLOW}... (truncated, see $spec_file for full spec)${NC}"
         fi
         echo ""
     fi
     
     # Display plan summary
-    if [[ -f "$STM_DIR/plan.md" ]]; then
+    if [[ -f "$plan_file" ]]; then
         echo -e "  ${MAGENTA}=== IMPLEMENTATION PLAN ===${NC}"
         echo ""
-        head -50 "$STM_DIR/plan.md" | sed 's/^/  /'
-        local plan_lines=$(wc -l < "$STM_DIR/plan.md")
+        head -50 "$plan_file" | sed 's/^/  /'
+        local plan_lines=$(wc -l < "$plan_file")
         if [[ $plan_lines -gt 50 ]]; then
-            echo -e "  ${YELLOW}... (truncated, see $STM_DIR/plan.md for full plan)${NC}"
+            echo -e "  ${YELLOW}... (truncated, see $plan_file for full plan)${NC}"
         fi
         echo ""
     fi
@@ -279,8 +335,8 @@ handle_approval() {
     echo ""
     echo -e "  ${WHITE}Review the spec and plan above.${NC}"
     echo -e "  ${WHITE}Full documents available at:${NC}"
-    echo -e "    - $STM_DIR/spec.md"
-    echo -e "    - $STM_DIR/plan.md"
+    echo -e "    - $spec_file"
+    echo -e "    - $plan_file"
     echo ""
     
     read -p "Approve and proceed? (yes/no/feedback): " choice
@@ -367,6 +423,39 @@ invoke_ralph() {
     gh copilot --agent ralph "$prompt" || true
 }
 
+archive_run() {
+    local session_id="$1"
+    
+    echo -e "  ${WHITE}Archiving session $session_id...${NC}"
+    
+    local source_dir="$RUNS_DIR/$session_id"
+    local dest_dir="$HISTORY_DIR/$session_id"
+    
+    if [[ -d "$source_dir" ]]; then
+        # Read state for summary
+        local final_phase=$(json_get "$source_dir/state.json" "phase")
+        local final_status=$(json_get "$source_dir/state.json" "status")
+        local user_request=$(json_get "$source_dir/state.json" "user_request")
+        local timestamp=$(get_timestamp)
+        
+        # Move to history
+        mv "$source_dir" "$dest_dir"
+        
+        # Create summary
+        cat > "$dest_dir/summary.json" << EOF
+{
+  "session_id": "$session_id",
+  "archived_at": "$timestamp",
+  "final_phase": "$final_phase",
+  "final_status": "$final_status",
+  "user_request": "$user_request"
+}
+EOF
+        
+        echo -e "  ${GREEN}Session archived to history.${NC}"
+    fi
+}
+
 # Signal handling
 cleanup() {
     echo ""
@@ -394,39 +483,49 @@ if ! command -v gh &> /dev/null; then
     exit 1
 fi
 
-# Check for existing session
-if [[ -f "$STATE_FILE" ]]; then
-    if $RESUME; then
-        session_id=$(json_get "$STATE_FILE" "session_id")
-        phase=$(json_get "$STATE_FILE" "phase")
-        status=$(json_get "$STATE_FILE" "status")
-        
-        echo -e "  ${GREEN}Resuming session: $session_id${NC}"
-        write_status "Phase" "$phase"
-        write_status "Status" "$status"
-    elif [[ -z "$TASK" ]]; then
-        session_id=$(json_get "$STATE_FILE" "session_id")
-        echo -e "  ${YELLOW}Existing session found: $session_id${NC}"
-        read -p "  Resume existing session? (yes/no): " choice
-        
-        if [[ "$choice" =~ ^(y|yes|Y|YES)$ ]]; then
-            RESUME=true
-        else
-            echo -e "  ${WHITE}Clearing existing session...${NC}"
-            rm -rf "$STM_DIR"
-        fi
+# Check for existing session via active-run.json
+active_run=$(get_active_run)
+
+if $RESUME; then
+    if [[ -z "$active_run" ]]; then
+        echo -e "  ${RED}No existing session found. Start a new task instead.${NC}"
+        exit 1
+    fi
+    set_session_paths "$active_run"
+    if [[ ! -f "$STATE_FILE" ]]; then
+        echo -e "  ${RED}Session state file missing. Start a new task.${NC}"
+        exit 1
+    fi
+    phase=$(json_get "$STATE_FILE" "phase")
+    status=$(json_get "$STATE_FILE" "status")
+    
+    echo -e "  ${GREEN}Resuming session: $active_run${NC}"
+    write_status "Phase" "$phase"
+    write_status "Status" "$status"
+elif [[ -n "$active_run" ]] && [[ -z "$TASK" ]]; then
+    set_session_paths "$active_run"
+    echo -e "  ${YELLOW}Existing session found: $active_run${NC}"
+    read -p "  Resume existing session? (yes/no): " choice
+    
+    if [[ "$choice" =~ ^(y|yes|Y|YES)$ ]]; then
+        RESUME=true
+    else
+        echo -e "  ${WHITE}Archiving existing session...${NC}"
+        archive_run "$active_run"
+        rm -f "$ACTIVE_RUN_FILE"
+        active_run=""
     fi
 fi
 
 # Validate inputs
-if [[ ! -f "$STATE_FILE" ]] && [[ -z "$TASK" ]]; then
+if [[ -z "$active_run" ]] && [[ -z "$TASK" ]]; then
     echo -e "  ${RED}Usage: $0 \"Your development task\"${NC}"
     echo -e "  ${RED}       $0 --resume${NC}"
     exit 1
 fi
 
 # Initialize if needed
-if [[ ! -f "$STATE_FILE" ]]; then
+if [[ -z "$active_run" ]]; then
     initialize_stm "$TASK"
 fi
 
@@ -437,30 +536,19 @@ else
     prompt="Continue the development task"
 fi
 
-# Main loop
+# Main loop with 3-consecutive-complete pattern
 iteration=0
 max_iterations=100
+complete_count=0
+max_complete_count=3
 
-while true; do
+while [[ $complete_count -lt $max_complete_count ]] && [[ $iteration -lt $max_iterations ]]; do
     ((iteration++))
     
     # Read current state
     phase=$(json_get "$STATE_FILE" "phase")
     status=$(json_get "$STATE_FILE" "status")
     phase_id=$(json_get_num "$STATE_FILE" "phase_id")
-    
-    # Check completion
-    if [[ "$status" == "complete" ]] || [[ "$phase" == "complete" ]]; then
-        break
-    fi
-    
-    # Check iteration limit
-    if [[ $iteration -ge $max_iterations ]]; then
-        echo ""
-        echo -e "  ${RED}Maximum iterations reached. Something may be wrong.${NC}"
-        echo -e "  ${YELLOW}STM preserved for debugging at $STM_DIR${NC}"
-        exit 1
-    fi
     
     echo ""
     echo -e "  ${GRAY}─────────────────────────────────────────────────${NC}"
@@ -482,6 +570,19 @@ while true; do
     if [[ "$status" == "waiting_for_user" ]] && [[ "$phase" == "approval" ]]; then
         handle_approval
         continue
+    fi
+    
+    # Check for complete status (3-consecutive-complete pattern)
+    if [[ "$status" == "complete" ]] || [[ "$phase" == "complete" ]]; then
+        ((complete_count++))
+        echo -e "  ${WHITE}Complete signal $complete_count of $max_complete_count${NC}"
+        
+        if [[ $complete_count -ge $max_complete_count ]]; then
+            break
+        fi
+        # Continue loop for confirmation - agent will re-confirm complete state
+    else
+        complete_count=0  # Reset on any non-complete
     fi
     
     # Run the agent
@@ -517,21 +618,30 @@ while true; do
 done
 
 # Completion
-write_header "Task Complete!"
-
-session_id=$(json_get "$STATE_FILE" "session_id")
-
-echo -e "  ${GREEN}Ralph has completed the development task.${NC}"
-echo ""
-write_status "Session" "$session_id"
-write_status "Total Iterations" "$iteration"
-echo ""
-
-# Check for PR description
-if [[ -f "PR_DESCRIPTION.md" ]]; then
-    echo -e "  ${WHITE}PR description saved to: PR_DESCRIPTION.md${NC}"
+if [[ $complete_count -ge $max_complete_count ]]; then
+    write_header "Task Complete!"
+    
+    session_id=$(json_get "$STATE_FILE" "session_id")
+    
+    echo -e "  ${GREEN}Ralph has completed the development task.${NC}"
+    echo ""
+    write_status "Session" "$session_id"
+    write_status "Total Iterations" "$iteration"
+    echo ""
+    
+    # Check for PR description
+    if [[ -f "PR_DESCRIPTION.md" ]]; then
+        echo -e "  ${WHITE}PR description saved to: PR_DESCRIPTION.md${NC}"
+    fi
+    
+    echo ""
+    echo -e "  ${WHITE}The .ralph-stm directory can be safely removed.${NC}"
+    echo -e "  ${WHITE}Or keep it - new tasks will create isolated sessions.${NC}"
+elif [[ $iteration -ge $max_iterations ]]; then
+    echo ""
+    echo -e "  ${RED}Maximum iterations reached. Something may be wrong.${NC}"
+    echo -e "  ${YELLOW}STM preserved for debugging at $STM_DIR${NC}"
+    exit 1
 fi
 
-echo ""
-echo -e "  ${WHITE}The .ralph-stm directory can be safely removed.${NC}"
 echo ""

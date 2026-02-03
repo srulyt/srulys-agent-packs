@@ -5,13 +5,21 @@ description: Testing and validation expertise for agentic development. Load this
 
 # Ralph Verification Skill
 
+## Skill Activation Confirmation
+
+You have successfully loaded the **verification** skill.
+Current phase: 6 (verification)
+Your objective this invocation: **Verify all acceptance criteria, update state, output yield signal, and exit.**
+
+---
+
 You're in the verification phase (Phase 6). Time to validate the implementation.
 
 ## Your Context
 
-- **Spec**: `.ralph-stm/spec.md` - Has acceptance criteria to verify
-- **Plan**: `.ralph-stm/plan.md` - Shows what was implemented
-- **Events**: `.ralph-stm/events/` - Has execution logs
+- **Spec**: `.ralph-stm/runs/{session}/spec.md` - Has acceptance criteria to verify
+- **Plan**: `.ralph-stm/runs/{session}/plan.md` - Shows what was implemented
+- **Events**: `.ralph-stm/runs/{session}/events/` - Has execution logs
 
 ---
 
@@ -23,7 +31,7 @@ You're in the verification phase (Phase 6). Time to validate the implementation.
 2. Run automated tests
 3. Check for regressions
 4. Validate code quality
-5. Either pass → cleanup, or fail → execution fixes
+5. Either pass → cleanup (Phase 7), or fail → execution (Phase 5) with fixes
 
 ---
 
@@ -87,7 +95,9 @@ Update `state.json`:
   "phase": "cleanup",
   "phase_id": 7,
   "status": "in_progress",
+  "updated_at": "{timestamp}",
   "last_task": "verification-passed",
+  "last_event_id": {incremented},
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "Cleanup artifacts and prepare summary"
@@ -109,7 +119,9 @@ Update `state.json`:
   "phase": "execution",
   "phase_id": 5,
   "status": "in_progress",
+  "updated_at": "{timestamp}",
   "last_task": "verification-failed",
+  "last_event_id": {incremented},
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "Fix: {specific issue description}",
@@ -155,6 +167,78 @@ If multiple issues:
 
 ---
 
+## State Update Reminder
+
+**CRITICAL**: Before exiting, you MUST update state.json with:
+
+### Always Update
+- `updated_at`: Current ISO-8601 timestamp
+- `last_task`: Brief description of what you did
+- `last_event_id`: Increment if you wrote an event
+
+### If Verification Passed (transition to Phase 7)
+
+```json
+{
+  "phase": "cleanup",
+  "phase_id": 7,
+  "status": "in_progress",
+  "updated_at": "{timestamp}",
+  "last_task": "verification-passed: all {N} acceptance criteria verified",
+  "last_event_id": {incremented},
+  "checkpoint": {
+    "can_resume": true,
+    "resume_hint": "Cleanup artifacts and prepare summary"
+  }
+}
+```
+
+### If Verification Failed (return to Phase 5)
+
+```json
+{
+  "phase": "execution",
+  "phase_id": 5,
+  "status": "in_progress",
+  "updated_at": "{timestamp}",
+  "last_task": "verification-failed: {N} criteria failed",
+  "last_event_id": {incremented},
+  "checkpoint": {
+    "can_resume": true,
+    "resume_hint": "Fix: {primary issue}",
+    "verification_failures": [...]
+  }
+}
+```
+
+---
+
+## Yield Signal Reminder
+
+**CRITICAL**: Before exiting, output the yield signal:
+
+### If Passed:
+```
+[RALPH-YIELD]
+phase_completed: 6
+next_phase: 7
+status: in_progress
+work_done: verification passed - all acceptance criteria met
+[/RALPH-YIELD]
+```
+
+### If Failed:
+```
+[RALPH-YIELD]
+phase_completed: 6
+next_phase: 5
+status: in_progress
+work_done: verification failed - {N} issues require fixes
+[/RALPH-YIELD]
+```
+
+---
+
 ## Event Logging
 
 Write detailed verification event:
@@ -164,6 +248,7 @@ Write detailed verification event:
 
 **Timestamp**: {ISO-8601}
 **Phase**: verification (6)
+**Session**: {session_id}
 
 ## Acceptance Criteria Results
 
@@ -206,6 +291,10 @@ Write detailed verification event:
    - Criterion: {which}
    - Issue: {what}
    - Fix: {needed action}
+
+## State Changes
+- Previous: phase=execution (5)
+- Current: phase={cleanup (7) or execution (5)}
 
 ## Next Steps
 - {cleanup if pass}
@@ -304,10 +393,14 @@ For simple failures, you may attempt a fix in the same invocation:
 - [ ] All tests pass
 - [ ] Verification event logged
 - [ ] State updated to Phase 7 (cleanup)
+- [ ] `updated_at` timestamp updated
+- [ ] **Yield signal output**
 
 ### If Failing
 - [ ] All failures documented
 - [ ] Fix instructions clear
 - [ ] Verification event logged
 - [ ] State updated to Phase 5 (execution)
+- [ ] `updated_at` timestamp updated
 - [ ] Checkpoint contains failure details
+- [ ] **Yield signal output**

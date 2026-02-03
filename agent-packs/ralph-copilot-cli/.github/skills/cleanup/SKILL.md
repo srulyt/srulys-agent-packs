@@ -5,13 +5,21 @@ description: Cleanup and delivery expertise for agentic development. Load this s
 
 # Ralph Cleanup Skill
 
+## Skill Activation Confirmation
+
+You have successfully loaded the **cleanup** skill.
+Current phase: 7 (cleanup)
+Your objective this invocation: **Generate summary, prepare deliverables, update state to complete, output yield signal, and exit.**
+
+---
+
 You're in the cleanup phase (Phase 7). Time to finalize delivery.
 
 ## Your Context
 
-- **Spec**: `.ralph-stm/spec.md` - Original requirements
-- **Plan**: `.ralph-stm/plan.md` - What was planned
-- **Events**: `.ralph-stm/events/` - Complete history
+- **Spec**: `.ralph-stm/runs/{session}/spec.md` - Original requirements
+- **Plan**: `.ralph-stm/runs/{session}/plan.md` - What was planned
+- **Events**: `.ralph-stm/runs/{session}/events/` - Complete history
 - **Verification**: Previous event has test results
 
 ---
@@ -22,7 +30,7 @@ You're in the cleanup phase (Phase 7). Time to finalize delivery.
 
 1. Generate comprehensive summary
 2. Create PR description (if applicable)
-3. Mark STM for removal
+3. Mark STM for removal (but don't delete - loop handles that)
 4. Document any follow-up items
 5. Transition to complete
 
@@ -107,24 +115,14 @@ Output this to console and/or save to a file (e.g., `PR_DESCRIPTION.md`).
 
 ## 3. STM Handling
 
-### Option A: Remove STM (Default)
+The multi-run STM structure means you DON'T need to delete the STM directory.
+The session will remain in `.ralph-stm/runs/{session}/` for reference.
+The external loop may archive it to `.ralph-stm/history/` after completion.
 
-The `.ralph-stm/` directory is temporary. It should be removed:
-
-1. Verify all important information captured in summary
-2. Delete `.ralph-stm/` directory
-
-### Option B: Archive STM
-
-If archival is preferred:
-1. Rename to `.ralph-stm-archive-{session_id}/`
-2. Or compress to `ralph-session-{session_id}.tar.gz`
-
-### Option C: Mark for Manual Removal
-
-If unable to delete (permissions, etc.):
-1. Note in final output that STM should be removed
-2. User can manually delete `.ralph-stm/`
+For this phase, just ensure:
+1. All important information is captured in summary
+2. State is marked complete
+3. User knows the session directory can be removed if desired
 
 ---
 
@@ -148,21 +146,40 @@ Document any items that weren't in scope but were identified:
 
 ---
 
-## 5. Final State Update
+## 5. State Update Reminder
 
-Update `state.json` to complete:
+**CRITICAL**: Before exiting, you MUST update state.json to complete status.
+
+### Final State Update (Phase 7 → 8)
 
 ```json
 {
   "phase": "complete",
   "phase_id": 8,
   "status": "complete",
+  "updated_at": "{timestamp}",
   "last_task": "cleanup-complete",
+  "last_event_id": {incremented},
   "checkpoint": {
     "can_resume": false,
     "resume_hint": "Workflow complete"
   }
 }
+```
+
+---
+
+## Yield Signal Reminder
+
+**CRITICAL**: Before exiting, output the yield signal:
+
+```
+[RALPH-YIELD]
+phase_completed: 7
+next_phase: 8
+status: complete
+work_done: cleanup complete - summary generated, PR description created
+[/RALPH-YIELD]
 ```
 
 ---
@@ -176,6 +193,7 @@ Write final cleanup event:
 
 **Timestamp**: {ISO-8601}
 **Phase**: cleanup (7)
+**Session**: {session_id}
 
 ## Summary Generated
 - Total files changed: {N}
@@ -187,10 +205,15 @@ Write final cleanup event:
 - Summary: {created}
 
 ## STM Status
-- Action taken: {deleted/archived/marked for removal}
+- Session preserved at: .ralph-stm/runs/{session}/
+- Can be archived or removed by user
 
 ## Follow-Up Items
 - {List any identified follow-ups}
+
+## State Changes
+- Previous: phase=verification (6), status=in_progress
+- Current: phase=complete (8), status=complete
 
 ## Workflow Status: COMPLETE
 ```
@@ -204,9 +227,10 @@ Before marking complete:
 - [ ] Summary generated with all changes
 - [ ] PR description created (if applicable)
 - [ ] Follow-up items documented
-- [ ] STM handled (deleted/archived/marked)
 - [ ] Final event logged
-- [ ] State updated to Phase 8
+- [ ] State updated to Phase 8 with status=complete
+- [ ] `updated_at` timestamp updated
+- [ ] **Yield signal output with status: complete**
 
 ---
 
@@ -239,7 +263,17 @@ PR description saved to: PR_DESCRIPTION.md
 Recommended Follow-Ups:
 • {Follow-up 1}
 
+Session: {session_id}
+STM Location: .ralph-stm/runs/{session}/
+
 ═══════════════════════════════════════════════════════
+
+[RALPH-YIELD]
+phase_completed: 7
+next_phase: 8
+status: complete
+work_done: cleanup complete - {feature name} implemented
+[/RALPH-YIELD]
 ```
 
 ---
@@ -248,11 +282,15 @@ Recommended Follow-Ups:
 
 After cleanup:
 
-1. Update state to Phase 8 (complete)
+1. Update state to Phase 8 (complete) with `status: "complete"`
 2. Provide final summary output
-3. Exit
+3. Output yield signal with `status: complete`
+4. Exit
 
-The external loop will detect `complete` status and terminate.
+The external loop will:
+- Detect `complete` status
+- Wait for 3 consecutive complete confirmations (3-consecutive-complete pattern)
+- Then terminate
 
 ---
 
@@ -264,10 +302,11 @@ If some features couldn't be completed:
 - Document what was completed
 - Note what wasn't and why
 - Still mark as complete (scope was reduced)
+- Include in follow-up items
 
 ### Cleanup Fails
 
-If STM deletion fails:
+If any cleanup step fails:
 - Note the failure
 - Provide manual cleanup instructions
 - Still transition to complete

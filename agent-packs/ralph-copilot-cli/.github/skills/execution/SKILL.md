@@ -5,12 +5,20 @@ description: Code implementation expertise for agentic development. Load this sk
 
 # Ralph Execution Skill
 
+## Skill Activation Confirmation
+
+You have successfully loaded the **execution** skill.
+Current phase: 5 (execution)
+Your objective this invocation: **Implement ONE plan phase, update state, output yield signal, and exit.**
+
+---
+
 You're in the execution phase (Phase 5). Time to implement the plan.
 
 ## Your Context
 
-- **Spec**: `.ralph-stm/spec.md` - What to build
-- **Plan**: `.ralph-stm/plan.md` - How to build it
+- **Spec**: `.ralph-stm/runs/{session}/spec.md` - What to build
+- **Plan**: `.ralph-stm/runs/{session}/plan.md` - How to build it
 - **State**: `current_plan_phase` in `state.json` - Which phase you're on
 
 ---
@@ -27,7 +35,8 @@ Each time you run in Phase 5, implement ONE plan phase:
 4. Test if appropriate
 5. Update state with `current_plan_phase + 1`
 6. Log your work
-7. Exit
+7. Output yield signal
+8. Exit
 
 ### Determining Current Task
 
@@ -129,11 +138,16 @@ current_plan_phase > total_plan_phases → Transition to Phase 6 (verification)
 
 ---
 
-## State Management
+## State Update Reminder
 
-### After Each Plan Phase
+**CRITICAL**: Before exiting, you MUST update state.json with:
 
-Update `state.json`:
+### Always Update
+- `updated_at`: Current ISO-8601 timestamp
+- `last_task`: Brief description of what you did
+- `last_event_id`: Increment if you wrote an event
+
+### After Each Plan Phase (staying in Phase 5)
 
 ```json
 {
@@ -141,7 +155,9 @@ Update `state.json`:
   "phase_id": 5,
   "status": "in_progress",
   "current_plan_phase": {previous + 1},
+  "updated_at": "{timestamp}",
   "last_task": "{description of what you implemented}",
+  "last_event_id": {incremented},
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "{what to do next}"
@@ -149,7 +165,7 @@ Update `state.json`:
 }
 ```
 
-### When All Plan Phases Complete
+### When All Plan Phases Complete (transition to Phase 6)
 
 ```json
 {
@@ -157,12 +173,29 @@ Update `state.json`:
   "phase_id": 6,
   "status": "in_progress",
   "current_plan_phase": {total},
+  "updated_at": "{timestamp}",
   "last_task": "execution-complete",
+  "last_event_id": {incremented},
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "Run verification tests against acceptance criteria"
   }
 }
+```
+
+---
+
+## Yield Signal Reminder
+
+**CRITICAL**: Before exiting, output the yield signal:
+
+```
+[RALPH-YIELD]
+phase_completed: 5
+next_phase: {5 or 6}
+status: in_progress
+work_done: {brief description of plan phase implemented}
+[/RALPH-YIELD]
 ```
 
 ---
@@ -176,6 +209,7 @@ Write detailed event logs for each execution phase:
 
 **Timestamp**: {ISO-8601}
 **Phase**: execution (5)
+**Session**: {session_id}
 **Plan Phase**: {current_plan_phase} of {total_plan_phases}
 
 ## Objective
@@ -200,6 +234,10 @@ Write detailed event logs for each execution phase:
 
 ## Issues Encountered
 - {Issue 1}: {How resolved}
+
+## State Changes
+- Previous: current_plan_phase={N-1}
+- Current: current_plan_phase={N}
 
 ## Next Plan Phase
 {What comes next in the plan}
@@ -239,7 +277,7 @@ Otherwise, proceed and document.
 
 During long operations (builds, tests, large file operations):
 
-Update `.ralph-stm/heartbeat.json`:
+Update `.ralph-stm/runs/{session}/heartbeat.json`:
 
 ```json
 {
@@ -262,8 +300,10 @@ Update every 2-3 minutes during long tasks.
 - [ ] Tests run if appropriate
 - [ ] Event log written
 - [ ] `current_plan_phase` incremented in state
+- [ ] `updated_at` timestamp updated
 - [ ] Checkpoint updated
 - [ ] Heartbeat updated
+- [ ] **Yield signal output**
 
 ---
 
@@ -273,7 +313,8 @@ When `current_plan_phase > total_plan_phases`:
 
 1. Update state to Phase 6 (verification)
 2. Write completion event
-3. Exit
+3. Output yield signal with `next_phase: 6`
+4. Exit
 
 Phase 6 will:
 - Run full test suite

@@ -5,6 +5,14 @@ description: Planning expertise for agentic development. Load this skill during 
 
 # Ralph Planning Skill
 
+## Skill Activation Confirmation
+
+You have successfully loaded the **planning** skill.
+Current phase: 1 (discovery), 2 (spec), or 3 (planning)
+Your objective this invocation: **Complete ONE planning phase, update state, output yield signal, and exit.**
+
+---
+
 You're in a planning phase. This skill guides you through discovery, specification, and planning.
 
 ## Phase Detection
@@ -58,6 +66,10 @@ Document findings in your event log:
 ```markdown
 # Event: {N} - Discovery - Codebase Analysis
 
+**Timestamp**: {ISO-8601}
+**Phase**: discovery (1)
+**Session**: {session_id}
+
 ## Project Overview
 - Type: {web app, CLI, library, etc.}
 - Language: {language} {version}
@@ -76,11 +88,18 @@ Document findings in your event log:
 
 ## Risks/Considerations
 - {Potential issues to address}
+
+## State Changes
+- Previous: phase=intake, status=in_progress
+- Current: phase=spec, status=in_progress
+
+## Next Action
+Write specification based on discovery findings
 ```
 
 ### Transition
 
-After discovery, update state to Phase 2 (spec).
+After discovery, update state to Phase 2 (spec) and exit with yield signal.
 
 ---
 
@@ -92,7 +111,7 @@ Create a clear, testable specification that captures what needs to be built.
 
 ### Spec Structure
 
-Write to `.ralph-stm/spec.md`:
+Write to `.ralph-stm/runs/{session}/spec.md`:
 
 ```markdown
 # Specification: {Feature Name}
@@ -172,7 +191,7 @@ Write to `.ralph-stm/spec.md`:
 
 ### Transition
 
-After spec complete, update state to Phase 3 (planning).
+After spec complete, update state to Phase 3 (planning) and exit with yield signal.
 
 ---
 
@@ -184,7 +203,7 @@ Create a phase-based plan that guides execution. NOT micro-tasks—logical phase
 
 ### Plan Structure
 
-Write to `.ralph-stm/plan.md`:
+Write to `.ralph-stm/runs/{session}/plan.md`:
 
 ```markdown
 # Implementation Plan: {Feature Name}
@@ -268,10 +287,24 @@ For "Add JWT authentication to API":
 After plan complete:
 1. Update `state.json` with `total_plan_phases` count
 2. Transition to Phase 4 (approval)
+3. Exit with yield signal
 
 ---
 
-## State Updates
+## State Update Reminder
+
+**CRITICAL**: Before exiting, you MUST update state.json with:
+
+### Always Update
+- `updated_at`: Current ISO-8601 timestamp
+- `last_task`: Brief description of what you did
+- `last_event_id`: Increment if you wrote an event
+
+### Update on Phase Change
+- `phase`: New phase name
+- `phase_id`: New phase number
+- `status`: Current status
+- `checkpoint.resume_hint`: What to do next
 
 ### After Discovery (Phase 1 → 2)
 
@@ -279,7 +312,9 @@ After plan complete:
 {
   "phase": "spec",
   "phase_id": 2,
+  "updated_at": "{timestamp}",
   "last_task": "discovery-complete",
+  "last_event_id": 1,
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "Write specification based on discovery findings"
@@ -293,7 +328,9 @@ After plan complete:
 {
   "phase": "planning",
   "phase_id": 3,
+  "updated_at": "{timestamp}",
   "last_task": "spec-complete",
+  "last_event_id": 2,
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "Create implementation plan based on spec"
@@ -308,13 +345,30 @@ After plan complete:
   "phase": "approval",
   "phase_id": 4,
   "status": "waiting_for_user",
+  "updated_at": "{timestamp}",
   "last_task": "plan-complete",
+  "last_event_id": 3,
   "total_plan_phases": {N},
   "checkpoint": {
     "can_resume": true,
     "resume_hint": "Waiting for user approval of spec and plan"
   }
 }
+```
+
+---
+
+## Yield Signal Reminder
+
+**CRITICAL**: Before exiting, output the yield signal:
+
+```
+[RALPH-YIELD]
+phase_completed: {current_phase_id}
+next_phase: {next_phase_id}
+status: {in_progress|waiting_for_user}
+work_done: {brief description}
+[/RALPH-YIELD]
 ```
 
 ---
@@ -329,6 +383,9 @@ Before transitioning out of planning phases:
 - [ ] Relevant code located
 - [ ] Patterns documented
 - [ ] Risks noted
+- [ ] Event log written
+- [ ] State updated
+- [ ] Yield signal output
 
 ### Spec Complete?
 - [ ] All requirements listed
@@ -336,6 +393,9 @@ Before transitioning out of planning phases:
 - [ ] Scope clearly bounded
 - [ ] Dependencies identified
 - [ ] Written to spec.md
+- [ ] Event log written
+- [ ] State updated
+- [ ] Yield signal output
 
 ### Plan Complete?
 - [ ] Phases in dependency order
@@ -344,6 +404,9 @@ Before transitioning out of planning phases:
 - [ ] Testing strategy included
 - [ ] Written to plan.md
 - [ ] total_plan_phases updated
+- [ ] Event log written
+- [ ] State updated
+- [ ] Yield signal output
 
 ---
 
@@ -353,4 +416,6 @@ Before transitioning out of planning phases:
 - Don't implement yet—that's Phase 5
 - Be thorough but not exhaustive
 - Document decisions in event logs
-- One complete task per invocation, then exit
+- **One complete phase per invocation, then exit**
+- **Always update state.json before exit**
+- **Always output yield signal before exit**

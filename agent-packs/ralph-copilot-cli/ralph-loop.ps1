@@ -4,11 +4,12 @@
 
 .DESCRIPTION
     This script manages the Ralph agent's execution loop, handling:
-    - STM initialization
+    - Multi-run STM initialization with session isolation
     - Agent restarts between tasks
     - Heartbeat monitoring and timeout detection
     - User communication (questions, approval)
     - Progress display
+    - 3-consecutive-complete pattern for reliable termination
 
 .PARAMETER Task
     The development task to execute. Required on first run.
@@ -38,12 +39,18 @@ param(
 
 # Configuration
 $STM_DIR = ".ralph-stm"
-$STATE_FILE = "$STM_DIR/state.json"
-$HEARTBEAT_FILE = "$STM_DIR/heartbeat.json"
-$QUESTION_FILE = "$STM_DIR/communication/pending-question.md"
-$RESPONSE_FILE = "$STM_DIR/communication/user-response.md"
-$APPROVAL_FILE = "$STM_DIR/communication/approval.md"
-$REJECTION_FILE = "$STM_DIR/communication/rejection.md"
+$ACTIVE_RUN_FILE = "$STM_DIR/active-run.json"
+$RUNS_DIR = "$STM_DIR/runs"
+$HISTORY_DIR = "$STM_DIR/history"
+
+# Dynamic paths (set after session resolution)
+$script:SESSION_DIR = $null
+$script:STATE_FILE = $null
+$script:HEARTBEAT_FILE = $null
+$script:QUESTION_FILE = $null
+$script:RESPONSE_FILE = $null
+$script:APPROVAL_FILE = $null
+$script:REJECTION_FILE = $null
 
 # Colors for output
 $Colors = @{
@@ -92,40 +99,80 @@ function Write-Phase {
     Write-Host "  Phase $PhaseId`: $phaseName" -ForegroundColor $Colors.Phase
 }
 
+function Get-SessionId {
+    $datePart = Get-Date -Format "yyyy-MM-dd"
+    $guidPart = [guid]::NewGuid().ToString().Substring(0, 8).ToLower()
+    return "$datePart-$guidPart"
+}
+
+function Set-SessionPaths {
+    param([string]$SessionId)
+    
+    $script:SESSION_DIR = "$RUNS_DIR/$SessionId"
+    $script:STATE_FILE = "$script:SESSION_DIR/state.json"
+    $script:HEARTBEAT_FILE = "$script:SESSION_DIR/heartbeat.json"
+    $script:QUESTION_FILE = "$script:SESSION_DIR/communication/pending-question.md"
+    $script:RESPONSE_FILE = "$script:SESSION_DIR/communication/user-response.md"
+    $script:APPROVAL_FILE = "$script:SESSION_DIR/communication/approval.md"
+    $script:REJECTION_FILE = "$script:SESSION_DIR/communication/rejection.md"
+}
+
+function Get-ActiveRun {
+    if (Test-Path $ACTIVE_RUN_FILE) {
+        return Get-Content $ACTIVE_RUN_FILE -Raw | ConvertFrom-Json
+    }
+    return $null
+}
+
 function Initialize-STM {
     param([string]$UserTask)
     
     Write-Host "  Initializing STM directory..." -ForegroundColor $Colors.Info
     
-    # Create directories
-    New-Item -ItemType Directory -Path $STM_DIR -Force | Out-Null
-    New-Item -ItemType Directory -Path "$STM_DIR/events" -Force | Out-Null
-    New-Item -ItemType Directory -Path "$STM_DIR/communication" -Force | Out-Null
-    
-    # Create initial state
-    $sessionId = "{0}-{1}" -f (Get-Date -Format "yyyy-MM-dd"), ([guid]::NewGuid().ToString().Substring(0, 8))
+    # Generate session ID
+    $sessionId = Get-SessionId
     $timestamp = Get-Date -Format "o"
     
+    # Create directory structure
+    New-Item -ItemType Directory -Path $STM_DIR -Force | Out-Null
+    New-Item -ItemType Directory -Path $RUNS_DIR -Force | Out-Null
+    New-Item -ItemType Directory -Path $HISTORY_DIR -Force | Out-Null
+    New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId/events" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId/communication" -Force | Out-Null
+    
+    # Set session paths
+    Set-SessionPaths -SessionId $sessionId
+    
+    # Create active-run.json
+    $activeRun = @{
+        current_run   = $sessionId
+        started_at    = $timestamp
+        last_activity = $timestamp
+    }
+    $activeRun | ConvertTo-Json | Set-Content -Path $ACTIVE_RUN_FILE -Encoding UTF8
+    
+    # Create initial state
     $state = @{
-        session_id        = $sessionId
-        created_at        = $timestamp
-        updated_at        = $timestamp
-        phase             = "intake"
-        phase_id          = 0
-        status            = "in_progress"
-        user_request      = $UserTask
+        session_id         = $sessionId
+        created_at         = $timestamp
+        updated_at         = $timestamp
+        phase              = "intake"
+        phase_id           = 0
+        status             = "in_progress"
+        user_request       = $UserTask
         current_plan_phase = 0
         total_plan_phases  = 0
-        last_task         = "stm-initialized"
-        last_event_id     = 0
-        error             = $null
-        checkpoint        = @{
+        last_task          = "stm-initialized"
+        last_event_id      = 0
+        error              = $null
+        checkpoint         = @{
             can_resume  = $true
             resume_hint = "Begin context discovery"
         }
     }
     
-    $state | ConvertTo-Json -Depth 10 | Set-Content -Path $STATE_FILE -Encoding UTF8
+    $state | ConvertTo-Json -Depth 10 | Set-Content -Path $script:STATE_FILE -Encoding UTF8
     
     # Initialize heartbeat
     Update-Heartbeat -Activity "Session initialized" -Task "init"
@@ -135,8 +182,8 @@ function Initialize-STM {
 }
 
 function Get-State {
-    if (Test-Path $STATE_FILE) {
-        return Get-Content $STATE_FILE -Raw | ConvertFrom-Json
+    if (Test-Path $script:STATE_FILE) {
+        return Get-Content $script:STATE_FILE -Raw | ConvertFrom-Json
     }
     return $null
 }
@@ -154,12 +201,19 @@ function Update-Heartbeat {
         pid       = $PID
     }
     
-    $heartbeat | ConvertTo-Json | Set-Content -Path $HEARTBEAT_FILE -Encoding UTF8
+    $heartbeat | ConvertTo-Json | Set-Content -Path $script:HEARTBEAT_FILE -Encoding UTF8
+    
+    # Also update active-run last_activity
+    if (Test-Path $ACTIVE_RUN_FILE) {
+        $activeRun = Get-Content $ACTIVE_RUN_FILE -Raw | ConvertFrom-Json
+        $activeRun.last_activity = Get-Date -Format "o"
+        $activeRun | ConvertTo-Json | Set-Content -Path $ACTIVE_RUN_FILE -Encoding UTF8
+    }
 }
 
 function Get-HeartbeatAge {
-    if (Test-Path $HEARTBEAT_FILE) {
-        $heartbeat = Get-Content $HEARTBEAT_FILE -Raw | ConvertFrom-Json
+    if (Test-Path $script:HEARTBEAT_FILE) {
+        $heartbeat = Get-Content $script:HEARTBEAT_FILE -Raw | ConvertFrom-Json
         $lastUpdate = [DateTime]::Parse($heartbeat.timestamp)
         $age = (Get-Date) - $lastUpdate
         return $age.TotalMinutes
@@ -173,13 +227,13 @@ function Test-Timeout {
 }
 
 function Handle-UserQuestion {
-    if (-not (Test-Path $QUESTION_FILE)) {
+    if (-not (Test-Path $script:QUESTION_FILE)) {
         return $false
     }
     
     Write-Header "Ralph Needs Your Input"
     
-    $questionContent = Get-Content $QUESTION_FILE -Raw
+    $questionContent = Get-Content $script:QUESTION_FILE -Raw
     Write-Host $questionContent -ForegroundColor $Colors.Info
     Write-Host ""
     
@@ -195,8 +249,8 @@ function Handle-UserQuestion {
 $response
 "@
     
-    Set-Content -Path $RESPONSE_FILE -Value $responseContent -Encoding UTF8
-    Remove-Item $QUESTION_FILE -Force
+    Set-Content -Path $script:RESPONSE_FILE -Value $responseContent -Encoding UTF8
+    Remove-Item $script:QUESTION_FILE -Force
     
     Write-Host ""
     Write-Host "  Response recorded. Continuing..." -ForegroundColor $Colors.Success
@@ -209,31 +263,34 @@ function Handle-Approval {
     
     Write-Header "Approval Required"
     
+    $specFile = "$script:SESSION_DIR/spec.md"
+    $planFile = "$script:SESSION_DIR/plan.md"
+    
     # Display spec summary
-    if (Test-Path "$STM_DIR/spec.md") {
+    if (Test-Path $specFile) {
         Write-Host "  === SPECIFICATION ===" -ForegroundColor $Colors.Phase
         Write-Host ""
-        $specContent = Get-Content "$STM_DIR/spec.md" -Raw
+        $specContent = Get-Content $specFile -Raw
         # Show first 50 lines or so
         $specLines = $specContent -split "`n"
         $previewLines = [Math]::Min(50, $specLines.Count)
         $specLines[0..($previewLines - 1)] | ForEach-Object { Write-Host "  $_" }
         if ($specLines.Count -gt 50) {
-            Write-Host "  ... (truncated, see .ralph-stm/spec.md for full spec)" -ForegroundColor $Colors.Warning
+            Write-Host "  ... (truncated, see $specFile for full spec)" -ForegroundColor $Colors.Warning
         }
         Write-Host ""
     }
     
     # Display plan summary
-    if (Test-Path "$STM_DIR/plan.md") {
+    if (Test-Path $planFile) {
         Write-Host "  === IMPLEMENTATION PLAN ===" -ForegroundColor $Colors.Phase
         Write-Host ""
-        $planContent = Get-Content "$STM_DIR/plan.md" -Raw
+        $planContent = Get-Content $planFile -Raw
         $planLines = $planContent -split "`n"
         $previewLines = [Math]::Min(50, $planLines.Count)
         $planLines[0..($previewLines - 1)] | ForEach-Object { Write-Host "  $_" }
         if ($planLines.Count -gt 50) {
-            Write-Host "  ... (truncated, see .ralph-stm/plan.md for full plan)" -ForegroundColor $Colors.Warning
+            Write-Host "  ... (truncated, see $planFile for full plan)" -ForegroundColor $Colors.Warning
         }
         Write-Host ""
     }
@@ -241,8 +298,8 @@ function Handle-Approval {
     Write-Host ""
     Write-Host "  Review the spec and plan above." -ForegroundColor $Colors.Info
     Write-Host "  Full documents available at:" -ForegroundColor $Colors.Info
-    Write-Host "    - $STM_DIR/spec.md" -ForegroundColor $Colors.Info
-    Write-Host "    - $STM_DIR/plan.md" -ForegroundColor $Colors.Info
+    Write-Host "    - $specFile" -ForegroundColor $Colors.Info
+    Write-Host "    - $planFile" -ForegroundColor $Colors.Info
     Write-Host ""
     
     $choice = Read-Host "Approve and proceed? (yes/no/feedback)"
@@ -256,7 +313,7 @@ function Handle-Approval {
 
 User approved the spec and plan to proceed with implementation.
 "@
-        Set-Content -Path $APPROVAL_FILE -Value $approvalContent -Encoding UTF8
+        Set-Content -Path $script:APPROVAL_FILE -Value $approvalContent -Encoding UTF8
         Write-Host ""
         Write-Host "  Approved! Proceeding with implementation..." -ForegroundColor $Colors.Success
         return $true
@@ -276,7 +333,7 @@ User approved the spec and plan to proceed with implementation.
 ## Feedback
 $feedback
 "@
-        Set-Content -Path $REJECTION_FILE -Value $rejectionContent -Encoding UTF8
+        Set-Content -Path $script:REJECTION_FILE -Value $rejectionContent -Encoding UTF8
         Write-Host ""
         Write-Host "  Feedback recorded. Ralph will revise..." -ForegroundColor $Colors.Warning
         return $true
@@ -347,6 +404,35 @@ function Invoke-Ralph {
     }
 }
 
+function Archive-Run {
+    param([string]$SessionId)
+    
+    Write-Host "  Archiving session $SessionId..." -ForegroundColor $Colors.Info
+    
+    $sourceDir = "$RUNS_DIR/$SessionId"
+    $destDir = "$HISTORY_DIR/$SessionId"
+    
+    if (Test-Path $sourceDir) {
+        # Create summary
+        $state = Get-Content "$sourceDir/state.json" -Raw | ConvertFrom-Json
+        $summary = @{
+            session_id   = $SessionId
+            archived_at  = Get-Date -Format "o"
+            final_phase  = $state.phase
+            final_status = $state.status
+            user_request = $state.user_request
+        }
+        
+        # Move to history
+        Move-Item $sourceDir $destDir -Force
+        
+        # Save summary
+        $summary | ConvertTo-Json | Set-Content -Path "$destDir/summary.json" -Encoding UTF8
+        
+        Write-Host "  Session archived to history." -ForegroundColor $Colors.Success
+    }
+}
+
 # Signal handling for graceful exit
 try {
     $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
@@ -362,48 +448,63 @@ catch {
 # Main execution
 Write-Header "Ralph - Agentic Developer"
 
-# Check for existing session
-$state = Get-State
+# Check for existing session via active-run.json
+$activeRun = Get-ActiveRun
 
 if ($Resume) {
-    if (-not $state) {
+    if (-not $activeRun) {
         Write-Host "  No existing session found. Start a new task instead." -ForegroundColor $Colors.Error
         exit 1
     }
-    Write-Host "  Resuming session: $($state.session_id)" -ForegroundColor $Colors.Success
+    Set-SessionPaths -SessionId $activeRun.current_run
+    $state = Get-State
+    if (-not $state) {
+        Write-Host "  Session state file missing. Start a new task." -ForegroundColor $Colors.Error
+        exit 1
+    }
+    Write-Host "  Resuming session: $($activeRun.current_run)" -ForegroundColor $Colors.Success
     Write-Status "Phase" $state.phase
     Write-Status "Status" $state.status
 }
-elseif ($state -and -not $Task) {
-    Write-Host "  Existing session found: $($state.session_id)" -ForegroundColor $Colors.Warning
+elseif ($activeRun -and -not $Task) {
+    Set-SessionPaths -SessionId $activeRun.current_run
+    $state = Get-State
+    Write-Host "  Existing session found: $($activeRun.current_run)" -ForegroundColor $Colors.Warning
     $choice = Read-Host "  Resume existing session? (yes/no)"
     if ($choice -match "^y(es)?$") {
         $Resume = $true
     }
     else {
-        Write-Host "  Clearing existing session..." -ForegroundColor $Colors.Info
-        Remove-Item -Path $STM_DIR -Recurse -Force
+        Write-Host "  Archiving existing session..." -ForegroundColor $Colors.Info
+        Archive-Run -SessionId $activeRun.current_run
+        Remove-Item $ACTIVE_RUN_FILE -Force
         $state = $null
+        $activeRun = $null
     }
 }
 
-if (-not $state -and -not $Task) {
+if (-not $activeRun -and -not $Task) {
     Write-Host "  Usage: .\ralph-loop.ps1 -Task `"Your development task`"" -ForegroundColor $Colors.Error
     Write-Host "         .\ralph-loop.ps1 -Resume" -ForegroundColor $Colors.Error
     exit 1
 }
 
-if (-not $state) {
+if (-not $activeRun) {
     $state = Initialize-STM -UserTask $Task
+}
+else {
+    $state = Get-State
 }
 
 $prompt = if ($Task -and -not $Resume) { $Task } else { "Continue the development task" }
 
-# Main loop
+# Main loop with 3-consecutive-complete pattern
 $iteration = 0
 $maxIterations = 100  # Safety limit
+$CompleteCount = 0
+$MaxCompleteCount = 3
 
-while ($state.status -ne "complete" -and $state.phase -ne "complete" -and $iteration -lt $maxIterations) {
+while ($CompleteCount -lt $MaxCompleteCount -and $iteration -lt $maxIterations) {
     $iteration++
     
     Write-Host ""
@@ -430,9 +531,18 @@ while ($state.status -ne "complete" -and $state.phase -ne "complete" -and $itera
         }
     }
     
-    # Skip agent invocation if complete
+    # Check for complete status (3-consecutive-complete pattern)
     if ($state.status -eq "complete" -or $state.phase -eq "complete") {
-        break
+        $CompleteCount++
+        Write-Host "  Complete signal $CompleteCount of $MaxCompleteCount" -ForegroundColor $Colors.Info
+        
+        if ($CompleteCount -ge $MaxCompleteCount) {
+            break
+        }
+        # Continue loop for confirmation - agent will re-confirm complete state
+    }
+    else {
+        $CompleteCount = 0  # Reset on any non-complete
     }
     
     # Run the agent
@@ -467,7 +577,7 @@ while ($state.status -ne "complete" -and $state.phase -ne "complete" -and $itera
 }
 
 # Completion
-if ($state.status -eq "complete" -or $state.phase -eq "complete") {
+if ($CompleteCount -ge $MaxCompleteCount) {
     Write-Header "Task Complete!"
     Write-Host "  Ralph has completed the development task." -ForegroundColor $Colors.Success
     Write-Host ""
@@ -482,6 +592,7 @@ if ($state.status -eq "complete" -or $state.phase -eq "complete") {
     
     Write-Host ""
     Write-Host "  The .ralph-stm directory can be safely removed." -ForegroundColor $Colors.Info
+    Write-Host "  Or keep it - new tasks will create isolated sessions." -ForegroundColor $Colors.Info
 }
 elseif ($iteration -ge $maxIterations) {
     Write-Host ""
