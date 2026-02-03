@@ -29,7 +29,7 @@ Output File:
 
 Instructions:
 - Format according to standard template
-- Ensure all 12 sections are present
+- Ensure all 14 sections are present
 - Include metadata header
 - Verify confidence scores are present
 - Perform quality checks
@@ -52,12 +52,15 @@ Transform the draft into the final format with:
 - Proper heading hierarchy
 - Standardized section structure
 - Clear navigation
+- Auto-generated Table of Contents
 
 ### Step 3: Quality Checks
 
 Before writing, verify:
-- [ ] All 12 sections present
+- [ ] All 14 sections present
 - [ ] Each section has confidence score
+- [ ] Table of Contents generated
+- [ ] Quick Summary included (5-10 bullets, max 150 words)
 - [ ] No placeholder text remains (unless intentional)
 - [ ] Links and references are consistent
 - [ ] Tables are properly formatted
@@ -72,11 +75,43 @@ Write the polished context pack to the output location.
 ```markdown
 # {Name} — Context Pack
 
+## Table of Contents
+- [Metadata](#metadata)
+- [Quick Summary](#quick-summary)
+- [1. Overview & Purpose](#1-overview--purpose)
+- [2. Architectural Overview](#2-architectural-overview)
+- [3. Key Files & Locations](#3-key-files--locations)
+- [4. Entry Points & Triggers](#4-entry-points--triggers)
+- [5. Public Contracts](#5-public-contracts)
+- [6. Dependencies](#6-dependencies)
+- [7. Domain Concepts](#7-domain-concepts)
+- [8. Patterns & Practices](#8-patterns--practices)
+- [9. Constraints & Risks](#9-constraints--risks)
+- [10. Error Handling](#10-error-handling)
+- [11. Test Strategy](#11-test-strategy)
+- [12. Common Development Tasks](#12-common-development-tasks)
+- [13. Change Guidance](#13-change-guidance)
+- [14. Open Questions](#14-open-questions)
+- [Appendix](#appendix)
+
 ## Metadata
 - **Type:** Feature | Horizontal Capability
 - **Created:** {YYYY-MM-DD}
 - **Overall Confidence:** {X}/5
 - **Last Updated:** {YYYY-MM-DD}
+
+---
+
+## Quick Summary
+> 5-10 bullet points, max 150 words
+
+- **What:** {One-sentence description of this feature/capability}
+- **Pattern:** {Primary architectural pattern used (e.g., Manager-Repository, CQRS)}
+- **Key Limits:** {Critical constraints or limits (e.g., max batch size, rate limits)}
+- **Key Files:** {2-3 most important files to understand}
+- **Entry Point:** {Primary entry point for developers}
+- {Additional key point}
+- {Additional key point}
 
 ---
 
@@ -119,27 +154,7 @@ Write the polished context pack to the output location.
 
 ---
 
-## 3. Entry Points & Triggers
-**Confidence:** X/5
-
-### APIs
-| Method | Route | Purpose |
-|--------|-------|---------|
-| {GET/POST/etc} | {/path} | {description} |
-
-### Events
-| Event | Trigger | Handler |
-|-------|---------|---------|
-| {name} | {when} | {where} |
-
-### Jobs/Schedules
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| {name} | {cron/interval} | {what it does} |
-
----
-
-## 4. Code Inventory
+## 3. Key Files & Locations
 **Confidence:** X/5
 
 ### Entry Points / Controllers
@@ -166,6 +181,26 @@ Write the polished context pack to the output location.
 | File | Purpose |
 |------|---------|
 | `{path}` | {description} |
+
+---
+
+## 4. Entry Points & Triggers
+**Confidence:** X/5
+
+### APIs
+| Method | Route | Purpose |
+|--------|-------|---------|
+| {GET/POST/etc} | {/path} | {description} |
+
+### Events
+| Event | Trigger | Handler |
+|-------|---------|---------|
+| {name} | {when} | {where} |
+
+### Jobs/Schedules
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| {name} | {cron/interval} | {what it does} |
 
 ---
 
@@ -249,9 +284,32 @@ Write the polished context pack to the output location.
 ### Backward Compatibility
 {What must be maintained for existing consumers}
 
+### Performance Limits
+| Limit | Value | Impact |
+|-------|-------|--------|
+| {limit name} | {value/threshold} | {what happens when exceeded} |
+
 ---
 
-## 10. Test Strategy
+## 10. Error Handling
+**Confidence:** X/5
+
+### Exception Mapping
+| Exception | HTTP Status | When Thrown |
+|-----------|-------------|-------------|
+| {ExceptionType} | {4xx/5xx} | {conditions that trigger} |
+
+### Error Codes / States
+| Code | Meaning | Recovery |
+|------|---------|----------|
+| {error code} | {what it means} | {how to recover/handle} |
+
+### Error Handling Patterns
+{Common patterns used for error handling in this feature}
+
+---
+
+## 11. Test Strategy
 **Confidence:** X/5
 
 ### Test Inventory
@@ -269,7 +327,29 @@ Write the polished context pack to the output location.
 
 ---
 
-## 11. Change Guidance
+## 12. Common Development Tasks
+**Confidence:** X/5
+
+### Task: Adding a New Field
+1. Add property to contract/model
+2. Add retrieval logic to data access layer
+3. Add conversion/mapping logic
+4. Update tests
+
+### Task: Adding a New Endpoint
+1. Add method signature to interface
+2. Implement in manager/service
+3. Add controller endpoint
+4. Add tests
+
+### Task: {Domain-Specific Task}
+1. {Step 1}
+2. {Step 2}
+3. {Step 3}
+
+---
+
+## 13. Change Guidance
 **Confidence:** X/5
 
 ### Safe Modification Areas
@@ -289,7 +369,7 @@ Write the polished context pack to the output location.
 
 ---
 
-## 12. Open Questions
+## 14. Open Questions
 **Confidence:** X/5
 
 ### Unverified Assumptions
@@ -306,21 +386,38 @@ Write the polished context pack to the output location.
 
 ---
 
-## Appendix: File Index
+## Appendix
 
-### All Files
+### File Index
+
 | File | Category | Purpose |
 |------|----------|---------|
 | `{path}` | {category} | {brief description} |
+
+### Related Features
+| Feature | Relationship |
+|---------|--------------|
+| {feature name} | {how it relates to this feature} |
 ```
 
 ## Formatting Rules
 
 ### Headings
 - `#` for document title only
-- `##` for main sections (1-12 + Appendix)
+- `##` for main sections (1-14 + Appendix)
 - `###` for subsections
 - `####` for sub-subsections (use sparingly)
+
+### Table of Contents
+- Generate automatically from `##` headings
+- Include anchor links for navigation
+- Place immediately after title, before Metadata
+
+### Quick Summary
+- Place after Metadata, before Section 1
+- Limit to 5-10 bullet points
+- Maximum 150 words total
+- Required fields: What, Pattern, Key Limits, Key Files, Entry Point
 
 ### Tables
 - Use tables for structured data
@@ -336,7 +433,7 @@ Write the polished context pack to the output location.
 ### Confidence Scores
 - Always format as: `**Confidence:** X/5`
 - Place immediately after section heading
-- Include for all 12 main sections
+- Include for all 14 main sections
 
 ## Quality Checklist
 
@@ -344,9 +441,11 @@ Before completing, verify:
 
 ### Structure
 - [ ] Title follows format: `{Name} — Context Pack`
+- [ ] Table of Contents present with anchor links
 - [ ] Metadata section is complete
-- [ ] All 12 sections present in order
-- [ ] Appendix included
+- [ ] Quick Summary present (5-10 bullets, max 150 words)
+- [ ] All 14 sections present in order
+- [ ] Appendix included with Related Features
 
 ### Content
 - [ ] No TODO or placeholder markers (unless intentional gaps)
@@ -382,7 +481,8 @@ Context pack written successfully.
 Output: .context-packs/{output_file}
 Type: {feature|horizontal}
 Overall Confidence: {X}/5
-Sections: 12/12
+Sections: 14/14
 Word Count: ~{count}
 
 Quality checks passed: {count}/{total}
+```

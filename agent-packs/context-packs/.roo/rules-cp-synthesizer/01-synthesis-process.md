@@ -50,22 +50,24 @@ Read each analysis file and extract:
 
 ### Step 2: Organize by Output Section
 
-Map analysis findings to the 12 standard context pack sections:
+Map analysis findings to the 14 standard context pack sections:
 
 | Output Section | Primary Sources |
 |----------------|-----------------|
 | 1. Overview & Purpose | overview analysis, domain concepts from all |
 | 2. Architectural Overview | architecture analysis |
-| 3. Entry Points & Triggers | contracts analysis, architecture |
-| 4. Code Inventory | all analyses (file tables) |
+| 3. Key Files & Locations | all analyses (file tables) |
+| 4. Entry Points & Triggers | contracts analysis, architecture |
 | 5. Public Contracts | contracts analysis |
 | 6. Dependencies | dependencies analysis |
 | 7. Domain Concepts | overview, all domain concept tables |
 | 8. Patterns & Practices | patterns analysis |
 | 9. Constraints & Risks | constraints analysis, uncertainties from all |
-| 10. Test Strategy | tests analysis |
-| 11. Change Guidance | patterns, constraints, architecture |
-| 12. Open Questions | all uncertainties |
+| 10. Error Handling | contracts analysis, constraints analysis |
+| 11. Test Strategy | tests analysis |
+| 12. Common Development Tasks | patterns analysis, change guidance |
+| 13. Change Guidance | patterns, constraints, architecture |
+| 14. Open Questions | all uncertainties |
 
 ### Step 3: Resolve Conflicts
 
@@ -113,6 +115,19 @@ For sections with insufficient data:
 
 ---
 
+## Quick Summary
+> 5-10 bullet points, max 150 words
+
+- **What:** {One-sentence description synthesized from overview}
+- **Pattern:** {Primary architectural pattern from architecture analysis}
+- **Key Limits:** {Critical constraints from constraints analysis}
+- **Key Files:** {2-3 most important files from file inventory}
+- **Entry Point:** {Primary entry point from entry points analysis}
+- {Additional key point}
+- {Additional key point}
+
+---
+
 ## 1. Overview & Purpose
 **Confidence:** X/5
 **Sources:** {list of contributing analysis files}
@@ -149,7 +164,40 @@ For sections with insufficient data:
 
 ---
 
-## 3. Entry Points & Triggers
+## 3. Key Files & Locations
+**Confidence:** X/5
+**Sources:** {list}
+
+{Combined file inventory from all analyses}
+
+### Entry Points / Controllers
+| File | Purpose |
+|------|---------|
+| `{path}` | {description} |
+
+### Managers / Orchestrators
+| File | Purpose |
+|------|---------|
+| `{path}` | {description} |
+
+### Domain Logic / Services
+| File | Purpose |
+|------|---------|
+| `{path}` | {description} |
+
+### Data Access
+| File | Purpose |
+|------|---------|
+| `{path}` | {description} |
+
+### Models / Contracts
+| File | Purpose |
+|------|---------|
+| `{path}` | {description} |
+
+---
+
+## 4. Entry Points & Triggers
 **Confidence:** X/5
 **Sources:** {list}
 
@@ -158,20 +206,6 @@ For sections with insufficient data:
 | Entry Point | Type | Purpose |
 |-------------|------|---------|
 | {endpoint} | API | {purpose} |
-
----
-
-## 4. Code Inventory
-**Confidence:** X/5
-**Sources:** {list}
-
-{Combined file inventory from all analyses}
-
-### By Layer
-{Grouped files}
-
-### By Responsibility
-{Grouped files}
 
 ---
 
@@ -229,9 +263,35 @@ For sections with insufficient data:
 ### High-Risk Areas
 {Proceed with caution}
 
+### Performance Limits
+| Limit | Value | Impact |
+|-------|-------|--------|
+| {limit name} | {value} | {impact when exceeded} |
+
 ---
 
-## 10. Test Strategy
+## 10. Error Handling
+**Confidence:** X/5
+**Sources:** contracts analysis, constraints analysis
+
+{Synthesized error handling information}
+
+### Exception Mapping
+| Exception | HTTP Status | When Thrown |
+|-----------|-------------|-------------|
+| {ExceptionType} | {4xx/5xx} | {conditions} |
+
+### Error Codes / States
+| Code | Meaning | Recovery |
+|------|---------|----------|
+| {code} | {meaning} | {recovery action} |
+
+### Error Handling Patterns
+{Common patterns observed}
+
+---
+
+## 11. Test Strategy
 **Confidence:** X/5
 **Sources:** {list}
 
@@ -239,7 +299,30 @@ For sections with insufficient data:
 
 ---
 
-## 11. Change Guidance
+## 12. Common Development Tasks
+**Confidence:** X/5
+**Sources:** patterns analysis, change guidance
+
+{Synthesized from patterns and common modifications observed}
+
+### Task: Adding a New Field
+1. Add property to contract/model
+2. Add retrieval logic to data access layer
+3. Add conversion/mapping logic
+4. Update tests
+
+### Task: Adding a New Endpoint
+1. Add method signature to interface
+2. Implement in manager/service
+3. Add controller endpoint
+4. Add tests
+
+### Task: {Domain-Specific Task}
+1. {Steps inferred from patterns}
+
+---
+
+## 13. Change Guidance
 **Confidence:** X/5
 **Sources:** {list}
 
@@ -253,7 +336,7 @@ For sections with insufficient data:
 
 ---
 
-## 12. Open Questions
+## 14. Open Questions
 **Confidence:** X/5
 **Sources:** all uncertainties
 
@@ -277,7 +360,18 @@ For sections with insufficient data:
 |---------|------------|-------|
 | 1. Overview | X/5 | {notes} |
 | 2. Architecture | X/5 | {notes} |
-| ... | ... | ... |
+| 3. Key Files | X/5 | {notes} |
+| 4. Entry Points | X/5 | {notes} |
+| 5. Contracts | X/5 | {notes} |
+| 6. Dependencies | X/5 | {notes} |
+| 7. Domain Concepts | X/5 | {notes} |
+| 8. Patterns | X/5 | {notes} |
+| 9. Constraints | X/5 | {notes} |
+| 10. Error Handling | X/5 | {notes} |
+| 11. Test Strategy | X/5 | {notes} |
+| 12. Dev Tasks | X/5 | {notes} |
+| 13. Change Guidance | X/5 | {notes} |
+| 14. Open Questions | X/5 | {notes} |
 | **Overall** | **X/5** | {calculation method} |
 ```
 
@@ -299,8 +393,9 @@ If an analysis file is missing or empty:
 ## Completion Criteria
 
 Synthesis is complete when:
-- [ ] All 12 sections have content (even if minimal)
+- [ ] All 14 sections have content (even if minimal)
 - [ ] Each section has a confidence score
+- [ ] Quick Summary is populated (5-10 bullets, max 150 words)
 - [ ] Conflicts are documented
 - [ ] Gaps are noted
 - [ ] Output file is written
@@ -319,9 +414,10 @@ After writing the output file, report:
 ```
 Synthesis complete for {context_pack_name}
 
-Sections completed: 12/12
+Sections completed: 14/14
 Overall confidence: {average}/5
 Conflicts resolved: {count}
 Gaps identified: {count}
 
 Output: .context-packs/_temp/{task_id}/synthesis/draft.md
+```
