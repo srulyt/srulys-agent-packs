@@ -5,7 +5,19 @@ description: Planning expertise for agentic development. Load this skill during 
 
 # Ralph Planning Skill
 
-**Loaded**: planning skill (phases 1-3). **Objective**: Complete ONE phase, update state, yield signal, exit.
+## MANDATORY: Skill Loaded Confirmation
+
+You MUST output this as your FIRST action after reading state:
+
+```
+[RALPH-SKILL] Loaded: .github/skills/planning/SKILL.md for phase {N} ({phase_name})
+```
+
+If you don't output this, the loop may not recognize skill loading occurred.
+
+---
+
+**Loaded**: planning skill (phases 1-3). **Objective**: Complete ONE phase, update state, create signal file, yield signal, exit.
 
 ---
 
@@ -170,7 +182,7 @@ During Phase 1, explore the codebase systematically:
 
 ### Transition
 
-After discovery, update state to Phase 2 (spec) and exit with yield signal.
+After discovery, update state to Phase 2 (spec), create signal file, and exit with yield signal.
 
 ---
 
@@ -262,7 +274,7 @@ Write to `.ralph-stm/runs/{session}/spec.md`:
 
 ### Transition
 
-After spec complete, update state to Phase 3 (planning) and exit with yield signal.
+After spec complete, update state to Phase 3 (planning), create signal file, and exit with yield signal.
 
 ---
 
@@ -366,8 +378,9 @@ For "Add JWT authentication to API":
 
 After plan complete:
 1. Update `state.json` with `total_plan_phases` count
-2. Transition to Phase 4 (approval)
-3. Exit with yield signal
+2. Create signal file
+3. Transition to Phase 4 (approval)
+4. Exit with yield signal
 
 ---
 
@@ -438,9 +451,46 @@ After plan complete:
 
 ---
 
+## Phase Completion Reminder
+
+Before exiting, you MUST:
+
+1. Update state.json with all required fields
+2. Create signal file: `signals/phase-{N}-complete.signal`
+3. Write event log
+4. Output yield signal
+5. Exit immediately - do NOT start next phase
+
+### Signal File Format
+
+Path: `.ralph-stm/runs/{session}/signals/phase-{N}-complete.signal`
+
+```json
+{
+  "phase_id": {N},
+  "phase_name": "{name}",
+  "completed_at": "{ISO-8601}",
+  "next_phase": {N+1},
+  "skill_loaded": ".github/skills/planning/SKILL.md",
+  "artifacts_created": ["discovery-notes.md", "events/001-discovery-complete.md"]
+}
+```
+
+---
+
 ## Yield Signal
 
-See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
+Output before every exit:
+
+```
+[RALPH-YIELD]
+phase_completed: {N}
+next_phase: {N+1}
+status: {in_progress|waiting_for_user}
+signal_file: .ralph-stm/runs/{session}/signals/phase-{N}-complete.signal
+work_done: {brief description}
+[/RALPH-YIELD]
+```
 
 ---
 
@@ -457,6 +507,7 @@ Before transitioning out of planning phases:
 - [ ] **Convention snapshot filled**
 - [ ] Risks noted
 - [ ] Event log written
+- [ ] **Signal file created**
 - [ ] State updated
 - [ ] Yield signal output
 
@@ -467,6 +518,7 @@ Before transitioning out of planning phases:
 - [ ] Dependencies identified
 - [ ] Written to spec.md
 - [ ] Event log written
+- [ ] **Signal file created**
 - [ ] State updated
 - [ ] Yield signal output
 
@@ -478,6 +530,7 @@ Before transitioning out of planning phases:
 - [ ] Written to plan.md
 - [ ] total_plan_phases updated
 - [ ] Event log written
+- [ ] **Signal file created**
 - [ ] State updated
 - [ ] Yield signal output
 
@@ -489,6 +542,8 @@ Before transitioning out of planning phases:
 - Don't implement yet—that's Phase 5
 - Be thorough but not exhaustive
 - Document decisions in event logs
+- **Output [RALPH-SKILL] confirmation as first action**
+- **Create signal file before exit**
 - **One complete phase per invocation, then exit**
 - **Always update state.json before exit**
 - **Always output yield signal before exit**

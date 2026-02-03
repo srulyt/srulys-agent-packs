@@ -5,7 +5,19 @@ description: Cleanup and delivery expertise for agentic development. Load this s
 
 # Ralph Cleanup Skill
 
-**Loaded**: cleanup skill (phase 7). **Objective**: Generate summary, prepare deliverables, update state to complete, yield signal, exit.
+## MANDATORY: Skill Loaded Confirmation
+
+You MUST output this as your FIRST action after reading state:
+
+```
+[RALPH-SKILL] Loaded: .github/skills/cleanup/SKILL.md for phase 7 (cleanup)
+```
+
+If you don't output this, the loop may not recognize skill loading occurred.
+
+---
+
+**Loaded**: cleanup skill (phase 7). **Objective**: Generate summary, prepare deliverables, update state to complete, create signal file, yield signal, exit.
 
 ---
 
@@ -26,7 +38,7 @@ You're in the cleanup phase (Phase 7). Time to finalize delivery.
 
 1. Generate comprehensive summary
 2. Create PR description (if applicable)
-3. Mark STM for removal (but don't delete - loop handles that)
+3. Mark STM for archival (but don't delete - loop handles that)
 4. Document any follow-up items
 5. Transition to complete
 
@@ -270,9 +282,47 @@ Document any items that weren't in scope but were identified:
 
 ---
 
+## Phase Completion Reminder
+
+Before exiting, you MUST:
+
+1. Update state.json with all required fields
+2. Create signal file: `signals/phase-7-complete.signal`
+3. Write event log
+4. Output yield signal
+5. Exit immediately - do NOT continue after cleanup
+
+### Signal File Format
+
+Path: `.ralph-stm/runs/{session}/signals/phase-7-complete.signal`
+
+```json
+{
+  "phase_id": 7,
+  "phase_name": "cleanup",
+  "completed_at": "{ISO-8601}",
+  "next_phase": 8,
+  "skill_loaded": ".github/skills/cleanup/SKILL.md",
+  "pr_description_created": true,
+  "follow_up_items": 3
+}
+```
+
+---
+
 ## Yield Signal
 
-See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
+Output before every exit:
+
+```
+[RALPH-YIELD]
+phase_completed: 7
+next_phase: 8
+status: complete
+signal_file: .ralph-stm/runs/{session}/signals/phase-7-complete.signal
+work_done: cleanup complete - {feature name} implemented
+[/RALPH-YIELD]
+```
 
 ---
 
@@ -316,6 +366,7 @@ Write final cleanup event:
 
 Before marking complete:
 
+- [ ] **[RALPH-SKILL] confirmation output at start**
 - [ ] **All 8 cleanup categories checked**
 - [ ] **Debug code removed**
 - [ ] **AI slop removed**
@@ -324,6 +375,7 @@ Before marking complete:
 - [ ] PR description created (if applicable)
 - [ ] Follow-up items documented
 - [ ] Final event logged
+- [ ] **Signal file created**
 - [ ] State updated to Phase 8 with status=complete
 - [ ] `updated_at` timestamp updated
 - [ ] **Yield signal output with status: complete**
@@ -368,6 +420,7 @@ STM Location: .ralph-stm/runs/{session}/
 phase_completed: 7
 next_phase: 8
 status: complete
+signal_file: .ralph-stm/runs/{session}/signals/phase-7-complete.signal
 work_done: cleanup complete - {feature name} implemented
 [/RALPH-YIELD]
 ```
@@ -379,13 +432,14 @@ work_done: cleanup complete - {feature name} implemented
 After cleanup:
 
 1. Update state to Phase 8 (complete) with `status: "complete"`
-2. Provide final summary output
-3. Output yield signal with `status: complete`
-4. Exit
+2. Create signal file
+3. Provide final summary output
+4. Output yield signal with `status: complete`
+5. Exit
 
 The external loop will:
 - Detect `complete` status
-- Wait for 3 consecutive complete confirmations (3-consecutive-complete pattern)
+- Run a verification pass
 - Then terminate
 
 ---

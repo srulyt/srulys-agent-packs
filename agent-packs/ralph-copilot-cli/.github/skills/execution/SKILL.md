@@ -5,7 +5,19 @@ description: Code implementation expertise for agentic development. Load this sk
 
 # Ralph Execution Skill
 
-**Loaded**: execution skill (phase 5). **Objective**: Implement ONE plan phase, update state, yield signal, exit.
+## MANDATORY: Skill Loaded Confirmation
+
+You MUST output this as your FIRST action after reading state:
+
+```
+[RALPH-SKILL] Loaded: .github/skills/execution/SKILL.md for phase 5 (execution)
+```
+
+If you don't output this, the loop may not recognize skill loading occurred.
+
+---
+
+**Loaded**: execution skill (phase 5). **Objective**: Implement ONE plan phase, update state, create signal file, yield signal, exit.
 
 ---
 
@@ -31,9 +43,10 @@ Each time you run in Phase 5, implement ONE plan phase:
 3. Implement that phase completely
 4. Test if appropriate
 5. Update state with `current_plan_phase + 1`
-6. Log your work
-7. Output yield signal
-8. Exit
+6. Create signal file
+7. Log your work
+8. Output yield signal
+9. Exit
 
 ### Determining Current Task
 
@@ -304,9 +317,47 @@ DON'T:
 
 ---
 
+## Phase Completion Reminder
+
+Before exiting, you MUST:
+
+1. Update state.json with all required fields
+2. Create signal file: `signals/phase-5-{plan_phase}-complete.signal`
+3. Write event log
+4. Output yield signal
+5. Exit immediately - do NOT start next plan phase
+
+### Signal File Format
+
+Path: `.ralph-stm/runs/{session}/signals/phase-5-{plan_phase}-complete.signal`
+
+```json
+{
+  "phase_id": 5,
+  "phase_name": "execution",
+  "plan_phase": {current_plan_phase},
+  "completed_at": "{ISO-8601}",
+  "next_phase": 5,
+  "skill_loaded": ".github/skills/execution/SKILL.md",
+  "artifacts_created": ["list", "of", "files", "created"]
+}
+```
+
+---
+
 ## Yield Signal
 
-See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
+Output before every exit:
+
+```
+[RALPH-YIELD]
+phase_completed: 5
+next_phase: {5 or 6}
+status: in_progress
+signal_file: .ralph-stm/runs/{session}/signals/phase-5-{N}-complete.signal
+work_done: {description of what was implemented}
+[/RALPH-YIELD]
+```
 
 ---
 
@@ -393,27 +444,28 @@ Update `.ralph-stm/runs/{session}/heartbeat.json`:
 {
   "timestamp": "{ISO-8601}",
   "activity": "implementing {plan phase name}",
-  "task": "phase-{N}-{brief-description}",
-  "pid": 0
+  "expected_duration_minutes": {estimate},
+  "task": "phase-{N}-{brief-description}"
 }
 ```
 
-Update every 2-3 minutes during long tasks.
+Update every 2-3 minutes during long tasks that don't produce file changes.
 
 ---
 
 ## Checklist Before Exit
 
+- [ ] **[RALPH-SKILL] confirmation output at start**
 - [ ] Plan phase objective achieved
 - [ ] **All changes within scope** (no drive-by refactors)
 - [ ] All files created/modified as needed
 - [ ] Code compiles/runs without errors
 - [ ] Tests run if appropriate
 - [ ] Event log written
+- [ ] **Signal file created**
 - [ ] `current_plan_phase` incremented in state
 - [ ] `updated_at` timestamp updated
 - [ ] Checkpoint updated
-- [ ] Heartbeat updated
 - [ ] **Yield signal output**
 
 ---
@@ -423,9 +475,10 @@ Update every 2-3 minutes during long tasks.
 When `current_plan_phase > total_plan_phases`:
 
 1. Update state to Phase 6 (verification)
-2. Write completion event
-3. Output yield signal with `next_phase: 6`
-4. Exit
+2. Create signal file
+3. Write completion event
+4. Output yield signal with `next_phase: 6`
+5. Exit
 
 Phase 6 will:
 - Run full test suite

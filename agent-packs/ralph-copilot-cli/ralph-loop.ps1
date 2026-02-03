@@ -6,10 +6,10 @@
     This script manages the Ralph agent's execution loop, handling:
     - Multi-run STM initialization with session isolation
     - Agent restarts between tasks
-    - Heartbeat monitoring and timeout detection
+    - Activity-based timeout detection (file monitoring)
     - User communication (questions, approval)
     - Progress display
-    - 3-consecutive-complete pattern for reliable termination
+    - Single completion + verification pass
 
 .PARAMETER Task
     The development task to execute. Required on first run.
@@ -18,7 +18,7 @@
     Resume from existing STM state instead of starting fresh.
 
 .PARAMETER Timeout
-    Heartbeat timeout in minutes. Default: 15
+    Activity timeout in minutes. Default: 15
 
 .EXAMPLE
     .\ralph-loop.ps1 -Task "Add user authentication with JWT"
@@ -51,6 +51,7 @@ $script:QUESTION_FILE = $null
 $script:RESPONSE_FILE = $null
 $script:APPROVAL_FILE = $null
 $script:REJECTION_FILE = $null
+$script:SIGNALS_DIR = $null
 
 # Colors for output
 $Colors = @{
@@ -115,6 +116,7 @@ function Set-SessionPaths {
     $script:RESPONSE_FILE = "$script:SESSION_DIR/communication/user-response.md"
     $script:APPROVAL_FILE = "$script:SESSION_DIR/communication/approval.md"
     $script:REJECTION_FILE = "$script:SESSION_DIR/communication/rejection.md"
+    $script:SIGNALS_DIR = "$script:SESSION_DIR/signals"
 }
 
 function Get-ActiveRun {
@@ -140,6 +142,7 @@ function Initialize-STM {
     New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId" -Force | Out-Null
     New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId/events" -Force | Out-Null
     New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId/communication" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$RUNS_DIR/$sessionId/signals" -Force | Out-Null
     
     # Set session paths
     Set-SessionPaths -SessionId $sessionId
@@ -218,19 +221,40 @@ function Update-Heartbeat {
     }
 }
 
-function Get-HeartbeatAge {
-    if (Test-Path $script:HEARTBEAT_FILE) {
-        $heartbeat = Get-Content $script:HEARTBEAT_FILE -Raw | ConvertFrom-Json
-        $lastUpdate = [DateTime]::Parse($heartbeat.timestamp)
-        $age = (Get-Date) - $lastUpdate
-        return $age.TotalMinutes
+function Get-SessionActivityAge {
+    # Monitor for ANY file changes in the session directory
+    $latestFile = Get-ChildItem $script:SESSION_DIR -Recurse -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+    
+    if ($latestFile) {
+        return ((Get-Date) - $latestFile.LastWriteTime).TotalMinutes
     }
-    return 0
+    
+    return [double]::MaxValue  # No files = ancient
 }
 
 function Test-Timeout {
-    $age = Get-HeartbeatAge
+    $age = Get-SessionActivityAge
     return $age -gt $Timeout
+}
+
+function Test-PhaseSignal {
+    param([int]$PhaseId)
+    
+    $signalPath = "$script:SIGNALS_DIR/phase-$PhaseId-complete.signal"
+    
+    if (-not (Test-Path $signalPath)) {
+        return $false
+    }
+    
+    try {
+        $signal = Get-Content $signalPath -Raw | ConvertFrom-Json
+        return $signal.phase_id -eq $PhaseId
+    }
+    catch {
+        return $false
+    }
 }
 
 function Handle-UserQuestion {
@@ -440,6 +464,23 @@ function Archive-Run {
     }
 }
 
+# Verification prompt for completion pass
+$VERIFICATION_PROMPT = @"
+You have signaled task completion. Perform a final verification:
+
+1. Read the original user request from state.json
+2. Read the spec.md acceptance criteria
+3. Verify each criterion is satisfied
+4. Check that all planned files exist
+5. Run any quick validation (tests, lint, build)
+
+If all good, update state.json status to "verified" and output:
+[RALPH-VERIFIED] All acceptance criteria satisfied
+
+If issues found, update state.json status to "issues_found" and output:
+[RALPH-ISSUES] Found problems: {list}
+"@
+
 # Signal handling for graceful exit
 try {
     $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
@@ -505,13 +546,12 @@ else {
 
 $prompt = if ($Task -and -not $Resume) { $Task } else { "Continue the development task" }
 
-# Main loop with 3-consecutive-complete pattern
+# Main loop with single completion + verification pattern
 $iteration = 0
 $maxIterations = 100  # Safety limit
-$CompleteCount = 0
-$MaxCompleteCount = 3
+$verificationDone = $false
 
-while ($CompleteCount -lt $MaxCompleteCount -and $iteration -lt $maxIterations) {
+while ($iteration -lt $maxIterations) {
     $iteration++
     
     Write-Host ""
@@ -520,9 +560,9 @@ while ($CompleteCount -lt $MaxCompleteCount -and $iteration -lt $maxIterations) 
     Write-Phase -Phase $state.phase -PhaseId $state.phase_id
     Show-Progress -State $state
     
-    # Check for timeout
+    # Check for timeout using activity detection
     if (Test-Timeout) {
-        Write-Host "  ⚠ Heartbeat timeout detected. Restarting agent..." -ForegroundColor $Colors.Warning
+        Write-Host "  ⚠ Activity timeout detected. Restarting agent..." -ForegroundColor $Colors.Warning
     }
     
     # Handle user questions
@@ -538,18 +578,28 @@ while ($CompleteCount -lt $MaxCompleteCount -and $iteration -lt $maxIterations) 
         }
     }
     
-    # Check for complete status (3-consecutive-complete pattern)
-    if ($state.status -eq "complete" -or $state.phase -eq "complete") {
-        $CompleteCount++
-        Write-Host "  Complete signal $CompleteCount of $MaxCompleteCount" -ForegroundColor $Colors.Info
+    # Check for complete status - single completion + verification pass
+    if (($state.status -eq "complete" -or $state.phase -eq "complete") -and -not $verificationDone) {
+        Write-Host "  Task signaled complete. Running verification pass..." -ForegroundColor $Colors.Info
         
-        if ($CompleteCount -ge $MaxCompleteCount) {
+        Invoke-Ralph -Prompt $VERIFICATION_PROMPT
+        $verificationDone = $true
+        $state = Get-State
+        
+        if ($state.status -eq "verified") {
+            Write-Host "  ✓ Verification passed!" -ForegroundColor $Colors.Success
+            break  # Success - exit loop
+        }
+        elseif ($state.status -eq "issues_found") {
+            Write-Host "  Verification found issues. Presenting to user..." -ForegroundColor $Colors.Warning
+            # Could restart for fixes or exit for manual intervention
+            # For now, break and let user decide
             break
         }
-        # Continue loop for confirmation - agent will re-confirm complete state
     }
-    else {
-        $CompleteCount = 0  # Reset on any non-complete
+    elseif (($state.status -eq "complete" -or $state.phase -eq "complete") -and $verificationDone) {
+        # Already verified, exit
+        break
     }
     
     # Run the agent
@@ -559,11 +609,22 @@ while ($CompleteCount -lt $MaxCompleteCount -and $iteration -lt $maxIterations) 
     $prompt = "Continue the development task"
     
     # Read updated state
+    $previousPhase = $state.phase_id
     $state = Get-State
     
     if (-not $state) {
         Write-Host "  Error: State file missing after agent run" -ForegroundColor $Colors.Error
         exit 1
+    }
+    
+    $currentPhase = $state.phase_id
+    
+    # Validate phase completion signal
+    if ($currentPhase -gt $previousPhase) {
+        # Phase advanced - verify signal exists
+        if (-not (Test-PhaseSignal -PhaseId $previousPhase)) {
+            Write-Host "  Warning: Phase $previousPhase completed without signal file" -ForegroundColor $Colors.Warning
+        }
     }
     
     # Handle error status
@@ -584,7 +645,24 @@ while ($CompleteCount -lt $MaxCompleteCount -and $iteration -lt $maxIterations) 
 }
 
 # Completion
-if ($CompleteCount -ge $MaxCompleteCount) {
+if ($state.status -eq "verified") {
+    Write-Header "Task Complete - Verified!"
+    Write-Host "  Ralph has completed and verified the development task." -ForegroundColor $Colors.Success
+    Write-Host ""
+    Write-Status "Session" $state.session_id
+    Write-Status "Total Iterations" $iteration
+    Write-Host ""
+    
+    # Check for PR description
+    if (Test-Path "PR_DESCRIPTION.md") {
+        Write-Host "  PR description saved to: PR_DESCRIPTION.md" -ForegroundColor $Colors.Info
+    }
+    
+    Write-Host ""
+    Write-Host "  The .ralph-stm directory can be safely removed." -ForegroundColor $Colors.Info
+    Write-Host "  Or keep it - new tasks will create isolated sessions." -ForegroundColor $Colors.Info
+}
+elseif ($state.status -eq "complete" -or $state.phase -eq "complete") {
     Write-Header "Task Complete!"
     Write-Host "  Ralph has completed the development task." -ForegroundColor $Colors.Success
     Write-Host ""
@@ -600,6 +678,15 @@ if ($CompleteCount -ge $MaxCompleteCount) {
     Write-Host ""
     Write-Host "  The .ralph-stm directory can be safely removed." -ForegroundColor $Colors.Info
     Write-Host "  Or keep it - new tasks will create isolated sessions." -ForegroundColor $Colors.Info
+}
+elseif ($state.status -eq "issues_found") {
+    Write-Header "Verification Found Issues"
+    Write-Host "  The verification pass identified issues that need attention." -ForegroundColor $Colors.Warning
+    Write-Host ""
+    Write-Status "Session" $state.session_id
+    Write-Host ""
+    Write-Host "  Review the verification output above and decide next steps." -ForegroundColor $Colors.Info
+    Write-Host "  Run with -Resume to continue after addressing issues." -ForegroundColor $Colors.Info
 }
 elseif ($iteration -ge $maxIterations) {
     Write-Host ""

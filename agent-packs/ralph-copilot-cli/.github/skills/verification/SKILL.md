@@ -5,7 +5,19 @@ description: Testing and validation expertise for agentic development. Load this
 
 # Ralph Verification Skill
 
-**Loaded**: verification skill (phase 6). **Objective**: Verify all acceptance criteria, update state, yield signal, exit.
+## MANDATORY: Skill Loaded Confirmation
+
+You MUST output this as your FIRST action after reading state:
+
+```
+[RALPH-SKILL] Loaded: .github/skills/verification/SKILL.md for phase 6 (verification)
+```
+
+If you don't output this, the loop may not recognize skill loading occurred.
+
+---
+
+**Loaded**: verification skill (phase 6). **Objective**: Verify all acceptance criteria, update state, create signal file, yield signal, exit.
 
 ---
 
@@ -28,6 +40,41 @@ You're in the verification phase (Phase 6). Time to validate the implementation.
 3. Check for regressions
 4. Validate code quality
 5. Either pass → cleanup (Phase 7), or fail → execution (Phase 5) with fixes
+
+---
+
+## Verification Checklist (Loop Verification Pass)
+
+When invoked with verification prompt, use this checklist:
+
+```markdown
+## Verification Checklist
+
+### 1. Original Request Alignment
+- [ ] Read user_request from state.json
+- [ ] Implementation addresses the core ask
+- [ ] No major misinterpretation
+
+### 2. Acceptance Criteria
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| AC1: {name} | ✓/✗ | {how verified} |
+| AC2: {name} | ✓/✗ | {how verified} |
+| ... | | |
+
+### 3. Planned Files Exist
+- [ ] All files in plan.md were created/modified
+- [ ] No planned files missing
+
+### 4. Quick Validation
+- [ ] Build succeeds (if applicable)
+- [ ] Tests pass (if applicable)
+- [ ] No obvious errors in console/output
+
+### 5. Result
+- [ ] ALL PASS → Output [RALPH-VERIFIED]
+- [ ] ANY FAIL → Output [RALPH-ISSUES]
+```
 
 ---
 
@@ -201,6 +248,24 @@ Update `state.json`:
 
 ---
 
+## Loop Verification Pass Outputs
+
+When the loop runs verification after task completion, output ONE of:
+
+### All Good:
+```
+[RALPH-VERIFIED] All acceptance criteria satisfied
+```
+
+### Issues Found:
+```
+[RALPH-ISSUES] Found problems: {brief list of issues}
+```
+
+The loop uses these signals to determine next steps.
+
+---
+
 ## Handling Test Failures
 
 ### Analyze the Failure
@@ -276,9 +341,48 @@ If multiple issues:
 
 ---
 
+## Phase Completion Reminder
+
+Before exiting, you MUST:
+
+1. Update state.json with all required fields
+2. Create signal file: `signals/phase-6-complete.signal`
+3. Write event log
+4. Output yield signal
+5. Exit immediately - do NOT start next phase
+
+### Signal File Format
+
+Path: `.ralph-stm/runs/{session}/signals/phase-6-complete.signal`
+
+```json
+{
+  "phase_id": 6,
+  "phase_name": "verification",
+  "completed_at": "{ISO-8601}",
+  "next_phase": 7,
+  "skill_loaded": ".github/skills/verification/SKILL.md",
+  "verification_result": "passed",
+  "criteria_checked": 8,
+  "criteria_passed": 8
+}
+```
+
+---
+
 ## Yield Signal
 
-See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
+Output before every exit:
+
+```
+[RALPH-YIELD]
+phase_completed: 6
+next_phase: {7 or 5}
+status: in_progress
+signal_file: .ralph-stm/runs/{session}/signals/phase-6-complete.signal
+work_done: {verification summary}
+[/RALPH-YIELD]
+```
 
 ---
 
@@ -468,21 +572,25 @@ For simple failures, you may attempt a fix in the same invocation:
 ## Checklist Before Exit
 
 ### If Passing
+- [ ] **[RALPH-SKILL] confirmation output at start**
 - [ ] **All 8 checks completed**
 - [ ] **Scope compliance verified**
 - [ ] All acceptance criteria verified
 - [ ] All tests pass
 - [ ] **No AI artifacts detected**
 - [ ] Verification event logged
+- [ ] **Signal file created**
 - [ ] State updated to Phase 7 (cleanup)
 - [ ] `updated_at` timestamp updated
 - [ ] **Yield signal output**
 
 ### If Failing
+- [ ] **[RALPH-SKILL] confirmation output at start**
 - [ ] All failures documented
 - [ ] **Failure handoff format used**
 - [ ] Fix instructions clear
 - [ ] Verification event logged
+- [ ] **Signal file created**
 - [ ] State updated to Phase 5 (execution)
 - [ ] `updated_at` timestamp updated
 - [ ] Checkpoint contains failure details
