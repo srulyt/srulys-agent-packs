@@ -5,11 +5,7 @@ description: Cleanup and delivery expertise for agentic development. Load this s
 
 # Ralph Cleanup Skill
 
-## Skill Activation Confirmation
-
-You have successfully loaded the **cleanup** skill.
-Current phase: 7 (cleanup)
-Your objective this invocation: **Generate summary, prepare deliverables, update state to complete, output yield signal, and exit.**
+**Loaded**: cleanup skill (phase 7). **Objective**: Generate summary, prepare deliverables, update state to complete, yield signal, exit.
 
 ---
 
@@ -114,12 +110,28 @@ These items inform follow-up recommendations without scope creep.
 ## Protected Files
 
 Never modify or delete during cleanup:
-- `*.csproj`, `*.sln` (project files)
-- `package.json`, `package-lock.json`
-- `.gitignore`, `.env*`
+
+**Project Configuration**:
+- `*.csproj`, `*.sln` (C#/.NET project files)
+- `package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`
+- `pyproject.toml`, `setup.py`, `requirements.txt`, `Pipfile`, `Pipfile.lock`
+- `Cargo.toml`, `Cargo.lock`
+- `go.mod`, `go.sum`
+- `Gemfile`, `Gemfile.lock`
+- `composer.json`, `composer.lock`
+
+**Build/Environment Configuration**:
+- `.gitignore`, `.env*`, `.nvmrc`, `.python-version`
 - `Dockerfile`, `docker-compose*.yml`
-- `*.lock`, `yarn.lock`
-- `tsconfig.json`, `*.config.js`, `*.config.ts`
+- `Makefile`, `CMakeLists.txt`
+
+**Tool Configuration**:
+- `tsconfig.json`, `jsconfig.json`
+- `*.config.js`, `*.config.ts`, `*.config.mjs`
+- `.eslintrc.*`, `.prettierrc.*`, `.stylelintrc.*`
+- `jest.config.*`, `vitest.config.*`
+- `.babelrc*`, `babel.config.*`
+- `webpack.config.*`, `vite.config.*`, `rollup.config.*`
 
 If cleanup affects these files, note it but don't auto-fix.
 
@@ -258,18 +270,9 @@ Document any items that weren't in scope but were identified:
 
 ---
 
-## Yield Signal Reminder
+## Yield Signal
 
-**CRITICAL**: Before exiting, output the yield signal:
-
-```
-[RALPH-YIELD]
-phase_completed: 7
-next_phase: 8
-status: complete
-work_done: cleanup complete - summary generated, PR description created
-[/RALPH-YIELD]
-```
+See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
 
 ---
 

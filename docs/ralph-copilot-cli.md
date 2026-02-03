@@ -29,10 +29,10 @@ Ralph differs from other agent packs in this repository:
 | Component | File | Purpose |
 |-----------|------|---------|
 | Agent Definition | `.github/agents/ralph.agent.md` | Core agent logic and phase handling |
-| Planning Skill | `.github/skills/ralph/planning.SKILL.md` | Planning phase guidance |
-| Execution Skill | `.github/skills/ralph/execution.SKILL.md` | Execution phase guidance |
-| Verification Skill | `.github/skills/ralph/verification.SKILL.md` | Verification phase guidance |
-| Cleanup Skill | `.github/skills/ralph/cleanup.SKILL.md` | Cleanup phase guidance |
+| Planning Skill | `.github/skills/planning/SKILL.md` | Planning phase guidance |
+| Execution Skill | `.github/skills/execution/SKILL.md` | Execution phase guidance |
+| Verification Skill | `.github/skills/verification/SKILL.md` | Verification phase guidance |
+| Cleanup Skill | `.github/skills/cleanup/SKILL.md` | Cleanup phase guidance |
 | PowerShell Loop | `ralph-loop.ps1` | Windows external orchestrator |
 | Bash Loop | `ralph-loop.sh` | Unix/macOS external orchestrator |
 
@@ -109,15 +109,24 @@ Ralph maintains state in `.ralph-stm/`:
 
 ```
 .ralph-stm/
-├── state.json              # Current workflow state (phase, status)
-├── spec.md                 # Requirements specification
-├── plan.md                 # Implementation plan
-├── events/                 # Timestamped task logs
-│   └── 001-intake-complete.md
-├── communication/          # User interaction files
-│   ├── pending-question.md
-│   └── user-response.md
-└── heartbeat.json          # Activity timestamp for timeout detection
+├── active-run.json              # Points to current run
+├── runs/                        # Session-isolated runs
+│   └── {session-id}/            # Date-UUID format (e.g., 2026-02-02-a1b2c3d4)
+│       ├── state.json           # Workflow state (phase, status)
+│       ├── spec.md              # Requirements specification
+│       ├── plan.md              # Implementation plan
+│       ├── discovery-notes.md   # Codebase patterns discovered
+│       ├── events/              # Timestamped task logs
+│       │   └── {NNN}-{phase}-{action}.md
+│       ├── communication/       # User interaction files
+│       │   ├── pending-question.md
+│       │   ├── user-response.md
+│       │   ├── approval.md
+│       │   └── rejection.md
+│       └── heartbeat.json       # Activity timestamp for timeout detection
+└── history/                     # Archived completed sessions
+    └── {session-id}/
+        └── summary.json
 ```
 
 ### State File Schema
@@ -142,13 +151,20 @@ See [`agent-packs/ralph-copilot-cli/README.md`](../agent-packs/ralph-copilot-cli
 
 2. **Copy to your project**:
    ```bash
-   mkdir -p .github/agents .github/skills/ralph
+   mkdir -p .github/agents .github/skills/planning .github/skills/execution .github/skills/verification .github/skills/cleanup
    cp agent-packs/ralph-copilot-cli/.github/agents/ralph.agent.md .github/agents/
-   cp agent-packs/ralph-copilot-cli/.github/skills/ralph/*.SKILL.md .github/skills/ralph/
    cp agent-packs/ralph-copilot-cli/ralph-loop.* ./
    ```
 
-3. **Add to .gitignore**:
+3. **Copy skills**:
+   ```bash
+   cp agent-packs/ralph-copilot-cli/.github/skills/planning/SKILL.md .github/skills/planning/
+   cp agent-packs/ralph-copilot-cli/.github/skills/execution/SKILL.md .github/skills/execution/
+   cp agent-packs/ralph-copilot-cli/.github/skills/verification/SKILL.md .github/skills/verification/
+   cp agent-packs/ralph-copilot-cli/.github/skills/cleanup/SKILL.md .github/skills/cleanup/
+   ```
+
+4. **Add to .gitignore**:
    ```gitignore
    .ralph-stm/
    ```
@@ -218,11 +234,14 @@ ralph-copilot-cli/
     ├── agents/
     │   └── ralph.agent.md         # Main agent definition
     └── skills/
-        └── ralph/
-            ├── planning.SKILL.md      # Planning phase
-            ├── execution.SKILL.md     # Execution phase
-            ├── verification.SKILL.md  # Verification phase
-            └── cleanup.SKILL.md       # Cleanup phase
+        ├── planning/
+        │   └── SKILL.md           # Planning phase
+        ├── execution/
+        │   └── SKILL.md           # Execution phase
+        ├── verification/
+        │   └── SKILL.md           # Verification phase
+        └── cleanup/
+            └── SKILL.md           # Cleanup phase
 ```
 
 ## Comparison with Agentic Developer

@@ -183,7 +183,14 @@ function Initialize-STM {
 
 function Get-State {
     if (Test-Path $script:STATE_FILE) {
-        return Get-Content $script:STATE_FILE -Raw | ConvertFrom-Json
+        try {
+            return Get-Content $script:STATE_FILE -Raw | ConvertFrom-Json
+        }
+        catch {
+            Write-Host "  Warning: State file corrupted or invalid JSON." -ForegroundColor $Colors.Warning
+            Write-Host "  Run with -Task to start a fresh session, or fix the file manually." -ForegroundColor $Colors.Info
+            return $null
+        }
     }
     return $null
 }

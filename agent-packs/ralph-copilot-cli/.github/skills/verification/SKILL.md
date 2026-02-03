@@ -5,11 +5,7 @@ description: Testing and validation expertise for agentic development. Load this
 
 # Ralph Verification Skill
 
-## Skill Activation Confirmation
-
-You have successfully loaded the **verification** skill.
-Current phase: 6 (verification)
-Your objective this invocation: **Verify all acceptance criteria, update state, output yield signal, and exit.**
+**Loaded**: verification skill (phase 6). **Objective**: Verify all acceptance criteria, update state, yield signal, exit.
 
 ---
 
@@ -280,29 +276,9 @@ If multiple issues:
 
 ---
 
-## Yield Signal Reminder
+## Yield Signal
 
-**CRITICAL**: Before exiting, output the yield signal:
-
-### If Passed:
-```
-[RALPH-YIELD]
-phase_completed: 6
-next_phase: 7
-status: in_progress
-work_done: verification passed - all acceptance criteria met
-[/RALPH-YIELD]
-```
-
-### If Failed:
-```
-[RALPH-YIELD]
-phase_completed: 6
-next_phase: 5
-status: in_progress
-work_done: verification failed - {N} issues require fixes
-[/RALPH-YIELD]
-```
+See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
 
 ---
 

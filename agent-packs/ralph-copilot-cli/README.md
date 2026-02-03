@@ -31,13 +31,19 @@ Copy the following files to your project:
 ```bash
 # Create directory structure
 mkdir -p .github/agents
-mkdir -p .github/skills/ralph
+mkdir -p .github/skills/planning
+mkdir -p .github/skills/execution
+mkdir -p .github/skills/verification
+mkdir -p .github/skills/cleanup
 
 # Copy agent file
 cp .github/agents/ralph.agent.md YOUR_PROJECT/.github/agents/
 
 # Copy skills
-cp .github/skills/ralph/*.SKILL.md YOUR_PROJECT/.github/skills/ralph/
+cp .github/skills/planning/SKILL.md YOUR_PROJECT/.github/skills/planning/
+cp .github/skills/execution/SKILL.md YOUR_PROJECT/.github/skills/execution/
+cp .github/skills/verification/SKILL.md YOUR_PROJECT/.github/skills/verification/
+cp .github/skills/cleanup/SKILL.md YOUR_PROJECT/.github/skills/cleanup/
 
 # Copy loop scripts to project root
 cp ralph-loop.ps1 YOUR_PROJECT/
@@ -51,15 +57,27 @@ Copy to your personal Copilot configuration:
 ```bash
 # On Windows
 mkdir -p ~/.copilot/agents
-mkdir -p ~/.copilot/skills/ralph
+mkdir -p ~/.copilot/skills/planning
+mkdir -p ~/.copilot/skills/execution
+mkdir -p ~/.copilot/skills/verification
+mkdir -p ~/.copilot/skills/cleanup
 cp .github/agents/ralph.agent.md ~/.copilot/agents/
-cp .github/skills/ralph/*.SKILL.md ~/.copilot/skills/ralph/
+cp .github/skills/planning/SKILL.md ~/.copilot/skills/planning/
+cp .github/skills/execution/SKILL.md ~/.copilot/skills/execution/
+cp .github/skills/verification/SKILL.md ~/.copilot/skills/verification/
+cp .github/skills/cleanup/SKILL.md ~/.copilot/skills/cleanup/
 
 # On macOS/Linux
 mkdir -p ~/.copilot/agents
-mkdir -p ~/.copilot/skills/ralph
+mkdir -p ~/.copilot/skills/planning
+mkdir -p ~/.copilot/skills/execution
+mkdir -p ~/.copilot/skills/verification
+mkdir -p ~/.copilot/skills/cleanup
 cp .github/agents/ralph.agent.md ~/.copilot/agents/
-cp .github/skills/ralph/*.SKILL.md ~/.copilot/skills/ralph/
+cp .github/skills/planning/SKILL.md ~/.copilot/skills/planning/
+cp .github/skills/execution/SKILL.md ~/.copilot/skills/execution/
+cp .github/skills/verification/SKILL.md ~/.copilot/skills/verification/
+cp .github/skills/cleanup/SKILL.md ~/.copilot/skills/cleanup/
 ```
 
 ### Add to .gitignore
@@ -176,15 +194,24 @@ Ralph maintains state in `.ralph-stm/`:
 
 ```
 .ralph-stm/
-├── state.json              # Current workflow state
-├── spec.md                 # Requirements specification
-├── plan.md                 # Implementation plan
-├── events/                 # Timestamped task logs
-│   └── 001-intake-complete.md
-├── communication/          # User interaction files
-│   ├── pending-question.md
-│   └── user-response.md
-└── heartbeat.json          # Activity timestamp
+├── active-run.json              # Points to current run
+├── runs/                        # Session-isolated runs
+│   └── {session-id}/            # Date-UUID format (e.g., 2026-02-02-a1b2c3d4)
+│       ├── state.json           # Workflow state
+│       ├── spec.md              # Requirements specification
+│       ├── plan.md              # Implementation plan
+│       ├── discovery-notes.md   # Codebase patterns discovered
+│       ├── events/              # Timestamped task logs
+│       │   └── {NNN}-{phase}-{action}.md
+│       ├── communication/       # User interaction files
+│       │   ├── pending-question.md
+│       │   ├── user-response.md
+│       │   ├── approval.md
+│       │   └── rejection.md
+│       └── heartbeat.json       # Activity timestamp
+└── history/                     # Archived completed sessions
+    └── {session-id}/
+        └── summary.json
 ```
 
 ## Troubleshooting
@@ -237,10 +264,10 @@ chmod +x ralph-loop.sh
 | File | Purpose |
 |------|---------|
 | `.github/agents/ralph.agent.md` | Main agent definition |
-| `.github/skills/ralph/planning.SKILL.md` | Planning phase guidance |
-| `.github/skills/ralph/execution.SKILL.md` | Execution phase guidance |
-| `.github/skills/ralph/verification.SKILL.md` | Verification phase guidance |
-| `.github/skills/ralph/cleanup.SKILL.md` | Cleanup phase guidance |
+| `.github/skills/planning/SKILL.md` | Planning phase guidance |
+| `.github/skills/execution/SKILL.md` | Execution phase guidance |
+| `.github/skills/verification/SKILL.md` | Verification phase guidance |
+| `.github/skills/cleanup/SKILL.md` | Cleanup phase guidance |
 | `ralph-loop.ps1` | PowerShell loop script |
 | `ralph-loop.sh` | Bash loop script |
 

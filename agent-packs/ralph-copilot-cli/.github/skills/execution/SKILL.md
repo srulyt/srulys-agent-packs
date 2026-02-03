@@ -5,11 +5,7 @@ description: Code implementation expertise for agentic development. Load this sk
 
 # Ralph Execution Skill
 
-## Skill Activation Confirmation
-
-You have successfully loaded the **execution** skill.
-Current phase: 5 (execution)
-Your objective this invocation: **Implement ONE plan phase, update state, output yield signal, and exit.**
+**Loaded**: execution skill (phase 5). **Objective**: Implement ONE plan phase, update state, yield signal, exit.
 
 ---
 
@@ -20,6 +16,7 @@ You're in the execution phase (Phase 5). Time to implement the plan.
 - **Spec**: `.ralph-stm/runs/{session}/spec.md` - What to build
 - **Plan**: `.ralph-stm/runs/{session}/plan.md` - How to build it
 - **State**: `current_plan_phase` in `state.json` - Which phase you're on
+- **Discovery Notes**: `.ralph-stm/runs/{session}/discovery-notes.md` - Conventions and patterns observed
 
 ---
 
@@ -68,6 +65,16 @@ current_plan_phase > total_plan_phases → Transition to Phase 6 (verification)
    - Add code comments where logic is complex
    - Update any relevant documentation
    - Log decisions in event files
+
+### Convention Compliance
+
+Before implementing, review `discovery-notes.md` for:
+- Variable/method naming conventions observed in the codebase
+- Comment styles and documentation patterns
+- Error handling approaches
+- Logging conventions
+
+Match these patterns in your implementation to maintain consistency.
 
 ### File Operations
 
@@ -297,18 +304,9 @@ DON'T:
 
 ---
 
-## Yield Signal Reminder
+## Yield Signal
 
-**CRITICAL**: Before exiting, output the yield signal:
-
-```
-[RALPH-YIELD]
-phase_completed: 5
-next_phase: {5 or 6}
-status: in_progress
-work_done: {brief description of plan phase implemented}
-[/RALPH-YIELD]
-```
+See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
 
 ---
 

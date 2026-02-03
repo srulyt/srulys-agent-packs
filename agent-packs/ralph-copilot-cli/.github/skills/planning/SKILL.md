@@ -5,11 +5,7 @@ description: Planning expertise for agentic development. Load this skill during 
 
 # Ralph Planning Skill
 
-## Skill Activation Confirmation
-
-You have successfully loaded the **planning** skill.
-Current phase: 1 (discovery), 2 (spec), or 3 (planning)
-Your objective this invocation: **Complete ONE planning phase, update state, output yield signal, and exit.**
+**Loaded**: planning skill (phases 1-3). **Objective**: Complete ONE phase, update state, yield signal, exit.
 
 ---
 
@@ -442,18 +438,9 @@ After plan complete:
 
 ---
 
-## Yield Signal Reminder
+## Yield Signal
 
-**CRITICAL**: Before exiting, output the yield signal:
-
-```
-[RALPH-YIELD]
-phase_completed: {current_phase_id}
-next_phase: {next_phase_id}
-status: {in_progress|waiting_for_user}
-work_done: {brief description}
-[/RALPH-YIELD]
-```
+See main agent file (`ralph.agent.md`) for yield signal format. Output before every exit.
 
 ---
 

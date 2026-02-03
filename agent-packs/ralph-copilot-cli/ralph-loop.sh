@@ -103,12 +103,17 @@ json_get() {
     local file="$1"
     local key="$2"
     
+    if [[ ! -f "$file" ]]; then
+        echo ""
+        return
+    fi
+    
     if command -v jq &> /dev/null; then
-        jq -r ".$key // empty" "$file" 2>/dev/null
+        jq -r ".$key // empty" "$file" 2>/dev/null || echo ""
     else
         # Basic fallback - works for simple string values
         grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$file" 2>/dev/null | \
-            sed 's/.*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1
+            sed 's/.*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1 || echo ""
     fi
 }
 
@@ -420,7 +425,11 @@ invoke_ralph() {
     update_heartbeat "Invoking agent" "agent-run"
     
     # Run the Copilot CLI with Ralph agent
-    gh copilot --agent ralph "$prompt" || true
+    # copilot is a standalone CLI (not a gh extension)
+    # -p runs in non-interactive mode (exits after completion)
+    # --allow-all-tools enables autonomous operation without confirmation prompts
+    # --agent specifies the custom agent to use
+    copilot --agent ralph -p "$prompt" --allow-all-tools || true
 }
 
 archive_run() {
