@@ -97,6 +97,81 @@ Document findings in your event log:
 Write specification based on discovery findings
 ```
 
+### Discovery Notes Artifact
+
+**MANDATORY**: Create `.ralph-stm/runs/{session}/discovery-notes.md` during Phase 1.
+
+This captures what context packs and specs may miss - actual code patterns observed.
+
+Template:
+```markdown
+# Discovery Notes for {session_id}
+
+## Context Pack Gaps
+<!-- Things discovered that aren't documented -->
+- [Gap 1]: Found in [file path], not documented
+
+## Patterns Discovered
+<!-- Implementation patterns from exploration -->
+- [Pattern name]: [Description], see [file path]
+
+## Test Locations
+<!-- Test files relevant to this feature -->
+- [Component]: [test file path]
+
+## Architecture Decisions Not Captured
+<!-- Decisions evident from code but not documented -->
+- [Decision]: [Evidence from code]
+
+## Convention Snapshot
+
+| Convention | Observed Pattern | Source Files | Notes |
+|------------|------------------|--------------|-------|
+| Variable naming | | | |
+| Method naming | | | |
+| Comments style | Yes/No/Partial | | |
+| Error handling | | | |
+| Logging style | | | |
+
+## Test Infrastructure
+
+| Aspect | Observed | Location |
+|--------|----------|----------|
+| Framework | | |
+| Mocking library | | |
+| Base test class | | |
+| Test utilities | | |
+| Naming convention | | |
+```
+
+**Why**: Discovery notes bridge the gap between codebase exploration and implementation. They capture insights that would otherwise be lost between invocations.
+
+### Deep Exploration Protocol
+
+During Phase 1, explore the codebase systematically:
+
+#### A. Pattern Discovery (Required)
+- Find 2-3 similar implementations to what you'll create
+- Read actual source files, not just directory structure
+- Note patterns the codebase uses (error handling, logging, validation)
+
+#### B. Test Discovery (Required)
+- Locate ALL test files for components you'll modify
+- Understand test patterns (unit, integration, component)
+- Find test utilities and helpers
+- Note test data setup patterns
+
+#### C. Interface Discovery (If modifying existing code)
+- Find all callers/consumers of code you'll modify
+- Check for interface contracts (APIs, events, shared types)
+- Identify potential breaking change risks
+
+#### D. Convention Discovery (Required - fill Convention Snapshot)
+- Open 3-5 similar files to what you'll create
+- Document observed conventions in discovery notes
+- Note any INCONSISTENCIES within the codebase
+- Record the MAJORITY pattern for each convention
+
 ### Transition
 
 After discovery, update state to Phase 2 (spec) and exit with yield signal.
@@ -239,9 +314,18 @@ Write to `.ralph-stm/runs/{session}/plan.md`:
 - {Integration tests}
 - {Manual verification}
 
-## Risk Mitigation
-- Risk: {risk 1}
-  Mitigation: {approach}
+## Risk Analysis
+
+| Risk | Likelihood | Impact | Detection | Mitigation |
+|------|------------|--------|-----------|------------|
+| {What could go wrong} | Low/Med/High | Low/Med/High | {How to detect} | {How to prevent/recover} |
+
+Common risks to consider:
+- Breaking existing functionality
+- Missing edge cases
+- Performance degradation
+- Security implications
+- Test coverage gaps
 
 ## Rollback Plan
 {How to undo if needed}
@@ -382,6 +466,8 @@ Before transitioning out of planning phases:
 - [ ] Tech stack identified
 - [ ] Relevant code located
 - [ ] Patterns documented
+- [ ] **Discovery notes created** (`.ralph-stm/runs/{session}/discovery-notes.md`)
+- [ ] **Convention snapshot filled**
 - [ ] Risks noted
 - [ ] Event log written
 - [ ] State updated

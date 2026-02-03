@@ -87,6 +87,118 @@ current_plan_phase > total_plan_phases → Transition to Phase 6 (verification)
 
 ---
 
+## Minimal Change Patterns
+
+### Core Principles
+
+These principles apply regardless of what editing tools are available:
+
+#### 1. Minimal Change Principle
+**Only modify what's necessary to implement the requirement.**
+
+- If you need to change one function, change only that function
+- Resist the urge to "improve" nearby code
+- Each change should trace to a specific requirement
+
+#### 2. Surgical Edit Principle
+**Target specific sections, not entire files.**
+
+- Identify the exact lines that need modification
+- Understand the surrounding context before editing
+- Make precise, focused changes
+
+#### 3. Scope Discipline
+**Don't touch code outside the plan.**
+
+- Changes not in the plan require justification
+- "Drive-by" fixes create scope creep and risk
+- Note improvements for follow-up tasks instead
+
+#### 4. Verification Principle
+**Always verify changes work.**
+
+- Run relevant tests after changes
+- Check that the application still builds
+- Validate the change achieves the requirement
+
+### Large File Handling (> 200 lines)
+
+When working with large files:
+
+1. **Locate**: Find the specific section you need to modify
+2. **Understand**: Read only the relevant section plus immediate context
+3. **Edit**: Make targeted changes to that section only
+4. **Verify**: Confirm changes work and don't break adjacent code
+
+### Multiple Changes in Same File
+
+When making multiple edits to one file:
+- Plan all changes before starting
+- Consider change ordering to avoid conflicts
+- Work from bottom to top if changes affect line numbers
+- Verify after each significant change
+
+### Anti-Patterns to Avoid
+
+**DON'T**:
+- Rewrite entire files when only a few lines need changes
+- Load complete large files when you only need one section
+- Make cosmetic changes unrelated to the task
+- "Improve" code style inconsistencies outside scope
+- Add documentation to unrelated functions
+
+---
+
+## Scope Enforcement
+
+Before each edit, verify:
+- [ ] This file is in the plan's scope
+- [ ] This change traces to a requirement in spec
+- [ ] No "drive-by" refactoring of unrelated code
+
+**Forbidden**:
+- Renaming variables not in scope
+- Adding documentation to existing code (unless in scope)
+- Reformatting files you're modifying
+- "Improving" code outside the task
+
+If you notice something that should be fixed but is out of scope:
+- Note it in the event log
+- Do NOT fix it
+- It can be addressed in a follow-up
+
+---
+
+## Context Management
+
+### Budget Awareness
+
+Be aware of context consumption:
+- Small files (< 200 lines): Safe to load fully
+- Medium files (200-500 lines): Load targeted sections
+- Large files (500+ lines): Surgical access only
+
+### Pressure Response
+
+If you notice context getting crowded:
+1. **Yellow (many files read)**: Focus on essentials, stop exploratory reads
+2. **Orange (approaching limits)**: Complete current task, checkpoint progress
+3. **Red (risk of truncation)**: Immediate checkpoint, minimal output
+
+### Efficient Patterns
+
+DO:
+- Note line numbers when reading for later edits
+- Extract only needed methods, not full files
+- Keep notes about file structure instead of full content
+
+DON'T:
+- Load entire large files when you only need one method
+- Re-read files you've already examined
+- Load files "just in case"
+
+---
+
 ## Testing During Execution
 
 ### When to Test
@@ -295,6 +407,7 @@ Update every 2-3 minutes during long tasks.
 ## Checklist Before Exit
 
 - [ ] Plan phase objective achieved
+- [ ] **All changes within scope** (no drive-by refactors)
 - [ ] All files created/modified as needed
 - [ ] Code compiles/runs without errors
 - [ ] Tests run if appropriate

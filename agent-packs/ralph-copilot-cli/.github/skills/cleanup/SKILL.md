@@ -36,6 +36,95 @@ You're in the cleanup phase (Phase 7). Time to finalize delivery.
 
 ---
 
+## Cleanup Categories
+
+Before generating summary, perform cleanup checks in these categories:
+
+### Category 1: Debug Code Removal
+Patterns to search and remove:
+```
+console.log
+Console.WriteLine
+print(
+// DEBUG
+// TODO: remove
+// TEMP
+```
+
+Keep if: Production logging (proper log levels), error handling
+
+### Category 2: Import Cleanup
+- Remove unused imports
+- Sort imports per project convention (check 2-3 similar files)
+
+### Category 3: Formatting
+- Trailing whitespace: Remove
+- Missing EOF newline: Add
+- Mixed indentation: Match file convention
+- Only touch files modified in this session
+
+### Category 4: Code Hygiene
+- Remove commented-out code (unless clear reason to keep)
+- Convert meaningful TODOs to follow-up items
+
+### Category 5: AI Slop Removal
+Remove these patterns:
+- Task reference comments: `// TODO task-1`, `// Per the spec`
+- Over-explanatory comments that restate obvious code
+- Unnecessarily verbose variable names (if time permits)
+
+### Category 6: Scope Violation Check
+Review files changed vs plan:
+- Any "drive-by" refactors? → Note for future
+- Any cosmetic changes outside scope? → Consider reverting
+
+### Category 7: Test Artifacts
+- Remove test data created for debugging
+- Clean up mock files if temporary
+- Ensure test fixtures are appropriate
+
+### Category 8: Documentation Check
+- Did we add docs where conventions require?
+- Did we update existing docs affected by changes?
+
+---
+
+## Tech Debt Extraction
+
+During cleanup, if you discover issues outside scope, document them:
+
+Add to event log:
+
+```markdown
+## Tech Debt Discovered
+
+### Item 1: {Short description}
+- **Location**: `path/to/file.ts:42`
+- **Type**: code-smell|missing-test|performance|security
+- **Priority**: low|medium|high
+- **Description**: {What the issue is}
+- **Recommended Fix**: {What should be done}
+- **Effort**: small|medium|large
+```
+
+These items inform follow-up recommendations without scope creep.
+
+---
+
+## Protected Files
+
+Never modify or delete during cleanup:
+- `*.csproj`, `*.sln` (project files)
+- `package.json`, `package-lock.json`
+- `.gitignore`, `.env*`
+- `Dockerfile`, `docker-compose*.yml`
+- `*.lock`, `yarn.lock`
+- `tsconfig.json`, `*.config.js`, `*.config.ts`
+
+If cleanup affects these files, note it but don't auto-fix.
+
+---
+
 ## 1. Generate Summary
 
 Create a summary of all work done:
@@ -224,6 +313,10 @@ Write final cleanup event:
 
 Before marking complete:
 
+- [ ] **All 8 cleanup categories checked**
+- [ ] **Debug code removed**
+- [ ] **AI slop removed**
+- [ ] **Tech debt extracted and documented**
 - [ ] Summary generated with all changes
 - [ ] PR description created (if applicable)
 - [ ] Follow-up items documented

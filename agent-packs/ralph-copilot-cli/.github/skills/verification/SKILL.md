@@ -35,9 +35,39 @@ You're in the verification phase (Phase 6). Time to validate the implementation.
 
 ---
 
-## Verification Checklist
+## Extended Verification Protocol
 
-### 1. Acceptance Criteria
+### The 8 Verification Checks
+
+| # | Check | Pass Criteria | Tools |
+|---|-------|---------------|-------|
+| 1 | **Scope Compliance** | All changes within planned scope | Compare changes to plan |
+| 2 | **Acceptance Criteria** | Each AC met with evidence | Manual review |
+| 3 | **Build Verification** | Build succeeds | Execute build command |
+| 4 | **Test Verification** | Relevant tests pass | Execute test command |
+| 5 | **Quality Standards** | Matches codebase conventions | Compare to similar files |
+| 6 | **Code Quality** | No obvious issues | Review for smells |
+| 7 | **AI Artifacts** | No task-ID comments, AI markers | Search for patterns |
+| 8 | **Business Alignment** | Implementation solves original request | Compare to user request |
+
+### Check 1: Scope Compliance
+
+Compare all modified files against the plan:
+
+```markdown
+## Scope Check
+
+| File Modified | In Plan? | Justification |
+|---------------|----------|---------------|
+| path/to/file1.ts | ✓ | Listed in Phase 1 scope |
+| path/to/file2.ts | ✗ | NOT PLANNED - review |
+```
+
+If files were modified outside plan scope:
+- Verify the change was necessary (dependency discovered during execution)
+- If unnecessary, flag for cleanup phase
+
+### Check 2: Acceptance Criteria
 
 Read each acceptance criterion from `spec.md` and verify:
 
@@ -57,7 +87,7 @@ Read each acceptance criterion from `spec.md` and verify:
 - **Status**: PASS/FAIL
 ```
 
-### 2. Automated Tests
+### Check 3-4: Build and Test Verification
 
 Run relevant test suites:
 
@@ -68,13 +98,50 @@ Run relevant test suites:
 | Type checking | `tsc --noEmit`, `mypy`, etc. | If applicable |
 | Linting | `eslint`, `ruff`, etc. | If configured |
 
-### 3. Regression Check
+### Check 5-6: Quality and Convention Standards
 
 - Run existing tests (not just new ones)
 - Verify core functionality still works
 - Check no unintended side effects
+- Compare to 2-3 similar files for convention compliance
 
-### 4. Manual Verification
+### Check 7: AI Artifact Detection
+
+Search for these patterns and flag for removal:
+
+```
+Patterns to find and flag:
+- // TODO.*task
+- // Implementing.*task
+- // Added for task
+- // As per (spec|specification|requirement)
+- // Per the (PRD|plan|spec)
+- Unnecessarily verbose variable names
+- Over-explanatory comments that restate obvious code
+```
+
+Examples of AI slop to flag:
+```javascript
+// BAD: Over-explanatory
+// This function adds two numbers together and returns the result
+function add(a, b) { return a + b; }
+
+// BAD: Task reference
+// Added for task requirement per spec
+const userConfig = { ... };
+
+// BAD: Verbose naming
+const userAccountInformationDataObject = { ... };
+```
+
+### Check 8: Business Alignment
+
+Beyond technical correctness, verify:
+- Does the implementation solve the original user request?
+- Does it address the business problem (not just technical spec)?
+- Would a user looking at this say "yes, this is what I asked for"?
+
+### Manual Verification
 
 For things tests can't cover:
 - Visual inspection of changes
@@ -357,18 +424,54 @@ Adapt based on the project's actual tooling.
 
 ---
 
-## Quality Gates
+## Quality Bar Levels
 
-### Required to Pass
-- [ ] All acceptance criteria verified
-- [ ] All automated tests pass
-- [ ] No type errors (if typed language)
-- [ ] No critical lint issues
+### Standard (Default)
+- Build passes
+- All acceptance criteria met
+- No AI artifacts
+- Conventions followed
 
-### Recommended but Not Blocking
-- [ ] Test coverage maintained or improved
-- [ ] All lint warnings addressed
-- [ ] Documentation updated
+### High (Use for: Public APIs, Breaking Changes, Security-related)
+All of Standard plus:
+- Integration tests pass
+- Documentation complete
+- Backward compatibility verified
+
+### Critical (Use for: Authentication, Data Integrity, Financial)
+All of High plus:
+- Security review checklist
+- Data validation verified
+- Error handling comprehensive
+
+The spec should indicate quality bar level. Default to Standard unless specified.
+
+---
+
+## Failure Handoff Format
+
+When verification fails, document clearly for execution phase:
+
+```markdown
+## Verification Failure Handoff
+
+**Task**: {session_id}
+**Result**: FAILED
+**Issues**:
+
+### Issue 1: {Short description}
+- **Type**: missing-test|pattern-violation|incomplete|scope-violation|ai-artifact
+- **File**: `path/to/file.ts`
+- **Line**: 42-48
+- **What's Wrong**: {Description}
+- **Expected**: {What should be}
+- **Suggested Fix**: {How to fix}
+- **Effort**: small|medium|large
+
+### Issue 2: ...
+```
+
+This structured format helps the execution phase address issues systematically.
 
 ---
 
@@ -389,8 +492,11 @@ For simple failures, you may attempt a fix in the same invocation:
 ## Checklist Before Exit
 
 ### If Passing
+- [ ] **All 8 checks completed**
+- [ ] **Scope compliance verified**
 - [ ] All acceptance criteria verified
 - [ ] All tests pass
+- [ ] **No AI artifacts detected**
 - [ ] Verification event logged
 - [ ] State updated to Phase 7 (cleanup)
 - [ ] `updated_at` timestamp updated
@@ -398,6 +504,7 @@ For simple failures, you may attempt a fix in the same invocation:
 
 ### If Failing
 - [ ] All failures documented
+- [ ] **Failure handoff format used**
 - [ ] Fix instructions clear
 - [ ] Verification event logged
 - [ ] State updated to Phase 5 (execution)
