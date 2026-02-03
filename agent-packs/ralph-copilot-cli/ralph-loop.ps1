@@ -541,6 +541,8 @@ if (-not $activeRun) {
     $state = Initialize-STM -UserTask $Task
 }
 else {
+    # Ensure session paths are set before reading state
+    Set-SessionPaths -SessionId $activeRun.current_run
     $state = Get-State
 }
 
