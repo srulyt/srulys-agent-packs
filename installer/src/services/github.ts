@@ -1,6 +1,6 @@
 import { execCommand, execWithInput, commandExists } from '../utils/exec.js';
 import { logger } from '../utils/logger.js';
-import type { GitHubConfig, FileContent, TreeEntry, PackInfo } from '../types/index.js';
+import type { GitHubConfig, FileContent, TreeEntry, PackInfo, PackType } from '../types/index.js';
 
 export class GitHubService {
   private config: GitHubConfig;
@@ -108,23 +108,63 @@ export class GitHubService {
     for (const item of items) {
       if (item.type === 'dir') {
         try {
-          const roomodes = await this.getFileContent(`${item.path}/.roomodes`);
-          const lines = roomodes.split('\n');
-          const description = lines.find(l => l.includes('description:'))?.split('description:')[1]?.trim() || '';
+          // Detect pack type by checking for characteristic files
+          const packType = await this.detectPackType(item.path);
+          
+          let description = '';
+          if (packType === 'roo') {
+            const roomodes = await this.getFileContent(`${item.path}/.roomodes`);
+            const lines = roomodes.split('\n');
+            description = lines.find(l => l.includes('description:'))?.split('description:')[1]?.trim() || '';
+            description = description.replace(/^["']|["']$/g, '');
+          } else if (packType === 'copilot-cli') {
+            // Try to get description from README
+            try {
+              const readme = await this.getFileContent(`${item.path}/README.md`);
+              const lines = readme.split('\n');
+              // Get first non-empty line after the title
+              const descLine = lines.find((l, idx) => idx > 0 && l.trim() && !l.startsWith('#'));
+              description = descLine?.trim() || '';
+            } catch {
+              description = 'GitHub Copilot CLI agent pack';
+            }
+          }
           
           packs.push({
             name: item.name,
-            description: description.replace(/^["']|["']$/g, ''),
+            description,
             path: item.path,
-            slugs: []
+            slugs: [],
+            type: packType
           });
         } catch {
-          // Skip packs without .roomodes file
+          // Skip packs that can't be detected
         }
       }
     }
 
     return packs;
+  }
+
+  private async detectPackType(packPath: string): Promise<PackType> {
+    // Check for .github/agents/ directory (Copilot CLI pack)
+    try {
+      const tree = await this.getPackTree(packPath.replace('agent-packs/', ''));
+      const hasCopilotAgents = tree.some(entry => entry.path.startsWith('.github/agents/'));
+      if (hasCopilotAgents) {
+        return 'copilot-cli';
+      }
+    } catch {
+      // Continue to check for .roomodes
+    }
+
+    // Check for .roomodes file (Roo pack)
+    try {
+      await this.getFileContent(`${packPath}/.roomodes`);
+      return 'roo';
+    } catch {
+      throw new Error('Unable to detect pack type');
+    }
   }
 
   async getFileContent(path: string): Promise<string> {

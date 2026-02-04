@@ -125,6 +125,85 @@ export class FilesystemService {
     }
   }
 
+  // GitHub Copilot CLI file operations
+  writeGitHubFile(relativePath: string, content: string): void {
+    const fullPath = path.join(this.cwd, relativePath);
+    const fileDir = path.dirname(fullPath);
+    
+    // Ensure directory exists
+    if (!fs.existsSync(fileDir)) {
+      fs.mkdirSync(fileDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(fullPath, content, 'utf-8');
+  }
+
+  writeProjectFile(fileName: string, content: string): void {
+    const fullPath = path.join(this.cwd, fileName);
+    fs.writeFileSync(fullPath, content, 'utf-8');
+    
+    // Make scripts executable on Unix-like systems
+    if (fileName.endsWith('.sh') && process.platform !== 'win32') {
+      try {
+        fs.chmodSync(fullPath, 0o755);
+      } catch {
+        // Silently fail if chmod doesn't work
+      }
+    }
+  }
+
+  deleteGitHubFiles(filePaths: string[]): void {
+    for (const filePath of filePaths) {
+      const fullPath = path.join(this.cwd, filePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+        
+        // Try to remove parent directories if empty
+        let parentDir = path.dirname(fullPath);
+        while (parentDir !== this.cwd) {
+          try {
+            const files = fs.readdirSync(parentDir);
+            if (files.length === 0) {
+              fs.rmdirSync(parentDir);
+              parentDir = path.dirname(parentDir);
+            } else {
+              break;
+            }
+          } catch {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  appendToGitignore(entries: string[]): void {
+    const gitignorePath = path.join(this.cwd, '.gitignore');
+    let content = '';
+    
+    if (fs.existsSync(gitignorePath)) {
+      content = fs.readFileSync(gitignorePath, 'utf-8');
+    }
+    
+    const existingEntries = new Set(content.split('\n').map(line => line.trim()));
+    const newEntries: string[] = [];
+    
+    for (const entry of entries) {
+      if (!existingEntries.has(entry)) {
+        newEntries.push(entry);
+      }
+    }
+    
+    if (newEntries.length > 0) {
+      if (content && !content.endsWith('\n')) {
+        content += '\n';
+      }
+      content += '\n# Agent Pack: Copilot CLI\n';
+      content += newEntries.join('\n') + '\n';
+      fs.writeFileSync(gitignorePath, content, 'utf-8');
+    }
+  }
+
   // Registry file operations
   registryExists(): boolean {
     return fs.existsSync(path.join(this.cwd, '.roo', '.agent-packs-registry.json'));

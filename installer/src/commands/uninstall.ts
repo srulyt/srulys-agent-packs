@@ -42,39 +42,58 @@ export async function uninstallCommand(packNames: string[]): Promise<void> {
 
       spinner.succeed('Loaded pack info');
 
-      // Delete rules folders and merged files
-      spinner.start('Removing files...');
-      
-      // 1. Delete agent-specific rules folders
-      for (const folder of packInfo.rulesFolders) {
-        fs.deleteRulesFolder(folder);
-      }
-      
-      // 2. Delete merged files owned by this pack
-      if (packInfo.mergedFiles && packInfo.mergedFiles.length > 0) {
-        fs.deleteMergedFiles(packInfo.mergedFiles);
-      }
-      
-      const totalRemoved = packInfo.rulesFolders.length + (packInfo.mergedFiles?.length || 0);
-      spinner.succeed(`Removed ${packInfo.rulesFolders.length} agent folders and ${packInfo.mergedFiles?.length || 0} merged files`);
+      if (packInfo.type === 'roo') {
+        // ROO PACK UNINSTALLATION
+        // Delete rules folders and merged files
+        spinner.start('Removing files...');
+        
+        // 1. Delete agent-specific rules folders
+        for (const folder of packInfo.rulesFolders) {
+          fs.deleteRulesFolder(folder);
+        }
+        
+        // 2. Delete merged files owned by this pack
+        if (packInfo.mergedFiles && packInfo.mergedFiles.length > 0) {
+          fs.deleteMergedFiles(packInfo.mergedFiles);
+        }
+        
+        spinner.succeed(`Removed ${packInfo.rulesFolders.length} agent folders and ${packInfo.mergedFiles?.length || 0} merged files`);
 
-      // Remove modes from .roomodes
-      spinner.start('Updating .roomodes...');
-      const existingContent = fs.readRoomodes();
-      if (existingContent) {
-        const existingRoomodes = roomodes.parse(existingContent);
-        const updatedRoomodes = roomodes.removeModes(existingRoomodes, packInfo.slugs);
-        fs.writeRoomodes(roomodes.serialize(updatedRoomodes));
-        spinner.succeed(`Removed ${packInfo.slugs.length} modes from .roomodes`);
-      } else {
-        spinner.warn('.roomodes file not found');
+        // Remove modes from .roomodes
+        spinner.start('Updating .roomodes...');
+        const existingContent = fs.readRoomodes();
+        if (existingContent) {
+          const existingRoomodes = roomodes.parse(existingContent);
+          const updatedRoomodes = roomodes.removeModes(existingRoomodes, packInfo.slugs);
+          fs.writeRoomodes(roomodes.serialize(updatedRoomodes));
+          spinner.succeed(`Removed ${packInfo.slugs.length} modes from .roomodes`);
+        } else {
+          spinner.warn('.roomodes file not found');
+        }
+
+        // Remove from registry
+        registry.unregisterPack(packName);
+
+        logger.success(`Successfully uninstalled ${packName}`);
+        logger.dim(`  Modes removed: ${packInfo.slugs.join(', ')}`);
+
+      } else if (packInfo.type === 'copilot-cli') {
+        // COPILOT CLI PACK UNINSTALLATION
+        spinner.start('Removing Copilot CLI files...');
+        
+        // Delete all installed files
+        if (packInfo.copilotCliFiles && packInfo.copilotCliFiles.length > 0) {
+          fs.deleteGitHubFiles(packInfo.copilotCliFiles);
+        }
+        
+        spinner.succeed(`Removed ${packInfo.copilotCliFiles?.length || 0} files`);
+
+        // Remove from registry
+        registry.unregisterPack(packName);
+
+        logger.success(`Successfully uninstalled ${packName}`);
+        logger.dim(`  Type: Copilot CLI agent`);
       }
-
-      // Remove from registry
-      registry.unregisterPack(packName);
-
-      logger.success(`Successfully uninstalled ${packName}`);
-      logger.dim(`  Modes removed: ${packInfo.slugs.join(', ')}`);
 
     } catch (error) {
       spinner.fail(`Failed to uninstall ${packName}`);

@@ -22,11 +22,14 @@ export interface RoomodesFile {
   customModes: RooMode[];
 }
 
+export type PackType = 'roo' | 'copilot-cli';
+
 export interface PackInfo {
   name: string;
   description: string;
   path: string;
   slugs: string[];
+  type: PackType;
 }
 
 export interface PackRegistry {
@@ -34,9 +37,11 @@ export interface PackRegistry {
     [packName: string]: {
       installedAt: string;
       version: string;
+      type: PackType;
       slugs: string[];
       rulesFolders: string[];
       mergedFiles?: string[]; // All merged files (not in rules-{slug}/) owned by this pack
+      copilotCliFiles?: string[]; // Files installed for copilot-cli packs
     };
   };
 }

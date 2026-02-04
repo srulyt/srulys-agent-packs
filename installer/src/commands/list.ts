@@ -41,8 +41,9 @@ export async function listCommand(options: { repo?: string; branch?: string }): 
     for (const pack of availablePacks) {
       const isInstalled = installedPacks.has(pack.name);
       const status = isInstalled ? chalk.green('✓ installed') : chalk.dim('  not installed');
+      const packType = pack.type === 'copilot-cli' ? chalk.cyan('[copilot-cli]') : chalk.blue('[roo]');
       
-      logger.log(`${status}  ${chalk.bold(pack.name)}`);
+      logger.log(`${status}  ${chalk.bold(pack.name)} ${packType}`);
       if (pack.description) {
         logger.dim(`           ${pack.description}`);
       }
@@ -50,7 +51,11 @@ export async function listCommand(options: { repo?: string; branch?: string }): 
       if (isInstalled) {
         const packInfo = registry.getPackInfo(pack.name);
         if (packInfo) {
-          logger.dim(`           Version: ${packInfo.version} | Modes: ${packInfo.slugs.length}`);
+          if (packInfo.type === 'roo') {
+            logger.dim(`           Version: ${packInfo.version} | Modes: ${packInfo.slugs.length}`);
+          } else {
+            logger.dim(`           Version: ${packInfo.version} | Type: Copilot CLI agent`);
+          }
         }
       }
       logger.log('');

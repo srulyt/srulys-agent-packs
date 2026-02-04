@@ -13,6 +13,7 @@
 | [Spec Creator](./spec-creator.md) | `agent-packs/spec-creator/` | AI-powered product specification writing team for Microsoft Fabric | Stable |
 | [Simple Agent Factory](./simple-agent-factory.md) | `agent-packs/simple-agent-factory/` | Single-task prompt generation for AI platforms | Stable |
 | [SaaS Design Studio](./saas-design-studio.md) | `agent-packs/saas-design-studio/` | High-fidelity UI/UX engineering with React, Tailwind, Shadcn/UI | Stable |
+| [Ralph Copilot CLI](./ralph-copilot-cli.md) | `agent-packs/ralph-copilot-cli/` | Agentic developer for GitHub Copilot CLI | Stable |
 
 ## Quick Start
 
