@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('agent-packs')
   .description('CLI installer for Roo Code agent packs')
-  .version('1.0.0');
+  .version('1.0.5');
 
 program
   .command('install')

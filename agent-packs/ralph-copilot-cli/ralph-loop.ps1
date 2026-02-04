@@ -428,7 +428,7 @@ function Invoke-Ralph {
     # --allow-all-tools enables autonomous operation without confirmation prompts
     # --agent specifies the custom agent to use
     try {
-        copilot --agent ralph -p $Prompt --allow-all-tools
+        copilot --agent ralph -p $Prompt --allow-all-tools --allow-all-paths --allow-all-urls
     }
     catch {
         Write-Host "  Error running agent: $_" -ForegroundColor $Colors.Error

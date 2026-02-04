@@ -29,17 +29,21 @@ export class RegistryService {
   registerPack(
     packName: string,
     version: string,
+    type: 'roo' | 'copilot-cli',
     slugs: string[],
     rulesFolders: string[],
-    mergedFiles?: string[]
+    mergedFiles?: string[],
+    copilotCliFiles?: string[]
   ): void {
     const registry = this.load();
     registry.installedPacks[packName] = {
       installedAt: new Date().toISOString(),
       version,
+      type,
       slugs,
       rulesFolders,
-      mergedFiles
+      mergedFiles,
+      copilotCliFiles
     };
     this.save(registry);
   }
