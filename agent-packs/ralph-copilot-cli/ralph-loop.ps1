@@ -499,6 +499,26 @@ Write-Header "Ralph - Agentic Developer"
 # Check for existing session via active-run.json
 $activeRun = Get-ActiveRun
 
+# If a new task is explicitly provided, always start a fresh session.
+# Existing active runs are archived to avoid unintentionally resuming old work.
+if ($Task -and -not $Resume -and $activeRun) {
+    Set-SessionPaths -SessionId $activeRun.current_run
+    $existingState = Get-State
+    
+    if ($existingState -and (($existingState.status -in @("complete", "verified", "issues_found")) -or $existingState.phase -eq "complete")) {
+        Write-Host "  Previous session is complete. Archiving and starting new task..." -ForegroundColor $Colors.Info
+    }
+    else {
+        Write-Host "  Existing active session found. Archiving and starting new task..." -ForegroundColor $Colors.Warning
+    }
+    
+    Archive-Run -SessionId $activeRun.current_run
+    if (Test-Path $ACTIVE_RUN_FILE) {
+        Remove-Item $ACTIVE_RUN_FILE -Force
+    }
+    $activeRun = $null
+}
+
 if ($Resume) {
     if (-not $activeRun) {
         Write-Host "  No existing session found. Start a new task instead." -ForegroundColor $Colors.Error

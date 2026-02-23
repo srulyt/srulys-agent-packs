@@ -495,6 +495,24 @@ fi
 # Check for existing session via active-run.json
 active_run=$(get_active_run)
 
+# If a new task is explicitly provided, always start a fresh session.
+# Existing active runs are archived to avoid unintentionally resuming old work.
+if [[ -n "$TASK" ]] && ! $RESUME && [[ -n "$active_run" ]]; then
+    set_session_paths "$active_run"
+    existing_status=$(json_get "$STATE_FILE" "status")
+    existing_phase=$(json_get "$STATE_FILE" "phase")
+
+    if [[ "$existing_status" == "complete" ]] || [[ "$existing_status" == "verified" ]] || [[ "$existing_status" == "issues_found" ]] || [[ "$existing_phase" == "complete" ]]; then
+        echo -e "  ${WHITE}Previous session is complete. Archiving and starting new task...${NC}"
+    else
+        echo -e "  ${YELLOW}Existing active session found. Archiving and starting new task...${NC}"
+    fi
+
+    archive_run "$active_run"
+    rm -f "$ACTIVE_RUN_FILE"
+    active_run=""
+fi
+
 if $RESUME; then
     if [[ -z "$active_run" ]]; then
         echo -e "  ${RED}No existing session found. Start a new task instead.${NC}"

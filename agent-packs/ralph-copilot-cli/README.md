@@ -103,6 +103,8 @@ Add the STM (Short-Term Memory) directory to your `.gitignore`:
 ./ralph-loop.sh "Add user authentication with JWT"
 ```
 
+> **Note:** Providing a new task always starts a fresh session. If an active session exists, Ralph archives it automatically before starting the new task. Use `-Resume` / `--resume` only when you want to continue an existing session.
+
 ### Resume an Interrupted Session
 
 ```powershell
