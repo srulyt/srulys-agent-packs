@@ -33,6 +33,23 @@ Check `state.json` phase to determine your specific task:
 | 2 (spec) | Write detailed specification |
 | 3 (planning) | Create implementation plan |
 
+## ADO PR Intent Handling (Cross-Phase Rule)
+
+If the prompt/request includes Azure DevOps PR details, you MUST load and use the ADO skill before finalizing discovery/spec/plan.
+
+ADO PR details include cues such as:
+- Explicit org/project/repo/PR ID values
+- Mentions like "ADO PR", "Azure DevOps PR", "review threads", "PR comments"
+- Requests to address reviewer feedback from a specific PR
+
+When detected:
+1. Read `.github/skills/ado-pr-comments/SKILL.md`
+2. Retrieve active PR comments per that skill (MCP first, `az` fallback)
+3. Rewrite the effective user request to incorporate actionable PR feedback
+4. Preserve original user request separately for traceability
+
+If retrieval fails, surface the failure and stop phase progression (do not continue with stale or missing PR context).
+
 ---
 
 ## Phase 1: Context Discovery
@@ -62,7 +79,12 @@ Understand the codebase well enough to write a meaningful spec and plan.
    - Check for `.context-packs/` directory
    - Load relevant context if available
 
-5. **Related Code**
+5. **ADO PR Context Detection (Conditional)**
+   - Check if prompt contains ADO PR details
+   - If yes, load ADO skill and retrieve active PR comments
+   - Rewrite effective request using PR comment context
+
+6. **Related Code**
    - Find code related to the user's request
    - Identify files that will need changes
    - Note dependencies between components
@@ -203,7 +225,11 @@ Write to `.ralph-stm/runs/{session}/spec.md`:
 {Brief description of what this feature does}
 
 ## User Request
+### Original
 {Original user request verbatim}
+
+### Effective (for planning)
+{Rewritten request that incorporates active ADO PR comments when applicable; otherwise same as original}
 
 ## Requirements
 
@@ -516,6 +542,7 @@ Before transitioning out of planning phases:
 - [ ] Acceptance criteria testable
 - [ ] Scope clearly bounded
 - [ ] Dependencies identified
+- [ ] If ADO PR details were provided, effective request rewritten using active PR comments
 - [ ] Written to spec.md
 - [ ] Event log written
 - [ ] **Signal file created**

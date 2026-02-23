@@ -26,21 +26,6 @@
 .PARAMETER Resume
     Resume from existing STM state instead of starting fresh.
 
-.PARAMETER IncludeAdoPrComments
-    Loads Azure DevOps PR comments via az CLI and appends them as task input.
-
-.PARAMETER AdoOrganization
-    Azure DevOps organization URL (e.g., https://dev.azure.com/contoso).
-
-.PARAMETER AdoProject
-    Azure DevOps project name.
-
-.PARAMETER AdoRepository
-    Azure DevOps repository name or ID.
-
-.PARAMETER AdoPullRequestId
-    Azure DevOps pull request ID.
-
 .PARAMETER Timeout
     Activity timeout in minutes. Default: 15
 
@@ -52,9 +37,6 @@
 
 .EXAMPLE
     .\ralph-loop.ps1 -PromptFile .\prompts\task.md
-
-.EXAMPLE
-    .\ralph-loop.ps1 -TaskListFile .\tasks.txt -IncludeAdoPrComments -AdoOrganization "https://dev.azure.com/contoso" -AdoProject "App" -AdoRepository "web" -AdoPullRequestId 42
 
 .EXAMPLE
     .\ralph-loop.ps1 -TaskFolder .\task-prompts
@@ -72,16 +54,6 @@ param(
     [string]$TaskFolder,
 
     [switch]$Resume,
-
-    [switch]$IncludeAdoPrComments,
-
-    [string]$AdoOrganization,
-
-    [string]$AdoProject,
-
-    [string]$AdoRepository,
-
-    [int]$AdoPullRequestId,
 
     [int]$Timeout = 15
 )
@@ -190,70 +162,6 @@ function Get-TaskListFromFile {
     return $tasks
 }
 
-function Get-AdoPrCommentsInput {
-    param(
-        [string]$Organization,
-        [string]$Project,
-        [string]$Repository,
-        [int]$PullRequestId
-    )
-
-    Write-Host "  Loading Azure DevOps PR comments with az CLI..." -ForegroundColor $Colors.Info
-
-    $azCheck = Get-Command az -ErrorAction SilentlyContinue
-    if (-not $azCheck) {
-        throw "az CLI not found. Install Azure CLI and azure-devops extension before using -IncludeAdoPrComments."
-    }
-
-    $json = az repos pr thread list --organization $Organization --project $Project --repository $Repository --id $PullRequestId --output json 2>$null
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($json)) {
-        throw "Failed to load PR threads from Azure DevOps. Verify az login, extension setup, and ADO parameters."
-    }
-
-    $threads = $json | ConvertFrom-Json
-    $comments = @()
-
-    foreach ($thread in $threads) {
-        if ($null -eq $thread.comments) {
-            continue
-        }
-
-        foreach ($comment in $thread.comments) {
-            if ($null -eq $comment) {
-                continue
-            }
-
-            if ($comment.isDeleted -eq $true) {
-                continue
-            }
-
-            if ([string]::IsNullOrWhiteSpace($comment.content)) {
-                continue
-            }
-
-            $author = if ($comment.author -and $comment.author.displayName) { $comment.author.displayName } else { "unknown" }
-            $comments += "- [$author] $($comment.content.Trim())"
-        }
-    }
-
-    if (-not $comments -or $comments.Count -eq 0) {
-        throw "No non-deleted PR comments found for PR #$PullRequestId."
-    }
-
-    return @"
-## Azure DevOps PR Comment Context
-
-Source:
-- Organization: $Organization
-- Project: $Project
-- Repository: $Repository
-- Pull Request: $PullRequestId
-
-Comments:
-$($comments -join "`n")
-"@
-}
-
 function Get-BatchState {
     if (Test-Path $BATCH_STATE_FILE) {
         try {
@@ -277,8 +185,7 @@ function Save-BatchState {
 
 function Initialize-TaskFolderBatchState {
     param(
-        [string]$FolderPath,
-        [switch]$WithAdoComments
+        [string]$FolderPath
     )
 
     if (-not (Test-Path $FolderPath -PathType Container)) {
@@ -309,11 +216,6 @@ function Initialize-TaskFolderBatchState {
         current_task_session      = $null
         task_files                = $taskFiles
         completed_tasks           = @()
-        include_ado_pr_comments   = [bool]$WithAdoComments
-        ado_organization          = $AdoOrganization
-        ado_project               = $AdoProject
-        ado_repository            = $AdoRepository
-        ado_pull_request_id       = $AdoPullRequestId
         last_error                = $null
     }
 }
@@ -413,16 +315,6 @@ function Invoke-TaskFolderBatch {
         else {
             Write-Host "  Starting new task session from file..." -ForegroundColor $Colors.Info
             $childArgs += @("-PromptFile", $taskFile)
-
-            if ($BatchState.include_ado_pr_comments) {
-                $childArgs += @(
-                    "-IncludeAdoPrComments",
-                    "-AdoOrganization", $BatchState.ado_organization,
-                    "-AdoProject", $BatchState.ado_project,
-                    "-AdoRepository", $BatchState.ado_repository,
-                    "-AdoPullRequestId", $BatchState.ado_pull_request_id
-                )
-            }
         }
 
         & $shellExecutable @childArgs
@@ -906,13 +798,6 @@ if (($hasTask -and $hasPromptFile) -or ($hasTask -and $hasTaskList) -or ($hasTas
     exit 1
 }
 
-if ($IncludeAdoPrComments) {
-    if ([string]::IsNullOrWhiteSpace($AdoOrganization) -or [string]::IsNullOrWhiteSpace($AdoProject) -or [string]::IsNullOrWhiteSpace($AdoRepository) -or $AdoPullRequestId -le 0) {
-        Write-Host "  -IncludeAdoPrComments requires -AdoOrganization, -AdoProject, -AdoRepository, and -AdoPullRequestId." -ForegroundColor $Colors.Error
-        exit 1
-    }
-}
-
 # Task folder mode: one prompt file per task, persisted batch state for resilient resume.
 if ($hasTaskFolder) {
     if ($activeBatchState -and $activeBatchState.status -eq "in_progress") {
@@ -921,7 +806,7 @@ if ($hasTaskFolder) {
     }
 
     try {
-        $folderBatchState = Initialize-TaskFolderBatchState -FolderPath $TaskFolder -WithAdoComments:$IncludeAdoPrComments
+        $folderBatchState = Initialize-TaskFolderBatchState -FolderPath $TaskFolder
     }
     catch {
         Write-Host "  $_" -ForegroundColor $Colors.Error
@@ -963,16 +848,6 @@ if ($hasTaskList) {
             "-Timeout", $Timeout
         )
 
-        if ($IncludeAdoPrComments) {
-            $childArgs += @(
-                "-IncludeAdoPrComments",
-                "-AdoOrganization", $AdoOrganization,
-                "-AdoProject", $AdoProject,
-                "-AdoRepository", $AdoRepository,
-                "-AdoPullRequestId", $AdoPullRequestId
-            )
-        }
-
         & $shellExecutable @childArgs
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  Batch stopped: task $taskIndex failed with exit code $LASTEXITCODE." -ForegroundColor $Colors.Error
@@ -997,23 +872,6 @@ if (-not $Resume) {
         catch {
             Write-Host "  $_" -ForegroundColor $Colors.Error
             exit 1
-        }
-    }
-
-    if ($IncludeAdoPrComments) {
-        try {
-            $adoContext = Get-AdoPrCommentsInput -Organization $AdoOrganization -Project $AdoProject -Repository $AdoRepository -PullRequestId $AdoPullRequestId
-        }
-        catch {
-            Write-Host "  $_" -ForegroundColor $Colors.Error
-            exit 1
-        }
-
-        if ([string]::IsNullOrWhiteSpace($resolvedTask)) {
-            $resolvedTask = $adoContext
-        }
-        else {
-            $resolvedTask = "$resolvedTask`n`n$adoContext"
         }
     }
 }

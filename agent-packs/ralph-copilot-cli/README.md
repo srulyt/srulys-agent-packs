@@ -157,56 +157,11 @@ Resilience behavior:
 - Inner task session remains in `.ralph-stm/active-run.json` and `runs/{session-id}`
 - `-Resume` continues both levels automatically (current task session, then remaining task files)
 
-### Use Azure DevOps PR Comments as Task Input (PowerShell)
+### Azure DevOps PR Context (Prompt-Driven)
 
-Append ADO PR comments to any input mode (`-Task`, `-PromptFile`, or `-TaskListFile`):
+Ralph PowerShell loop does not fetch Azure DevOps comments directly.
 
-```powershell
-.\ralph-loop.ps1 -Task "Address review feedback" `
-  -IncludeAdoPrComments `
-  -AdoOrganization "https://dev.azure.com/contoso" `
-  -AdoProject "MyProject" `
-  -AdoRepository "my-repo" `
-  -AdoPullRequestId 123
-```
-
-With prompt file:
-
-```powershell
-.\ralph-loop.ps1 -PromptFile .\prompts\review-task.md `
-  -IncludeAdoPrComments `
-  -AdoOrganization "https://dev.azure.com/contoso" `
-  -AdoProject "MyProject" `
-  -AdoRepository "my-repo" `
-  -AdoPullRequestId 123
-```
-
-With task list:
-
-```powershell
-.\ralph-loop.ps1 -TaskListFile .\tasks.txt `
-  -IncludeAdoPrComments `
-  -AdoOrganization "https://dev.azure.com/contoso" `
-  -AdoProject "MyProject" `
-  -AdoRepository "my-repo" `
-  -AdoPullRequestId 123
-```
-
-With task folder:
-
-```powershell
-.\ralph-loop.ps1 -TaskFolder .\task-prompts `
-  -IncludeAdoPrComments `
-  -AdoOrganization "https://dev.azure.com/contoso" `
-  -AdoProject "MyProject" `
-  -AdoRepository "my-repo" `
-  -AdoPullRequestId 123
-```
-
-Prerequisites for this option:
-- Azure CLI (`az`) installed
-- Azure DevOps extension installed: `az extension add --name azure-devops`
-- Authenticated session (`az login` and/or `az devops login`)
+If your task depends on ADO PR feedback, include that intent explicitly in your task prompt (or prompt file). During planning, Ralph can load the ADO skill to retrieve and incorporate PR comment context.
 
 ### Resume an Interrupted Session
 
