@@ -33,6 +33,7 @@ Ralph differs from other agent packs in this repository:
 | Execution Skill | `.github/skills/execution/SKILL.md` | Execution phase guidance |
 | Verification Skill | `.github/skills/verification/SKILL.md` | Verification phase guidance |
 | Cleanup Skill | `.github/skills/cleanup/SKILL.md` | Cleanup phase guidance |
+| ADO PR Comments Skill | `.github/skills/ado-pr-comments/SKILL.md` | Azure DevOps PR comment ingestion guidance |
 | PowerShell Loop | `ralph-loop.ps1` | Windows external orchestrator |
 | Bash Loop | `ralph-loop.sh` | Unix/macOS external orchestrator |
 
@@ -151,7 +152,7 @@ See [`agent-packs/ralph-copilot-cli/README.md`](../agent-packs/ralph-copilot-cli
 
 2. **Copy to your project**:
    ```bash
-   mkdir -p .github/agents .github/skills/planning .github/skills/execution .github/skills/verification .github/skills/cleanup
+    mkdir -p .github/agents .github/skills/planning .github/skills/execution .github/skills/verification .github/skills/cleanup .github/skills/ado-pr-comments
    cp agent-packs/ralph-copilot-cli/.github/agents/ralph.agent.md .github/agents/
    cp agent-packs/ralph-copilot-cli/ralph-loop.* ./
    ```
@@ -162,6 +163,7 @@ See [`agent-packs/ralph-copilot-cli/README.md`](../agent-packs/ralph-copilot-cli
    cp agent-packs/ralph-copilot-cli/.github/skills/execution/SKILL.md .github/skills/execution/
    cp agent-packs/ralph-copilot-cli/.github/skills/verification/SKILL.md .github/skills/verification/
    cp agent-packs/ralph-copilot-cli/.github/skills/cleanup/SKILL.md .github/skills/cleanup/
+    cp agent-packs/ralph-copilot-cli/.github/skills/ado-pr-comments/SKILL.md .github/skills/ado-pr-comments/
    ```
 
 4. **Add to .gitignore**:
@@ -178,10 +180,71 @@ See [`agent-packs/ralph-copilot-cli/README.md`](../agent-packs/ralph-copilot-cli
 .\ralph-loop.ps1 -Task "Add user authentication with JWT"
 ```
 
+**PowerShell prompt file (Windows):**
+```powershell
+.\ralph-loop.ps1 -PromptFile .\prompts\task.md
+```
+
 **Bash (macOS/Linux):**
 ```bash
 ./ralph-loop.sh "Add user authentication with JWT"
 ```
+
+### Task List Mode (PowerShell)
+
+Run one task per line from a file. Each task runs in a fresh loop with a new STM session.
+
+```powershell
+.\ralph-loop.ps1 -TaskListFile .\tasks.txt
+```
+
+Task file format:
+
+```text
+Add API rate limiting
+Improve login error messaging
+# comment line
+Add integration tests for billing webhook
+```
+
+### Task Folder Mode (PowerShell, resilient)
+
+Run one prompt file per task from a folder (sorted order):
+
+```powershell
+.\ralph-loop.ps1 -TaskFolder .\task-prompts
+```
+
+Example:
+
+```text
+task-prompts/
+    001-auth-hardening.md
+    002-api-pagination.md
+    003-observability.md
+```
+
+Resilient resume behavior:
+- Outer loop progress is persisted in `.ralph-stm/batch-state.json`
+- Inner loop/session is persisted in `.ralph-stm/active-run.json` and `runs/{session-id}`
+- `-Resume` continues both current task execution and remaining task files
+
+### Azure DevOps PR Comments Input (PowerShell)
+
+Append ADO PR comments to task input using `az` CLI:
+
+```powershell
+.\ralph-loop.ps1 -Task "Address review feedback" `
+    -IncludeAdoPrComments `
+    -AdoOrganization "https://dev.azure.com/contoso" `
+    -AdoProject "MyProject" `
+    -AdoRepository "my-repo" `
+    -AdoPullRequestId 123
+```
+
+This option is compatible with `-Task`, `-PromptFile`, and `-TaskListFile`.
+
+It also works with `-TaskFolder`.
 
 ### Resume an Interrupted Session
 
@@ -240,8 +303,10 @@ ralph-copilot-cli/
         │   └── SKILL.md           # Execution phase
         ├── verification/
         │   └── SKILL.md           # Verification phase
-        └── cleanup/
-            └── SKILL.md           # Cleanup phase
+        ├── cleanup/
+        │   └── SKILL.md           # Cleanup phase
+        └── ado-pr-comments/
+            └── SKILL.md           # ADO PR comment ingestion
 ```
 
 ## Comparison with Agentic Developer

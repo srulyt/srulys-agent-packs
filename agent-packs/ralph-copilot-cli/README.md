@@ -35,6 +35,7 @@ mkdir -p .github/skills/planning
 mkdir -p .github/skills/execution
 mkdir -p .github/skills/verification
 mkdir -p .github/skills/cleanup
+mkdir -p .github/skills/ado-pr-comments
 
 # Copy agent file
 cp .github/agents/ralph.agent.md YOUR_PROJECT/.github/agents/
@@ -44,6 +45,7 @@ cp .github/skills/planning/SKILL.md YOUR_PROJECT/.github/skills/planning/
 cp .github/skills/execution/SKILL.md YOUR_PROJECT/.github/skills/execution/
 cp .github/skills/verification/SKILL.md YOUR_PROJECT/.github/skills/verification/
 cp .github/skills/cleanup/SKILL.md YOUR_PROJECT/.github/skills/cleanup/
+cp .github/skills/ado-pr-comments/SKILL.md YOUR_PROJECT/.github/skills/ado-pr-comments/
 
 # Copy loop scripts to project root
 cp ralph-loop.ps1 YOUR_PROJECT/
@@ -61,11 +63,13 @@ mkdir -p ~/.copilot/skills/planning
 mkdir -p ~/.copilot/skills/execution
 mkdir -p ~/.copilot/skills/verification
 mkdir -p ~/.copilot/skills/cleanup
+mkdir -p ~/.copilot/skills/ado-pr-comments
 cp .github/agents/ralph.agent.md ~/.copilot/agents/
 cp .github/skills/planning/SKILL.md ~/.copilot/skills/planning/
 cp .github/skills/execution/SKILL.md ~/.copilot/skills/execution/
 cp .github/skills/verification/SKILL.md ~/.copilot/skills/verification/
 cp .github/skills/cleanup/SKILL.md ~/.copilot/skills/cleanup/
+cp .github/skills/ado-pr-comments/SKILL.md ~/.copilot/skills/ado-pr-comments/
 
 # On macOS/Linux
 mkdir -p ~/.copilot/agents
@@ -73,11 +77,13 @@ mkdir -p ~/.copilot/skills/planning
 mkdir -p ~/.copilot/skills/execution
 mkdir -p ~/.copilot/skills/verification
 mkdir -p ~/.copilot/skills/cleanup
+mkdir -p ~/.copilot/skills/ado-pr-comments
 cp .github/agents/ralph.agent.md ~/.copilot/agents/
 cp .github/skills/planning/SKILL.md ~/.copilot/skills/planning/
 cp .github/skills/execution/SKILL.md ~/.copilot/skills/execution/
 cp .github/skills/verification/SKILL.md ~/.copilot/skills/verification/
 cp .github/skills/cleanup/SKILL.md ~/.copilot/skills/cleanup/
+cp .github/skills/ado-pr-comments/SKILL.md ~/.copilot/skills/ado-pr-comments/
 ```
 
 ### Add to .gitignore
@@ -98,12 +104,109 @@ Add the STM (Short-Term Memory) directory to your `.gitignore`:
 .\ralph-loop.ps1 -Task "Add user authentication with JWT"
 ```
 
+**PowerShell from file:**
+```powershell
+.\ralph-loop.ps1 -PromptFile .\prompts\task.md
+```
+
 **Bash (macOS/Linux):**
 ```bash
 ./ralph-loop.sh "Add user authentication with JWT"
 ```
 
 > **Note:** Providing a new task always starts a fresh session. If an active session exists, Ralph archives it automatically before starting the new task. Use `-Resume` / `--resume` only when you want to continue an existing session.
+
+### Run a Task List (PowerShell)
+
+Run multiple tasks sequentially with isolated STM per task:
+
+```powershell
+.\ralph-loop.ps1 -TaskListFile .\tasks.txt
+```
+
+Task list format (`tasks.txt`):
+
+```text
+Add structured logging to API middleware
+Add pagination to customer list endpoint
+# lines starting with # are ignored
+Refactor auth error handling for consistency
+```
+
+Mechanism: the script invokes a fresh child loop for each task so every task gets a new session in `.ralph-stm/runs/{session-id}`.
+
+### Run a Task Folder (PowerShell, resilient)
+
+Run one prompt file per task from a folder (sorted by file path):
+
+```powershell
+.\ralph-loop.ps1 -TaskFolder .\task-prompts
+```
+
+Recommended folder structure:
+
+```text
+task-prompts/
+  001-auth-hardening.md
+  002-api-pagination.md
+  003-observability.md
+```
+
+Resilience behavior:
+- Outer loop state is persisted in `.ralph-stm/batch-state.json`
+- Inner task session remains in `.ralph-stm/active-run.json` and `runs/{session-id}`
+- `-Resume` continues both levels automatically (current task session, then remaining task files)
+
+### Use Azure DevOps PR Comments as Task Input (PowerShell)
+
+Append ADO PR comments to any input mode (`-Task`, `-PromptFile`, or `-TaskListFile`):
+
+```powershell
+.\ralph-loop.ps1 -Task "Address review feedback" `
+  -IncludeAdoPrComments `
+  -AdoOrganization "https://dev.azure.com/contoso" `
+  -AdoProject "MyProject" `
+  -AdoRepository "my-repo" `
+  -AdoPullRequestId 123
+```
+
+With prompt file:
+
+```powershell
+.\ralph-loop.ps1 -PromptFile .\prompts\review-task.md `
+  -IncludeAdoPrComments `
+  -AdoOrganization "https://dev.azure.com/contoso" `
+  -AdoProject "MyProject" `
+  -AdoRepository "my-repo" `
+  -AdoPullRequestId 123
+```
+
+With task list:
+
+```powershell
+.\ralph-loop.ps1 -TaskListFile .\tasks.txt `
+  -IncludeAdoPrComments `
+  -AdoOrganization "https://dev.azure.com/contoso" `
+  -AdoProject "MyProject" `
+  -AdoRepository "my-repo" `
+  -AdoPullRequestId 123
+```
+
+With task folder:
+
+```powershell
+.\ralph-loop.ps1 -TaskFolder .\task-prompts `
+  -IncludeAdoPrComments `
+  -AdoOrganization "https://dev.azure.com/contoso" `
+  -AdoProject "MyProject" `
+  -AdoRepository "my-repo" `
+  -AdoPullRequestId 123
+```
+
+Prerequisites for this option:
+- Azure CLI (`az`) installed
+- Azure DevOps extension installed: `az extension add --name azure-devops`
+- Authenticated session (`az login` and/or `az devops login`)
 
 ### Resume an Interrupted Session
 
@@ -270,6 +373,7 @@ chmod +x ralph-loop.sh
 | `.github/skills/execution/SKILL.md` | Execution phase guidance |
 | `.github/skills/verification/SKILL.md` | Verification phase guidance |
 | `.github/skills/cleanup/SKILL.md` | Cleanup phase guidance |
+| `.github/skills/ado-pr-comments/SKILL.md` | ADO PR comment retrieval guidance |
 | `ralph-loop.ps1` | PowerShell loop script |
 | `ralph-loop.sh` | Bash loop script |
 

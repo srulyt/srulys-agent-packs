@@ -14,8 +14,32 @@
 .PARAMETER Task
     The development task to execute. Required on first run.
 
+.PARAMETER PromptFile
+    Path to a file containing the development task prompt. Mutually exclusive with -Task and -TaskListFile.
+
+.PARAMETER TaskListFile
+    Path to a text file containing one task per non-empty line. Each task runs in its own isolated STM session.
+
+.PARAMETER TaskFolder
+    Path to a folder containing one prompt file per task. Files are executed in sorted order with isolated STM per task.
+
 .PARAMETER Resume
     Resume from existing STM state instead of starting fresh.
+
+.PARAMETER IncludeAdoPrComments
+    Loads Azure DevOps PR comments via az CLI and appends them as task input.
+
+.PARAMETER AdoOrganization
+    Azure DevOps organization URL (e.g., https://dev.azure.com/contoso).
+
+.PARAMETER AdoProject
+    Azure DevOps project name.
+
+.PARAMETER AdoRepository
+    Azure DevOps repository name or ID.
+
+.PARAMETER AdoPullRequestId
+    Azure DevOps pull request ID.
 
 .PARAMETER Timeout
     Activity timeout in minutes. Default: 15
@@ -25,6 +49,15 @@
 
 .EXAMPLE
     .\ralph-loop.ps1 -Resume
+
+.EXAMPLE
+    .\ralph-loop.ps1 -PromptFile .\prompts\task.md
+
+.EXAMPLE
+    .\ralph-loop.ps1 -TaskListFile .\tasks.txt -IncludeAdoPrComments -AdoOrganization "https://dev.azure.com/contoso" -AdoProject "App" -AdoRepository "web" -AdoPullRequestId 42
+
+.EXAMPLE
+    .\ralph-loop.ps1 -TaskFolder .\task-prompts
 #>
 
 [CmdletBinding()]
@@ -32,7 +65,23 @@ param(
     [Parameter(Position = 0)]
     [string]$Task,
 
+    [string]$PromptFile,
+
+    [string]$TaskListFile,
+
+    [string]$TaskFolder,
+
     [switch]$Resume,
+
+    [switch]$IncludeAdoPrComments,
+
+    [string]$AdoOrganization,
+
+    [string]$AdoProject,
+
+    [string]$AdoRepository,
+
+    [int]$AdoPullRequestId,
 
     [int]$Timeout = 15
 )
@@ -42,6 +91,8 @@ $STM_DIR = ".ralph-stm"
 $ACTIVE_RUN_FILE = "$STM_DIR/active-run.json"
 $RUNS_DIR = "$STM_DIR/runs"
 $HISTORY_DIR = "$STM_DIR/history"
+$BATCH_STATE_FILE = "$STM_DIR/batch-state.json"
+$BATCH_HISTORY_DIR = "$STM_DIR/batch-history"
 
 # Dynamic paths (set after session resolution)
 $script:SESSION_DIR = $null
@@ -104,6 +155,329 @@ function Get-SessionId {
     $datePart = Get-Date -Format "yyyy-MM-dd"
     $guidPart = [guid]::NewGuid().ToString().Substring(0, 8).ToLower()
     return "$datePart-$guidPart"
+}
+
+function Get-TaskFromPromptFile {
+    param([string]$FilePath)
+
+    if (-not (Test-Path $FilePath -PathType Leaf)) {
+        throw "Prompt file not found: $FilePath"
+    }
+
+    $content = Get-Content $FilePath -Raw
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        throw "Prompt file is empty: $FilePath"
+    }
+
+    return $content.Trim()
+}
+
+function Get-TaskListFromFile {
+    param([string]$FilePath)
+
+    if (-not (Test-Path $FilePath -PathType Leaf)) {
+        throw "Task list file not found: $FilePath"
+    }
+
+    $tasks = Get-Content $FilePath |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith("#") }
+
+    if (-not $tasks -or $tasks.Count -eq 0) {
+        throw "Task list file has no tasks (expects one task per non-empty line): $FilePath"
+    }
+
+    return $tasks
+}
+
+function Get-AdoPrCommentsInput {
+    param(
+        [string]$Organization,
+        [string]$Project,
+        [string]$Repository,
+        [int]$PullRequestId
+    )
+
+    Write-Host "  Loading Azure DevOps PR comments with az CLI..." -ForegroundColor $Colors.Info
+
+    $azCheck = Get-Command az -ErrorAction SilentlyContinue
+    if (-not $azCheck) {
+        throw "az CLI not found. Install Azure CLI and azure-devops extension before using -IncludeAdoPrComments."
+    }
+
+    $json = az repos pr thread list --organization $Organization --project $Project --repository $Repository --id $PullRequestId --output json 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($json)) {
+        throw "Failed to load PR threads from Azure DevOps. Verify az login, extension setup, and ADO parameters."
+    }
+
+    $threads = $json | ConvertFrom-Json
+    $comments = @()
+
+    foreach ($thread in $threads) {
+        if ($null -eq $thread.comments) {
+            continue
+        }
+
+        foreach ($comment in $thread.comments) {
+            if ($null -eq $comment) {
+                continue
+            }
+
+            if ($comment.isDeleted -eq $true) {
+                continue
+            }
+
+            if ([string]::IsNullOrWhiteSpace($comment.content)) {
+                continue
+            }
+
+            $author = if ($comment.author -and $comment.author.displayName) { $comment.author.displayName } else { "unknown" }
+            $comments += "- [$author] $($comment.content.Trim())"
+        }
+    }
+
+    if (-not $comments -or $comments.Count -eq 0) {
+        throw "No non-deleted PR comments found for PR #$PullRequestId."
+    }
+
+    return @"
+## Azure DevOps PR Comment Context
+
+Source:
+- Organization: $Organization
+- Project: $Project
+- Repository: $Repository
+- Pull Request: $PullRequestId
+
+Comments:
+$($comments -join "`n")
+"@
+}
+
+function Get-BatchState {
+    if (Test-Path $BATCH_STATE_FILE) {
+        try {
+            return Get-Content $BATCH_STATE_FILE -Raw | ConvertFrom-Json
+        }
+        catch {
+            Write-Host "  Warning: Batch state file corrupted or invalid JSON." -ForegroundColor $Colors.Warning
+            return $null
+        }
+    }
+    return $null
+}
+
+function Save-BatchState {
+    param([object]$BatchState)
+
+    $BatchState.updated_at = Get-Date -Format "o"
+    New-Item -ItemType Directory -Path $STM_DIR -Force | Out-Null
+    $BatchState | ConvertTo-Json -Depth 10 | Set-Content -Path $BATCH_STATE_FILE -Encoding UTF8
+}
+
+function Initialize-TaskFolderBatchState {
+    param(
+        [string]$FolderPath,
+        [switch]$WithAdoComments
+    )
+
+    if (-not (Test-Path $FolderPath -PathType Container)) {
+        throw "Task folder not found: $FolderPath"
+    }
+
+    $resolvedFolder = (Resolve-Path $FolderPath).Path
+    $taskFiles = Get-ChildItem -Path $resolvedFolder -File -Recurse |
+        Sort-Object FullName |
+        Select-Object -ExpandProperty FullName
+
+    if (-not $taskFiles -or $taskFiles.Count -eq 0) {
+        throw "Task folder has no files: $resolvedFolder"
+    }
+
+    $batchId = Get-SessionId
+    $timestamp = Get-Date -Format "o"
+
+    return [PSCustomObject]@{
+        batch_id                  = $batchId
+        mode                      = "task_folder"
+        folder_path               = $resolvedFolder
+        status                    = "in_progress"
+        started_at                = $timestamp
+        updated_at                = $timestamp
+        current_index             = 0
+        current_task_file         = $null
+        current_task_session      = $null
+        task_files                = $taskFiles
+        completed_tasks           = @()
+        include_ado_pr_comments   = [bool]$WithAdoComments
+        ado_organization          = $AdoOrganization
+        ado_project               = $AdoProject
+        ado_repository            = $AdoRepository
+        ado_pull_request_id       = $AdoPullRequestId
+        last_error                = $null
+    }
+}
+
+function Archive-BatchState {
+    param([object]$BatchState)
+
+    if (-not $BatchState) {
+        return
+    }
+
+    New-Item -ItemType Directory -Path $BATCH_HISTORY_DIR -Force | Out-Null
+    $archiveFile = "$BATCH_HISTORY_DIR/$($BatchState.batch_id).json"
+    $BatchState | ConvertTo-Json -Depth 10 | Set-Content -Path $archiveFile -Encoding UTF8
+
+    if (Test-Path $BATCH_STATE_FILE) {
+        Remove-Item $BATCH_STATE_FILE -Force
+    }
+}
+
+function Complete-BatchTask {
+    param(
+        [object]$BatchState,
+        [string]$TaskFile
+    )
+
+    $alreadyCompleted = $BatchState.completed_tasks -contains $TaskFile
+    if (-not $alreadyCompleted) {
+        $BatchState.completed_tasks = @($BatchState.completed_tasks) + @($TaskFile)
+    }
+
+    $BatchState.current_index = [int]$BatchState.current_index + 1
+    $BatchState.current_task_file = $null
+    $BatchState.current_task_session = $null
+    $BatchState.last_error = $null
+    Save-BatchState -BatchState $BatchState
+}
+
+function Invoke-TaskFolderBatch {
+    param([object]$BatchState)
+
+    $shellExecutable = (Get-Process -Id $PID).Path
+
+    Write-Header "Ralph - Task Folder Batch"
+    Write-Status "Batch" $BatchState.batch_id
+    Write-Status "Folder" $BatchState.folder_path
+    Write-Status "Tasks" $BatchState.task_files.Count
+
+    while ($BatchState.status -eq "in_progress" -and [int]$BatchState.current_index -lt $BatchState.task_files.Count) {
+        $taskFile = $BatchState.task_files[[int]$BatchState.current_index]
+        $BatchState.current_task_file = $taskFile
+        Save-BatchState -BatchState $BatchState
+
+        Write-Host "" 
+        Write-Host "  [Folder Batch $([int]$BatchState.current_index + 1)/$($BatchState.task_files.Count)]" -ForegroundColor $Colors.Phase
+        Write-Host "  Task file: $taskFile" -ForegroundColor $Colors.Info
+
+        $activeRun = Get-ActiveRun
+
+        if ($activeRun) {
+            Set-SessionPaths -SessionId $activeRun.current_run
+            $activeState = Get-State
+
+            if ($BatchState.current_task_session -and $activeRun.current_run -eq $BatchState.current_task_session) {
+                if ($activeState -and (($activeState.status -in @("complete", "verified")) -or $activeState.phase -eq "complete")) {
+                    Complete-BatchTask -BatchState $BatchState -TaskFile $taskFile
+                    continue
+                }
+            }
+            elseif ($activeState -and (($activeState.status -in @("complete", "verified", "issues_found")) -or $activeState.phase -eq "complete")) {
+                Write-Host "  Found stale completed session outside current batch task. Archiving it..." -ForegroundColor $Colors.Warning
+                Archive-Run -SessionId $activeRun.current_run
+                if (Test-Path $ACTIVE_RUN_FILE) {
+                    Remove-Item $ACTIVE_RUN_FILE -Force
+                }
+                $activeRun = $null
+            }
+            else {
+                $BatchState.last_error = "Found in-progress active session ($($activeRun.current_run)) that does not match current batch task session."
+                Save-BatchState -BatchState $BatchState
+                Write-Host "  Batch paused due to session mismatch. Resolve active session and run with -Resume." -ForegroundColor $Colors.Error
+                exit 1
+            }
+        }
+
+        $childArgs = @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", $PSCommandPath,
+            "-Timeout", $Timeout
+        )
+
+        if ($activeRun) {
+            Write-Host "  Resuming in-progress task session..." -ForegroundColor $Colors.Info
+            $childArgs += "-Resume"
+        }
+        else {
+            Write-Host "  Starting new task session from file..." -ForegroundColor $Colors.Info
+            $childArgs += @("-PromptFile", $taskFile)
+
+            if ($BatchState.include_ado_pr_comments) {
+                $childArgs += @(
+                    "-IncludeAdoPrComments",
+                    "-AdoOrganization", $BatchState.ado_organization,
+                    "-AdoProject", $BatchState.ado_project,
+                    "-AdoRepository", $BatchState.ado_repository,
+                    "-AdoPullRequestId", $BatchState.ado_pull_request_id
+                )
+            }
+        }
+
+        & $shellExecutable @childArgs
+        if ($LASTEXITCODE -ne 0) {
+            $BatchState.last_error = "Child loop exited with code $LASTEXITCODE on task file: $taskFile"
+            Save-BatchState -BatchState $BatchState
+            Write-Host "  Batch paused. Resume with -Resume to continue from this task." -ForegroundColor $Colors.Warning
+            exit $LASTEXITCODE
+        }
+
+        $activeRunAfter = Get-ActiveRun
+        if (-not $activeRunAfter) {
+            $BatchState.last_error = "No active session found after child execution for task file: $taskFile"
+            Save-BatchState -BatchState $BatchState
+            Write-Host "  Batch paused. Resume with -Resume to retry this task." -ForegroundColor $Colors.Warning
+            exit 1
+        }
+
+        Set-SessionPaths -SessionId $activeRunAfter.current_run
+        $activeStateAfter = Get-State
+
+        if (-not $BatchState.current_task_session) {
+            $BatchState.current_task_session = $activeRunAfter.current_run
+            Save-BatchState -BatchState $BatchState
+        }
+
+        if ($activeStateAfter -and (($activeStateAfter.status -in @("complete", "verified")) -or $activeStateAfter.phase -eq "complete")) {
+            Complete-BatchTask -BatchState $BatchState -TaskFile $taskFile
+            continue
+        }
+
+        if ($activeStateAfter -and $activeStateAfter.status -eq "issues_found") {
+            $BatchState.last_error = "Task requires intervention (issues_found): $taskFile"
+            Save-BatchState -BatchState $BatchState
+            Write-Host "  Task needs intervention. After addressing issues, run with -Resume." -ForegroundColor $Colors.Warning
+            exit 1
+        }
+
+        $BatchState.last_error = "Task did not reach completion status: $taskFile"
+        Save-BatchState -BatchState $BatchState
+        Write-Host "  Batch paused. Resume with -Resume to continue current task." -ForegroundColor $Colors.Warning
+        exit 1
+    }
+
+    if ([int]$BatchState.current_index -ge $BatchState.task_files.Count) {
+        $BatchState.status = "complete"
+        $BatchState.current_task_file = $null
+        $BatchState.current_task_session = $null
+        $BatchState.last_error = $null
+        Save-BatchState -BatchState $BatchState
+        Archive-BatchState -BatchState $BatchState
+        Write-Host "" 
+        Write-Host "  Task folder batch completed successfully." -ForegroundColor $Colors.Success
+        return
+    }
 }
 
 function Set-SessionPaths {
@@ -496,12 +870,160 @@ catch {
 # Main execution
 Write-Header "Ralph - Agentic Developer"
 
+# Validate input mode
+$hasTask = -not [string]::IsNullOrWhiteSpace($Task)
+$hasPromptFile = -not [string]::IsNullOrWhiteSpace($PromptFile)
+$hasTaskList = -not [string]::IsNullOrWhiteSpace($TaskListFile)
+$hasTaskFolder = -not [string]::IsNullOrWhiteSpace($TaskFolder)
+
+$activeBatchState = Get-BatchState
+
+if ($Resume -and $activeBatchState -and $activeBatchState.status -eq "in_progress" -and $activeBatchState.mode -eq "task_folder") {
+    if ($hasTask -or $hasPromptFile -or $hasTaskList) {
+        Write-Host "  -Resume with active task-folder batch cannot be combined with -Task, -PromptFile, or -TaskListFile." -ForegroundColor $Colors.Error
+        exit 1
+    }
+
+    if ($hasTaskFolder) {
+        $resolvedTaskFolder = (Resolve-Path $TaskFolder -ErrorAction SilentlyContinue)
+        if (-not $resolvedTaskFolder -or $resolvedTaskFolder.Path -ne $activeBatchState.folder_path) {
+            Write-Host "  -TaskFolder does not match active batch folder in .ralph-stm/batch-state.json." -ForegroundColor $Colors.Error
+            exit 1
+        }
+    }
+
+    Invoke-TaskFolderBatch -BatchState $activeBatchState
+    exit 0
+}
+
+if ($Resume -and ($hasTask -or $hasPromptFile -or $hasTaskList -or $hasTaskFolder)) {
+    Write-Host "  -Resume cannot be combined with -Task, -PromptFile, -TaskListFile, or -TaskFolder." -ForegroundColor $Colors.Error
+    exit 1
+}
+
+if (($hasTask -and $hasPromptFile) -or ($hasTask -and $hasTaskList) -or ($hasTask -and $hasTaskFolder) -or ($hasPromptFile -and $hasTaskList) -or ($hasPromptFile -and $hasTaskFolder) -or ($hasTaskList -and $hasTaskFolder)) {
+    Write-Host "  -Task, -PromptFile, -TaskListFile, and -TaskFolder are mutually exclusive." -ForegroundColor $Colors.Error
+    exit 1
+}
+
+if ($IncludeAdoPrComments) {
+    if ([string]::IsNullOrWhiteSpace($AdoOrganization) -or [string]::IsNullOrWhiteSpace($AdoProject) -or [string]::IsNullOrWhiteSpace($AdoRepository) -or $AdoPullRequestId -le 0) {
+        Write-Host "  -IncludeAdoPrComments requires -AdoOrganization, -AdoProject, -AdoRepository, and -AdoPullRequestId." -ForegroundColor $Colors.Error
+        exit 1
+    }
+}
+
+# Task folder mode: one prompt file per task, persisted batch state for resilient resume.
+if ($hasTaskFolder) {
+    if ($activeBatchState -and $activeBatchState.status -eq "in_progress") {
+        Write-Host "  Existing in-progress batch detected. Run with -Resume to continue it." -ForegroundColor $Colors.Error
+        exit 1
+    }
+
+    try {
+        $folderBatchState = Initialize-TaskFolderBatchState -FolderPath $TaskFolder -WithAdoComments:$IncludeAdoPrComments
+    }
+    catch {
+        Write-Host "  $_" -ForegroundColor $Colors.Error
+        exit 1
+    }
+
+    Save-BatchState -BatchState $folderBatchState
+    Invoke-TaskFolderBatch -BatchState $folderBatchState
+    exit 0
+}
+
+# Batch mode: each task runs in an isolated session by invoking this script per task
+if ($hasTaskList) {
+    try {
+        $batchTasks = Get-TaskListFromFile -FilePath $TaskListFile
+    }
+    catch {
+        Write-Host "  $_" -ForegroundColor $Colors.Error
+        exit 1
+    }
+
+    Write-Header "Ralph - Batch Task List"
+    Write-Host "  Tasks to run: $($batchTasks.Count)" -ForegroundColor $Colors.Info
+
+    $shellExecutable = (Get-Process -Id $PID).Path
+
+    $taskIndex = 0
+    foreach ($batchTask in $batchTasks) {
+        $taskIndex++
+        Write-Host "" 
+        Write-Host "  [Batch $taskIndex/$($batchTasks.Count)] Starting task..." -ForegroundColor $Colors.Phase
+        Write-Host "  $batchTask" -ForegroundColor $Colors.Info
+
+        $childArgs = @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", $PSCommandPath,
+            "-Task", $batchTask,
+            "-Timeout", $Timeout
+        )
+
+        if ($IncludeAdoPrComments) {
+            $childArgs += @(
+                "-IncludeAdoPrComments",
+                "-AdoOrganization", $AdoOrganization,
+                "-AdoProject", $AdoProject,
+                "-AdoRepository", $AdoRepository,
+                "-AdoPullRequestId", $AdoPullRequestId
+            )
+        }
+
+        & $shellExecutable @childArgs
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Batch stopped: task $taskIndex failed with exit code $LASTEXITCODE." -ForegroundColor $Colors.Error
+            exit $LASTEXITCODE
+        }
+    }
+
+    Write-Host "" 
+    Write-Host "  Batch task list completed successfully." -ForegroundColor $Colors.Success
+    exit 0
+}
+
+$resolvedTask = $null
+if (-not $Resume) {
+    if ($hasTask) {
+        $resolvedTask = $Task
+    }
+    elseif ($hasPromptFile) {
+        try {
+            $resolvedTask = Get-TaskFromPromptFile -FilePath $PromptFile
+        }
+        catch {
+            Write-Host "  $_" -ForegroundColor $Colors.Error
+            exit 1
+        }
+    }
+
+    if ($IncludeAdoPrComments) {
+        try {
+            $adoContext = Get-AdoPrCommentsInput -Organization $AdoOrganization -Project $AdoProject -Repository $AdoRepository -PullRequestId $AdoPullRequestId
+        }
+        catch {
+            Write-Host "  $_" -ForegroundColor $Colors.Error
+            exit 1
+        }
+
+        if ([string]::IsNullOrWhiteSpace($resolvedTask)) {
+            $resolvedTask = $adoContext
+        }
+        else {
+            $resolvedTask = "$resolvedTask`n`n$adoContext"
+        }
+    }
+}
+
 # Check for existing session via active-run.json
 $activeRun = Get-ActiveRun
 
 # If a new task is explicitly provided, always start a fresh session.
 # Existing active runs are archived to avoid unintentionally resuming old work.
-if ($Task -and -not $Resume -and $activeRun) {
+if ($resolvedTask -and -not $Resume -and $activeRun) {
     Set-SessionPaths -SessionId $activeRun.current_run
     $existingState = Get-State
     
@@ -551,14 +1073,17 @@ elseif ($activeRun -and -not $Task) {
     }
 }
 
-if (-not $activeRun -and -not $Task) {
+if (-not $activeRun -and -not $resolvedTask) {
     Write-Host "  Usage: .\ralph-loop.ps1 -Task `"Your development task`"" -ForegroundColor $Colors.Error
+    Write-Host "         .\ralph-loop.ps1 -PromptFile .\prompts\task.md" -ForegroundColor $Colors.Error
+    Write-Host "         .\ralph-loop.ps1 -TaskListFile .\tasks.txt" -ForegroundColor $Colors.Error
+    Write-Host "         .\ralph-loop.ps1 -TaskFolder .\task-prompts" -ForegroundColor $Colors.Error
     Write-Host "         .\ralph-loop.ps1 -Resume" -ForegroundColor $Colors.Error
     exit 1
 }
 
 if (-not $activeRun) {
-    $state = Initialize-STM -UserTask $Task
+    $state = Initialize-STM -UserTask $resolvedTask
 }
 else {
     # Ensure session paths are set before reading state
@@ -566,7 +1091,7 @@ else {
     $state = Get-State
 }
 
-$prompt = if ($Task -and -not $Resume) { $Task } else { "Continue the development task" }
+$prompt = if ($resolvedTask -and -not $Resume) { $resolvedTask } else { "Continue the development task" }
 
 # Main loop with single completion + verification pattern
 $iteration = 0
