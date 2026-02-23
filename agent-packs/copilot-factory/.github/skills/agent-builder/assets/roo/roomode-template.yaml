@@ -1,0 +1,38 @@
+# Roo Code .roomodes Template
+# Copy and customize this template for new agent packs
+
+customModes:
+  # === PRIMARY AGENT ===
+  - slug: primary-agent
+    name: "🎯 Primary Agent"
+    groups:
+      - read
+      - edit
+      # Add more as needed: browser, command, mcp
+    # Restrict file editing (optional)
+    fileRegex: "^src/.*$"
+    customInstructions: |
+      - See rules: .roo/rules-primary-agent/rules.md
+      - Additional context can go here
+
+  # === SECONDARY AGENT (if multi-agent) ===
+  - slug: secondary-agent
+    name: "🔧 Secondary Agent"
+    groups:
+      - read
+      - edit
+    fileRegex: "^docs/.*\\.md$"
+    customInstructions: |
+      - See rules: .roo/rules-secondary-agent/rules.md
+
+  # === ORCHESTRATOR (if hierarchical) ===
+  # - slug: orchestrator
+  #   name: "🎭 Orchestrator"
+  #   groups:
+  #     - read
+  #     - edit
+  #     - command
+  #   fileRegex: "^\\.state/.*$"
+  #   customInstructions: |
+  #     - See rules: .roo/rules-orchestrator/rules.md
+  #     - Coordinates other agents via boomerang protocol

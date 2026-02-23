@@ -1,18 +1,25 @@
-# Factory Pack (Deprecated)
-
-> **Note:** This pack has been moved to `agent-packs/roo-agent-factory/`. See [roo-agent-factory.md](./roo-agent-factory.md) for current documentation. Install via `init.cmd roo` from the repository root.
+# Roo Agent Factory
 
 ## Overview
 
-The Agent Factory is a multi-agent system for designing and building other agent packs. It lives at repository root as the "meta-system" that creates all other packs.
+The Roo Agent Factory is a multi-agent system for designing and building Roo Code agent packs. It uses a boomerang orchestration pattern with four specialized agents.
 
 ## Location
 
-**Root level** (singular exception to the `agent-packs/` pattern)
+`agent-packs/roo-agent-factory/`
 
-- [`.roomodes`](../.roomodes) - Mode definitions
-- [`.roo/`](../.roo/) - Rules, skills, templates
-- [`.factory/`](../.factory/) - Short-term memory (gitignored)
+Installed to the repository root via `init.cmd roo` or `init.cmd` (both).
+
+- `.roomodes` - Mode definitions
+- `.roo/` - Rules, skills, templates
+- `.factory/` - Short-term memory (gitignored)
+
+## Installation
+
+```cmd
+:: From the repository root
+init.cmd roo
+```
 
 ## Agents
 
@@ -51,7 +58,11 @@ All sub-agents return control to the Orchestrator:
 
 | Skill | Location | Purpose |
 |-------|----------|---------|
-| `stm-design` | [`.roo/skills/stm-design/`](../.roo/skills/stm-design/) | Patterns for short-term memory systems |
+| `stm-design` | `.roo/skills/stm-design/` | Patterns for short-term memory systems |
+| `system-design` | `.roo/skills/system-design/` | Multi-agent architecture patterns |
+| `copilot-cli-builder` | `.roo/skills/copilot-cli-builder/` | Templates for Copilot CLI agents |
+| `pack-documentation` | `.roo/skills/pack-documentation/` | Documentation generation |
+| `skill-creator` | `.roo/skills/skill-creator/` | Skill file creation |
 
 ## File Permissions
 
@@ -64,11 +75,12 @@ All sub-agents return control to the Orchestrator:
 
 ## Usage
 
-1. Open repository root in VS Code
-2. Factory modes appear automatically in mode selector
-3. Activate **Factory Orchestrator** to begin
-4. Describe the agent pack you want to create
-5. Factory creates pack under `agent-packs/`
+1. Run `init.cmd roo` from the repository root
+2. Open the repository in VS Code with Roo Code
+3. Factory modes appear in the mode selector
+4. Activate **Factory Orchestrator** to begin
+5. Describe the agent pack you want to create
+6. Factory creates pack under `agent-packs/`
 
 ### Example Request
 
@@ -94,7 +106,7 @@ Session IDs follow format: `YYYY-MM-DD-{8-hex}` (e.g., `2026-01-22-3f8a2c1d`)
 
 ## Templates
 
-Available in [`.roo/templates/factory-agents/`](../.roo/templates/factory-agents/):
+Available in `.roo/templates/factory-agents/`:
 - `example-roomode.md` - YAML syntax reference
 - `example-rules.md` - Rule file structure
 - `skill-template/SKILL.md` - Skill file format

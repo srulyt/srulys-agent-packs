@@ -6,39 +6,49 @@ A collection of agent packs for Roo Code, including the Agent Factory meta-syste
 
 ```
 srulys-agent-packs/
-├── .roomodes                # Factory pack modes (root-level)
-├── .roo/                    # Factory pack rules, skills, templates
+├── init.cmd                 # Install factories to root (roo/copilot/both)
+├── .gitignore               # Ignores installed factory files
 ├── .factory/                # Factory STM (gitignored)
 ├── docs/                    # Documentation for all packs
 │   ├── README.md            # Table of contents
 │   ├── factory.md           # Factory pack documentation
 │   └── {pack-name}.md       # Per-pack documentation
-└── agent-packs/             # All other agent packs
+└── agent-packs/             # All agent packs
+    ├── roo-agent-factory/   # Roo Code agent factory
+    ├── copilot-factory/     # GitHub Copilot CLI factory
     └── {pack-name}/
         ├── .roomodes        # Pack-specific modes
         ├── .roo/            # Pack-specific rules
         └── README.md
 ```
 
-## The Factory Pack (Root)
+## Agent Factories
 
-The **Agent Factory** is a multi-agent system that creates other agent packs. It's the singular exception to the isolation pattern, living at repository root.
+Two factory packs are available for creating agent systems:
 
-### Quick Start - Using the Factory
+| Factory | Target Platform | Location |
+|---------|----------------|----------|
+| Roo Agent Factory | Roo Code (VS Code) | `agent-packs/roo-agent-factory/` |
+| Copilot Factory | GitHub Copilot CLI | `agent-packs/copilot-factory/` |
 
-1. Open this repository in VS Code
-2. Factory modes are available immediately
-3. Activate **Factory Orchestrator** mode
-4. Describe the agent pack you want to create
-5. Factory creates the pack under `agent-packs/`
+### Quick Start - Using the Factories
 
-Factory agents:
-- **Factory Orchestrator** - Coordinates workflow
-- **Factory Architect** - Designs system architecture
-- **Factory Engineer** - Implements modes and rules
-- **Factory Critic** - Reviews for quality
+Run `init.cmd` to install the factories to the repository root:
 
-See [docs/factory.md](docs/factory.md) for full documentation.
+```cmd
+:: Install both factories (default)
+init.cmd
+
+:: Install only the Roo Agent Factory
+init.cmd roo
+
+:: Install only the Copilot Factory
+init.cmd copilot
+```
+
+After installation:
+- **Roo**: Open the repository in VS Code → Factory modes appear in the mode selector → Activate **Factory Orchestrator**
+- **Copilot**: Use `gh copilot` and invoke `@copilot-factory`
 
 ## Installing Agent Packs
 
@@ -98,7 +108,8 @@ ln -s /path/to/agent-packs/{pack-name}/.roo .roo
 
 | Pack | Description | Docs |
 |------|-------------|------|
-| Factory | Multi-agent system for creating agent packs | [docs/factory.md](docs/factory.md) |
+| Roo Agent Factory | Multi-agent system for creating Roo Code agent packs | [docs/roo-agent-factory.md](docs/roo-agent-factory.md) |
+| Copilot Factory | Multi-agent system for creating Copilot CLI agent packs | [docs/copilot-factory.md](docs/copilot-factory.md) |
 | Example Pack | Starter template | [docs/example-pack.md](docs/example-pack.md) |
 
 ## Documentation
@@ -110,7 +121,7 @@ Full documentation is in the [`docs/`](docs/) folder:
 
 ## Creating New Packs
 
-Use the Factory Orchestrator to create new packs automatically, or create manually:
+Use the Factory Orchestrator to create new packs automatically (run `init.cmd roo` first), or create manually:
 
 1. Create `agent-packs/{pack-name}/`
 2. Add `.roomodes` with mode definitions

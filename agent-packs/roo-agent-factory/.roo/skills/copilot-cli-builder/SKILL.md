@@ -47,7 +47,6 @@ Custom agents are markdown files with YAML frontmatter defining specialized Copi
 name: agent-name
 description: Required. What the agent does and when to use it.
 tools: ["tool1", "tool2"]
-infer: true
 ---
 
 Agent prompt and instructions in markdown body.
@@ -60,9 +59,13 @@ Maximum 30,000 characters.
 |----------|----------|------|-------------|
 | `name` | No | string | Display name (defaults to filename) |
 | `description` | **Yes** | string | Purpose and capabilities |
-| `tools` | No | string[] | Allowed tools. Omit for all tools. |
-| `infer` | No | boolean | Auto-select based on context (default: true) |
-| `target` | No | string | `vscode` or `github-copilot` |
+| `tools` | No | string[] or string | Allowed tools. Omit for all tools. Supports YAML array or comma-separated string. |
+| `disable-model-invocation` | No | boolean | When `true`, agent must be manually selected (default: false). Preferred over `infer`. |
+| `infer` | No | boolean | **Deprecated** — use `disable-model-invocation` instead. Auto-select based on context (default: true) |
+| `target` | No | string | `vscode` or `github-copilot`. Omit for both. |
+| `model` | No | string | AI model override (IDE environments only, ignored on GitHub.com) |
+| `mcp-servers` | No | object | Additional MCP servers for this agent (org/enterprise level only) |
+| `metadata` | No | object | Key-value pairs to annotate the agent with useful data |
 
 ### Agent Locations
 
@@ -88,22 +91,7 @@ tools: []
 
 ### Tool Reference
 
-See [references/tools.md](references/tools.md) for complete tool documentation.
-
-**Core Tool Aliases:**
-
-| Alias | Purpose |
-|-------|---------|
-| `execute` | Shell commands (bash/powershell) |
-| `read` | Read file contents |
-| `edit` | Create/modify files |
-| `search` | Find files/text |
-| `web` | Fetch URLs, web search |
-| `agent` | Invoke other agents |
-
-**MCP Server Tools:**
-- `github/*` - All GitHub tools (issues, PRs, repos)
-- `playwright/*` - Browser automation
+See [references/tools.md](references/tools.md) for complete tool documentation and the [Available Tools Reference](#available-tools-reference) section below for tool aliases used in the `tools` property.
 
 ### Agent Prompt Guidelines
 
@@ -175,8 +163,8 @@ Keep under 5000 words for efficiency.
 
 | Scope | Location |
 |-------|----------|
-| Repository | `.github/skills/` |
-| Personal | `~/.copilot/skills/` |
+| Repository | `.github/skills/` or `.claude/skills/` |
+| Personal | `~/.copilot/skills/` or `~/.claude/skills/` |
 
 ### Skill Design Principles
 
@@ -239,8 +227,11 @@ Instructions for Copilot when working in this repository.
 |------|-------|
 | `.github/copilot-instructions.md` | Entire repository |
 | `.github/instructions/*.instructions.md` | Path-specific |
-| `AGENTS.md` | Repository root |
+| `AGENTS.md` | Repository root (git root & cwd) |
+| `CLAUDE.md` | Repository root (git root & cwd) |
+| `GEMINI.md` | Repository root (git root & cwd) |
 | `~/.copilot/copilot-instructions.md` | All projects (personal) |
+| `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` env var | Additional directories |
 
 ### Instruction Content Guidelines
 
@@ -296,55 +287,45 @@ Input: X → Output: Y
 
 ---
 
-## Complete Tool Reference
+## Design Guidance
+
+For best practices on designing effective agents, skills, and instructions, see [references/best-practices.md](references/best-practices.md). Covers:
+
+- **When to use each customization type** — agents vs skills vs instructions vs hooks vs plugins
+- **Subagent architecture** — how custom agents run as subagents with separate context
+- **Writing effective descriptions** — trigger keywords, inference design, description patterns
+- **Writing effective prompts** — structure patterns, boundaries, anti-patterns
+- **Skill design patterns** — progressive disclosure, script-backed skills, trigger design
+- **Custom instructions best practices** — modular organization, path-specific rules
+- **Hooks and plugins** — guardrails, lifecycle automation, packaging
+- **Testing and iteration** — deployment strategy, iterative refinement
+
+---
+
+## Available Tools Reference
 
 For detailed tool documentation including parameters and examples, see [references/tools.md](references/tools.md).
 
 ### Tool Categories
 
-| Category | Tools | Purpose |
-|----------|-------|---------|
-| File System | `read`, `edit`, `search` | File operations |
-| Execution | `execute` | Shell commands |
-| Web | `web_fetch`, `web_search` | Internet access |
-| GitHub | `github/*` | Repository, issues, PRs |
-| Agents | `agent`, `task` | Sub-agent delegation |
+These are the tool categories available when configuring the `tools` property. Use the **aliases** (left column) in agent frontmatter, not the actual tool names.
 
-### Commonly Used Tools
+| Alias | Compatible Aliases | Purpose |
+|-------|-------------------|---------|
+| `execute` | `shell`, `Bash`, `powershell` | Shell commands |
+| `read` | `Read`, `NotebookRead` | Read file contents |
+| `edit` | `Edit`, `MultiEdit`, `Write`, `NotebookEdit` | Create/modify files |
+| `search` | `Grep`, `Glob` | Find files/text |
+| `web` | `WebSearch`, `WebFetch` | Fetch URLs, web search |
+| `agent` | `custom-agent`, `Task` | Invoke other agents |
 
-**File Operations:**
-- `view` - Read file contents with line numbers
-- `create` - Create new files
-- `edit` - Modify existing files (string replacement)
-- `glob` - Find files by pattern
-- `grep` - Search file contents (ripgrep-based)
+**MCP Server Tools (in `tools` property):**
+- `github/*` - All GitHub tools (issues, PRs, repos, actions)
+- `github/list_issues` - Specific GitHub tool
+- `playwright/*` - All Playwright tools (localhost only)
+- `some-mcp-server/tool-name` - Specific MCP tool
 
-**Execution:**
-- `powershell` - Run shell commands (works on all platforms)
-- Supports sync/async modes
-- Can run Python, Node.js, Go via shell
-
-**GitHub MCP Tools:**
-- `github-mcp-server-list_issues` - List issues
-- `github-mcp-server-list_pull_requests` - List PRs
-- `github-mcp-server-search_code` - Search code
-- `github-mcp-server-get_file_contents` - Get remote files
-- `github-mcp-server-get_job_logs` - Get CI/CD logs
-
----
-
-## CLI Slash Commands Reference
-
-| Command | Purpose |
-|---------|---------|
-| `/agent` | Select custom agent |
-| `/skills` | Manage skills |
-| `/model` | Select AI model |
-| `/plan` | Enter plan mode |
-| `/review` | Code review agent |
-| `/context` | Show token usage |
-| `/compact` | Summarize history |
-| `/diff` | Review changes |
+> **Note:** The `sql`, `ide-get_selection`, `ide-get_diagnostics`, `report_intent`, `store_memory`, and other utility tools are always available and cannot be restricted via the `tools` property. See [references/tools.md](references/tools.md) for the full tool inventory.
 
 ---
 
@@ -380,6 +361,9 @@ Agent creates files?
 
 Agent runs tests/builds?
   → tools: ["read", "execute"]
+
+Agent needs structured data/tracking?
+  → tools: ["read", "search", "sql"]
 
 Agent needs full capability?
   → Omit tools property

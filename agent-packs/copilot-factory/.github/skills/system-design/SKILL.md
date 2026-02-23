@@ -1,0 +1,170 @@
+---
+name: system-design
+description: Multi-agent system design patterns and guidance. Use when designing agent architectures, planning agent boundaries, determining communication patterns, or evaluating single vs multi-agent approaches. Keywords: architecture, topology, orchestration, agent design.
+---
+
+# System Design Skill
+
+Design patterns and guidance for multi-agent systems.
+
+## When to Use This Skill
+
+Load this skill when:
+- Designing a new multi-agent system
+- Evaluating single-agent vs multi-agent approaches
+- Planning agent boundaries and responsibilities
+- Designing communication patterns
+- Setting up state management
+
+## Decision Framework
+
+### Single Agent vs Multi-Agent
+
+**Use Single Agent When:**
+- Task is focused on one domain
+- No parallel workstreams needed
+- Simple input → output workflow
+- Context fits in one conversation
+
+**Use Multi-Agent When:**
+- Multiple specialized domains
+- Parallel or sequential handoffs
+- Complex workflows with distinct phases
+- Separation of concerns improves quality
+
+### Agent Count Guidelines
+
+| Complexity | Agents | Example |
+|------------|--------|---------|
+| Simple | 1 | Code reviewer, doc writer |
+| Moderate | 2-3 | Design + implement, or orchestrator + specialist |
+| Complex | 4-6 | Factory pattern (orchestrator, architect, engineer, critic) |
+| Enterprise | 6+ | Rare; consider decomposition |
+
+## Core Design Principles
+
+### 1. Clear Boundaries
+
+Each agent should have:
+- **Single responsibility**: One clear purpose
+- **Defined inputs**: What it needs to start
+- **Defined outputs**: What it produces
+- **Tool restrictions**: Only tools it needs
+
+### 2. Minimal Coupling
+
+Agents communicate through:
+- File-based artifacts (documents, configs)
+- Structured state (JSON files)
+- Clear handoff points
+
+Avoid:
+- Shared in-memory state
+- Implicit dependencies
+- Circular communications
+
+### 3. Fail-Safe Communication
+
+Design for:
+- Incomplete handoffs (agent stops mid-task)
+- Recovery from any phase
+- Clear error signals
+
+## Topology Patterns
+
+For detailed topology patterns, see [references/agent-patterns.md](references/agent-patterns.md).
+
+### Quick Reference
+
+| Pattern | Structure | Best For |
+|---------|-----------|----------|
+| Hierarchical | Orchestrator → Specialists | Complex workflows |
+| Flat | Peer agents | Independent tasks |
+| Pipeline | A → B → C | Sequential processing |
+| Hub-and-Spoke | Hub ↔ Spokes | Centralized coordination |
+
+## Communication Patterns
+
+For detailed communication guidance, see [references/communication.md](references/communication.md).
+
+### Quick Reference
+
+| Pattern | Flow | Use Case |
+|---------|------|----------|
+| Delegation | Parent → Child → Parent | Task assignment |
+| Pipeline | Agent → Agent → Agent | Sequential processing |
+| Broadcast | One → Many | Notifications |
+| Request-Response | A ↔ B | Data exchange |
+
+## State Management
+
+For detailed state management patterns, see [references/state-management.md](references/state-management.md).
+
+### Quick Reference
+
+**Session-Based State**:
+```
+.{system-name}/
+├── current-session.json    # Points to active session
+├── sessions/               # Active sessions
+│   └── {session-id}/
+│       ├── state.json      # Workflow state
+│       ├── context/        # Input files
+│       └── artifacts/      # Output files
+└── history/                # Archived sessions
+```
+
+**Session ID Format**: `{YYYY-MM-DD}-{8-char-hex}`
+
+## Tool Assignment
+
+### Read-Only Agents
+```yaml
+tools: ["read", "search"]
+```
+Use for: Reviewers, analyzers, explorers
+
+### Implementation Agents
+```yaml
+tools: ["read", "edit", "search"]
+```
+Use for: Engineers, builders, writers
+
+### Coordinators
+```yaml
+tools: ["read", "edit", "search", "execute", "agent"]
+```
+Use for: Orchestrators, coordinators
+
+### Full Access
+```yaml
+tools: ["*"]  # or omit tools property
+```
+Use for: General-purpose agents, root agents
+
+## Quality Checklist
+
+Before finalizing design:
+
+- [ ] Each agent has clear, non-overlapping responsibility
+- [ ] All agents have appropriate tool restrictions
+- [ ] Communication paths are documented
+- [ ] State management handles interruptions
+- [ ] Target platform requirements considered
+- [ ] Error recovery paths defined
+
+## Anti-Patterns
+
+| Anti-Pattern | Problem | Solution |
+|--------------|---------|----------|
+| God Agent | One agent does everything | Decompose by responsibility |
+| Chatty Agents | Too many handoffs | Batch related work |
+| Shared State | Race conditions | Session isolation |
+| Implicit Deps | Hidden coupling | Document all dependencies |
+| Over-Engineering | Too many agents | Start simple, add complexity as needed |
+
+## References
+
+- [Agent Patterns](references/agent-patterns.md) - Detailed topology patterns
+- [Communication](references/communication.md) - Inter-agent communication
+- [State Management](references/state-management.md) - STM/LTM patterns

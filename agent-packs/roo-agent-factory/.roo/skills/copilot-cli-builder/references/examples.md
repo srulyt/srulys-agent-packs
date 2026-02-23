@@ -114,7 +114,7 @@ Reviews code for security issues.
 name: security-reviewer
 description: Reviews code for security vulnerabilities. Use for security audits.
 tools: ["read", "search"]
-infer: false
+disable-model-invocation: true
 ---
 
 You are a security specialist reviewing code for vulnerabilities.

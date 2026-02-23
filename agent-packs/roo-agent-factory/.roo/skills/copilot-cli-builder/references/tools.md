@@ -248,11 +248,12 @@ Launch specialized sub-agents in separate context windows.
 | `code-review` | Review code changes, surface genuine issues only | N/A | All CLI tools (read-only) |
 
 **Available Models:**
-- `claude-sonnet-4.5`, `claude-sonnet-4` (standard)
+- `claude-sonnet-4.6`, `claude-sonnet-4.5`, `claude-sonnet-4` (standard)
 - `claude-haiku-4.5` (fast/cheap)
-- `claude-opus-4.5` (premium)
-- `gpt-5.2`, `gpt-5.1`, `gpt-5` (standard)
+- `claude-opus-4.6`, `claude-opus-4.6-fast`, `claude-opus-4.6-1m`, `claude-opus-4.5` (premium)
 - `gemini-3-pro-preview` (standard)
+- `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.2`, `gpt-5.1-codex-max`, `gpt-5.1-codex`, `gpt-5.1` (standard)
+- `gpt-5.1-codex-mini`, `gpt-5-mini`, `gpt-4.1` (fast/cheap)
 
 ---
 
@@ -343,10 +344,32 @@ GitHub MCP server is built-in. Tools use prefix `github-mcp-server-`.
 | Tool | Purpose |
 |------|---------|
 | `github-mcp-server-get_copilot_space` | Get context from a Copilot space |
+| `github-mcp-server-list_copilot_spaces` | List all accessible Copilot spaces |
 
 ---
 
 ## Utility Tools
+
+### ide-get_selection
+
+Get text selection from the connected IDE (e.g., VS Code). Returns current selection if an editor is active, otherwise returns the latest cached selection.
+
+**Parameters:** None required.
+
+**Returns:** Selected text and a `current` field indicating if from active editor (true) or cached (false).
+
+---
+
+### ide-get_diagnostics
+
+Get language diagnostics (errors, warnings, hints) from the connected IDE (e.g., VS Code).
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `uri` | string | No | File URI to get diagnostics for. If omitted, returns diagnostics for all files. |
+
+---
 
 ### report_intent
 
@@ -365,26 +388,50 @@ Update UI with current action. Displayed to user.
 
 ---
 
-### update_todo
+### sql
 
-Track task progress with a checklist.
+Execute SQL queries against SQLite databases. Provides two databases.
 
 **Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `todos` | string | Yes | Markdown checklist |
+| `query` | string | Yes | SQLite-compatible SQL query |
+| `description` | string | Yes | 2-5 word summary of what the query does |
+| `database` | string | No | `session` (default) or `session_store` |
+
+**Databases:**
+
+| Database | Access | Purpose |
+|----------|--------|---------|
+| `session` | Read/Write | Per-session scratch database for structured workflow data — task tracking, test cases, batch items, state machines |
+| `session_store` | Read-only | Global database containing history from ALL past sessions (conversations, files edited, refs) |
+
+**Pre-existing Tables (session database):**
+- `todos`: `id`, `title`, `description`, `status` (pending/in_progress/done/blocked), `created_at`, `updated_at`
+- `todo_deps`: `todo_id`, `depends_on` (for dependency tracking)
+
+**Session Store Tables (read-only):**
+- `sessions`: `id`, `cwd`, `repository`, `branch`, `summary`, `created_at`, `updated_at`
+- `turns`: `session_id`, `turn_index`, `user_message`, `assistant_response`, `timestamp`
+- `checkpoints`: `session_id`, `checkpoint_number`, `title`, `overview`, `history`, `work_done`, etc.
+- `session_files`: `session_id`, `file_path`, `tool_name`, `turn_index`, `first_seen_at`
+- `session_refs`: `session_id`, `ref_type` (commit/pr/issue), `ref_value`, `turn_index`
+- `search_index`: FTS5 virtual table for full-text search across session history
+
+**Use Cases:**
+- Track todos and dependencies during multi-step tasks
+- Query past session history ("what did I work on last week?")
+- Load and query structured data (CSVs, API responses)
+- Store intermediate results for multi-step analysis
 
 **Example:**
-```markdown
-- [x] Analyze requirements
-- [ ] Implement feature
-- [ ] Write tests
-```
+```sql
+-- Track work items
+INSERT INTO todos (id, title, status) VALUES ('fix-auth', 'Fix auth bug', 'pending');
 
-**Best Practices:**
-- Call frequently to track progress
-- Update as tasks complete
-- Add new items as discovered
+-- Search past sessions
+SELECT content, session_id FROM search_index WHERE search_index MATCH 'auth OR login' ORDER BY rank LIMIT 10;
+```
 
 ---
 
