@@ -42,6 +42,9 @@ Output location: agent-packs/{pack-name}/
 1. Read the architecture document completely
 2. Read the `state.json` to confirm `target_platform`
 3. Load the `agent-builder` skill for templates
+4. Confirm `state.json.phase` is `build` and `state.json.user_approved` is `true`
+
+If the gate in step 4 is not satisfied, stop and return control to `@copilot-factory`.
 
 ## Output Generation
 
@@ -250,3 +253,5 @@ Ready for review.
 - Keep agent prompts concise; defer to skills for details
 - Always include README with installation instructions
 - Update build manifest accurately
+- Never perform architecture design or review tasks
+- Never proceed when approval/build gates are not met

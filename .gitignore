@@ -4,6 +4,7 @@
 
 # Factory STM (root level)
 /.factory/
+/.copilot-factory/
 /.prompts/
 /.local/
 
@@ -44,6 +45,9 @@ agent-packs/**/.ralph-stm/
 # Copilot Factory - Session state
 # Factory workflow sessions and generated artifacts
 agent-packs/**/.copilot-factory/
+
+# Roo Factory - Session state (for generated/installed packs)
+agent-packs/**/.factory/
 
 
 # ===========================================

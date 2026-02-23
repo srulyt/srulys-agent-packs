@@ -26,40 +26,54 @@ This pack is designed for Copilot CLI, but the concepts and skills can be refere
 The Copilot Factory guides you through creating complete agent packs:
 
 1. **Intake**: Captures your requirements and asks which platform you're targeting
-2. **Design**: Creates a system architecture based on your needs
-3. **Review**: Validates the design against requirements
+2. **Design**: Delegates architecture creation to `@factory-architect`
+3. **Review-Arch**: Delegates architecture validation to `@factory-critic`
 4. **Approval**: Presents the architecture for your approval
-5. **Build**: Generates all necessary files for your chosen platform
-6. **Complete**: Provides usage instructions
+5. **Build**: Delegates artifact generation to `@factory-engineer`
+6. **Review-Prompts**: Delegates implementation validation to `@factory-critic`
+7. **Complete**: Provides usage instructions
 
 ## Target Platforms
 
 When you invoke the factory, you'll be asked to choose a target:
 
-| Target | What Gets Generated |
-|--------|---------------------|
-| `roo` | `.roomodes`, `.roo/rules-*/rules.md` |
-| `copilot` | `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md` |
+- `roo`: `.roomodes`, `.roo/rules-*/rules.md`
+- `copilot`: `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`
 
 ## Agents
 
-| Agent | Purpose |
-|-------|---------|
-| `@copilot-factory` | Main orchestrator - handles the workflow |
-| `@factory-engineer` | Implementation specialist - creates files |
+- `@copilot-factory`: Main orchestrator - manages phases, state, approvals, and delegation
+- `@factory-architect`: Design specialist - creates architecture artifacts
+- `@factory-engineer`: Implementation specialist - creates files from approved architecture
+- `@factory-critic`: Quality gate - reviews architecture and implementation with PASS/BLOCKING verdicts
+
+## Orchestration Pattern
+
+```text
+User Request
+    ↓
+@copilot-factory
+    ├── → @factory-architect (design)
+    ├── → @factory-critic (review architecture)
+    ├── → User approval gate (required)
+    ├── → @factory-engineer (build)
+    └── → @factory-critic (review implementation)
+         ↓
+    Delivery to User
+```
+
+The orchestrator does not bypass these delegation steps.
 
 ## Skills
 
-| Skill | Purpose |
-|-------|---------|
-| `system-design` | Multi-agent architecture patterns |
-| `agent-builder` | Templates for both platforms |
+- `system-design`: Multi-agent architecture patterns
+- `agent-builder`: Templates for both platforms
 
 ## State Management
 
 Session state is stored in `.copilot-factory/sessions/{session-id}/`:
 
-```
+```text
 sessions/{session-id}/
 ├── state.json          # Workflow state
 ├── context/
@@ -71,7 +85,7 @@ sessions/{session-id}/
 
 ## Example Usage
 
-```
+```text
 @copilot-factory Create an agent pack for code review automation.
 The system should have a coordinator that assigns reviews to specialists
 for different areas: security, performance, and style.
@@ -81,7 +95,8 @@ Target: copilot
 ## Generated Pack Location
 
 All generated packs are created in:
-```
+
+```text
 agent-packs/{pack-name}/
 ```
 
