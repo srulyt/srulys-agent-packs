@@ -49,6 +49,7 @@ agent-packs/**/.copilot-factory/
 # Roo Factory - Session state (for generated/installed packs)
 agent-packs/**/.factory/
 
+agent-packs/product-brief-agent/.context
 
 # ===========================================
 # IDE & System Files

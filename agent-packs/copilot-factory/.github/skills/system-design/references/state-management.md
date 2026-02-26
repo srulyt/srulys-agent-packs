@@ -27,6 +27,32 @@ How to manage workflow state for multi-agent systems.
     └── {old-session-id}/
 ```
 
+## Agent-Scoped STM Directories
+
+For multi-agent packs, prefer a pack-unique STM root and per-agent run directories.
+
+Guidance:
+
+- Use a unique root name per pack (for example, `.product-brief-agent-stm/`) to prevent collisions across packs.
+- Keep `current-session.json` at the STM root as the active pointer.
+- Keep active runs under `runs/{session-id}/`.
+- Under each run, isolate agent artifacts in `agents/{agent-name}/`.
+- Keep session ID generation automatic; never prompt the user for a session id.
+
+Example:
+
+```text
+.product-brief-agent-stm/
+├── current-session.json
+└── runs/
+  └── {session-id}/
+    └── agents/
+      ├── brief-orchestrator/
+      ├── evidence-analyst/
+      ├── strategy-modeler/
+      └── brief-composer/
+```
+
 ## Session ID Format
 
 Pattern: `{YYYY-MM-DD}-{8-char-hex}`

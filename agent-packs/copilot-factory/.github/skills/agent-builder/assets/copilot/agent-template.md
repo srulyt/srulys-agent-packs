@@ -1,6 +1,6 @@
 ---
 name: Agent Name
-description: What this agent does. When to use it - specific scenarios. Trigger keywords for natural language. Include: primary purpose, use cases, keywords.
+description: "What this agent does. When to use it - specific scenarios. Trigger keywords for natural language. Include: primary purpose, use cases, keywords."
 tools: ["read", "edit", "search"]
 # disable-model-invocation: true  # Uncomment for subagents
 ---

@@ -86,7 +86,7 @@ Create these artifacts in `agent-packs/{pack-name}/`:
 ```markdown
 ---
 name: Agent Name
-description: What it does. When to use. Trigger keywords.
+description: "What it does. When to use. Trigger keywords."
 tools: ["read", "edit", "search"]
 ---
 
@@ -97,7 +97,7 @@ Agent prompt body...
 ```markdown
 ---
 name: skill-name
-description: What the skill does. Keywords for activation.
+description: "What the skill does. Keywords for activation."
 ---
 
 # Skill Title

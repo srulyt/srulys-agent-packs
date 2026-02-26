@@ -32,7 +32,7 @@ Only `description` is required. Must include:
 
 Example:
 ```yaml
-description: Creates unit tests for Python code. Use when asked to write tests, generate test cases, or add test coverage. Triggers on: test, pytest, unittest, coverage.
+description: "Creates unit tests for Python code. Use when asked to write tests, generate test cases, or add test coverage. Triggers on: test, pytest, unittest, coverage."
 ```
 
 ### Tool Aliases
@@ -93,7 +93,7 @@ After the `---` closing the frontmatter:
 ```markdown
 ---
 name: Code Reviewer
-description: Reviews code for bugs, style issues, and best practices. Use when asked to review code, check for issues, or audit changes. Triggers on: review, audit, check code.
+description: "Reviews code for bugs, style issues, and best practices. Use when asked to review code, check for issues, or audit changes. Triggers on: review, audit, check code."
 tools: ["read", "search"]
 ---
 
@@ -110,7 +110,7 @@ Provide specific, actionable feedback with line references.
 ```markdown
 ---
 name: Project Manager
-description: Coordinates development workflows across multiple specialists. Use for complex multi-step tasks requiring planning, implementation, and review.
+description: "Coordinates development workflows across multiple specialists. Use for complex multi-step tasks requiring planning, implementation, and review."
 tools: ["read", "edit", "search", "execute", "agent"]
 ---
 
@@ -132,7 +132,7 @@ Available specialists:
 ```markdown
 ---
 name: Implementation Specialist
-description: Implements features based on specifications. Called by Project Manager for coding tasks. Not for direct use.
+description: "Implements features based on specifications. Called by Project Manager for coding tasks. Not for direct use."
 tools: ["read", "edit", "search"]
 disable-model-invocation: true
 ---
@@ -194,7 +194,7 @@ license: "MIT"                        # Optional: license info
 ```markdown
 ---
 name: api-design
-description: REST API design patterns and OpenAPI specification guidance. Use when designing APIs, writing OpenAPI specs, or reviewing API contracts. Triggers on: API, REST, OpenAPI, swagger.
+description: "REST API design patterns and OpenAPI specification guidance. Use when designing APIs, writing OpenAPI specs, or reviewing API contracts. Triggers on: API, REST, OpenAPI, swagger."
 ---
 
 # API Design Skill

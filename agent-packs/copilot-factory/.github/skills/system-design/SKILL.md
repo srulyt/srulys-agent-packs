@@ -1,6 +1,6 @@
 ---
 name: system-design
-description: Multi-agent system design patterns and guidance. Use when designing agent architectures, planning agent boundaries, determining communication patterns, or evaluating single vs multi-agent approaches. Keywords: architecture, topology, orchestration, agent design.
+description: "Multi-agent system design patterns and guidance. Use when designing agent architectures, planning agent boundaries, determining communication patterns, or evaluating single vs multi-agent approaches. Keywords: architecture, topology, orchestration, agent design."
 ---
 
 # System Design Skill
@@ -115,6 +115,25 @@ For detailed state management patterns, see [references/state-management.md](ref
 ```
 
 **Session ID Format**: `{YYYY-MM-DD}-{8-char-hex}`
+
+**Agent-Scoped STM Directories (Recommended)**:
+- Use a pack-unique STM root directory (for example, `.product-brief-agent-stm/`) to avoid collisions with other packs.
+- Keep one pointer file at the root: `current-session.json`.
+- Store run data under `runs/{session-id}/`.
+- Create one directory per agent under each run to isolate artifacts and handoffs.
+
+Example tree:
+```
+.product-brief-agent-stm/
+├── current-session.json
+└── runs/
+	└── {session-id}/
+		└── agents/
+			├── brief-orchestrator/
+			├── evidence-analyst/
+			├── strategy-modeler/
+			└── brief-composer/
+```
 
 ## Tool Assignment
 

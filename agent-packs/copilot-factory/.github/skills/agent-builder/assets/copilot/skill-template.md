@@ -1,6 +1,6 @@
 ---
 name: skill-name
-description: What this skill provides. When to use it - specific scenarios. Include trigger keywords for activation. Keywords: keyword1, keyword2, keyword3.
+description: "What this skill provides. When to use it - specific scenarios. Include trigger keywords for activation. Keywords: keyword1, keyword2, keyword3."
 ---
 
 # {Skill Title}

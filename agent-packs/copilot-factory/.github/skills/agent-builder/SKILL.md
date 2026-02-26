@@ -1,6 +1,6 @@
 ---
 name: agent-builder
-description: Templates and patterns for creating Roo Code or Copilot CLI artifacts. Use when generating .roomodes files, agent rules, custom agents, or skills. Supports both target platforms based on user selection. Keywords: roomodes, agent.md, rules.md, SKILL.md, implementation.
+description: "Templates and patterns for creating Roo Code or Copilot CLI artifacts. Use when generating .roomodes files, agent rules, custom agents, or skills. Supports both target platforms based on user selection. Keywords: roomodes, agent.md, rules.md, SKILL.md, implementation."
 ---
 
 # Agent Builder Skill
@@ -73,7 +73,7 @@ For detailed Copilot patterns, see [references/copilot-artifacts.md](references/
 ```markdown
 ---
 name: Agent Name
-description: What it does. When to use. Trigger keywords.
+description: "What it does. When to use. Trigger keywords."
 tools: ["read", "edit", "search"]
 ---
 
@@ -84,7 +84,7 @@ Agent prompt body (max 30,000 chars)
 ```markdown
 ---
 name: skill-name
-description: What skill does. Trigger keywords.
+description: "What skill does. Trigger keywords."
 ---
 
 # Skill Title

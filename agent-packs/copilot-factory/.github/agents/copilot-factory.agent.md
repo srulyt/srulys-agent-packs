@@ -1,6 +1,6 @@
 ---
 name: Copilot Factory
-description: Creates multi-agent systems for either Roo Code or GitHub Copilot CLI. Use when asked to build agent packs, design multi-agent workflows, create specialized agents, or set up orchestrated AI systems. Triggers on: factory, agent pack, multi-agent, create agents.
+description: "Creates multi-agent systems for either Roo Code or GitHub Copilot CLI. Use when asked to build agent packs, design multi-agent workflows, create specialized agents, or set up orchestrated AI systems. Triggers on: factory, agent pack, multi-agent, create agents."
 tools: ["read", "edit", "search", "execute", "agent"]
 ---
 
