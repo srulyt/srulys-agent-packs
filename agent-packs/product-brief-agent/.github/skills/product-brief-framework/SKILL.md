@@ -68,7 +68,7 @@ When included, all sections follow this fixed order:
 10. Risks, Open Questions, Mitigations *(optional)*
 11. Decision Ask *(required)*
 12. FAQ *(optional)*
-13. Evidence Log *(optional)*
+13. Evidence Log *(include ONLY when the user explicitly requests it — never auto-include)*
 
 ## Section Distinctness Contract
 
@@ -88,7 +88,7 @@ Each section has a unique purpose. Overlap between sections is a quality defect.
 | Risks/Open Questions | What could go wrong and unresolved items. Must not duplicate known facts. |
 | Decision Ask | Exact decision requested, scope, and timing. Must not summarize the entire brief. |
 | FAQ | Anticipated stakeholder questions. Must not duplicate prior sections. |
-| Evidence Log | Claim-to-source reference table. Raw references only, no narrative. |
+| Evidence Log | Claim-to-source reference table (only when user explicitly requests it). Raw references only, no narrative. Sources must be user-provided external material — never `.product-brief-agent-stm/` or agent artifacts. |
 
 ## Section Completion Checks
 
@@ -103,7 +103,7 @@ Each section has a unique purpose. Overlap between sections is a quality defect.
 - Risks/Open Questions *(optional)*: top risks, mitigations, unresolved blockers.
 - Decision Ask: exact stakeholder decision, scope, and timing. Frames the ask in terms of what the stakeholder gains by approving and risks by not approving.
 - FAQ *(optional)*: customer-facing and internal execution questions.
-- Evidence Log: key claims mapped to source pointers (file names, not paths).
+- Evidence Log *(only when user explicitly requests it)*: key claims mapped to source pointers (file names, not paths). Must NEVER reference `.product-brief-agent-stm/` files or agent-generated artifacts. Only user-provided external sources qualify.
 
 ## Missing Data Policy
 

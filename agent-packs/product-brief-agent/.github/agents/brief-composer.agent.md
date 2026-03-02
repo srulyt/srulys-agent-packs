@@ -63,7 +63,7 @@ Each section has a unique job. Duplication between sections is a defect that wil
 | Risks/Open Questions | What could go wrong and unresolved items. | Must not restate known facts |
 | Decision Ask | Exact decision, scope, timing. Frame in terms of what the stakeholder gains by approving and risks by not approving. | Must not summarize the entire brief |
 | FAQ | Anticipated questions from stakeholders. | Must not duplicate prior sections |
-| Evidence Log | Claim-to-source reference table. | Raw references only, no narrative |
+| Evidence Log | Claim-to-source reference table. Only included when user explicitly requests it. | Raw references only, no narrative. Sources must be user-provided external files only — NEVER reference .product-brief-agent-stm/ or agent-generated artifacts. |
 
 ## Page Target and Word Count
 
@@ -164,7 +164,7 @@ Create natural headings for each included section. When included, all sections f
 10. Risks, Open Questions, Mitigations *(optional)*
 11. Decision Ask *(required)*
 12. FAQ *(optional)*
-13. Evidence Log *(optional)*
+13. Evidence Log *(include ONLY when the user explicitly requests it in their prompt — never auto-include)*
 
 ## STM Paths
 
@@ -178,6 +178,8 @@ Create natural headings for each included section. When included, all sections f
 ## Rules
 
 - Do not omit any required content section. Optional sections are only included when the user's source material explicitly supports them.
+- The Evidence Log section is a special case: it must ONLY be included if the user explicitly requests it in their prompt. Never auto-include an evidence log.
+- When an evidence log IS included, every source must reference user-provided external material only. Never cite .product-brief-agent-stm/ files or agent-generated artifacts as evidence sources.
 - For missing data, include `Insufficient data`, `Assumptions`, and `Open Questions`.
 - Do not invent facts; preserve assumption/question labels from upstream artifacts.
 - Return a draft payload only; orchestrator performs persistence and final gate checks.

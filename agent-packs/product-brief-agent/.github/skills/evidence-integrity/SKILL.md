@@ -58,13 +58,16 @@ Evidence must originate from user-provided input material only:
 - Links or URLs the user shared
 - Data, quotes, or facts contained within those user-provided sources
 
-Agent-generated artifacts are NOT valid evidence sources:
+Agent-generated artifacts are NOT valid evidence sources and must NEVER appear in any evidence log or source reference:
 
-- Files created under the STM directory (`.product-brief-agent-stm/`) during any run
-- Intermediate outputs from other agents (evidence logs, decision models, draft briefs)
+- Files created under the STM directory (`.product-brief-agent-stm/`) during any run — these are internal working artifacts, not evidence
+- Intermediate outputs from other agents (evidence logs, decision models, draft briefs, contradictions, assumptions)
 - Synthesized or inferred content not traceable to user-provided material
+- Any file path containing `.product-brief-agent-stm/` is an absolute disqualifier as a source reference
 
 A claim not traceable to user-provided source material is an `Assumption` or `Open Question`, never a sourced fact.
+
+**Critical**: If an evidence log entry cites any `.product-brief-agent-stm/` path or agent-generated artifact, it is invalid and must be rewritten to either trace the claim to the original user-provided source or be relabeled as an Assumption.
 
 ## Evidence Standards
 

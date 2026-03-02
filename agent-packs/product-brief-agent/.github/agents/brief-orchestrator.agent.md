@@ -40,11 +40,14 @@ Format rules:
   - Source references by file name and date, no paths or links
   - Only decision-relevant evidence (skip background context)
   - Only user-provided context material qualifies as evidence sources
-  - Files generated under .product-brief-agent-stm/ are NOT evidence and must never be cited
+  - Files generated under .product-brief-agent-stm/ are NOT evidence and must NEVER be cited as sources
+  - Intermediate agent artifacts (evidence-log.md, decision-model.md, contradictions.md, draft briefs) are NOT evidence sources
+  - If a claim cannot be traced to user-provided material, label it Assumption or Open Question — never fabricate a source
 Acceptance criteria:
   - At least 3 evidence points
   - All claims labeled by confidence (High/Medium/Low)
   - Unsupported statements labeled Assumption or Open Question
+  - Zero references to .product-brief-agent-stm/ or any agent-generated file
 ```
 
 ### Orchestrator → Strategy Modeler
@@ -83,6 +86,7 @@ Required output:
 Hard constraints:
   - Target 3–4 pages (1,500–2,000 words). Hard ceiling: 5 pages (2,500 words).
   - All required sections present; optional sections included only when source material supports them (content requirements, NOT heading templates)
+  - Evidence Log section must ONLY be included if the user explicitly requested it — never auto-include
   - Natural, content-descriptive headings (NEVER copy section guidance text)
   - Zero links (no markdown links, no URLs, no hyperlinks)
   - No duplication between sections (each section has one unique job)
@@ -95,7 +99,7 @@ Quality rules:
   - Every paragraph must pass the "so what?" test and the championing test ("could the reader relay this to their boss in 30 seconds?")
   - No filler phrases or buzzword inflation
   - Title names the product; executive summary arcs the story; problem deep-dives — no overlap
-  - Evidence log uses file names not paths
+  - Evidence log (only if user explicitly requested it) uses file names not paths — NEVER reference .product-brief-agent-stm/ or agent-generated artifacts as sources
   - Load and apply executive-writing-style skill
   - Load and apply stakeholder-psychology skill
 Acceptance criteria:
@@ -117,7 +121,9 @@ Rejection policy:
 - Page target: composer targets 3–4 pages (1,500–2,000 words); hard ceiling 5 pages (2,500 words).
 - If the draft exceeds 5 pages (2,500 words), reject and re-request with specific condensation instructions.
 - No unsupported claims presented as fact.
-- Only user-provided context material (documents, links, pasted content) qualifies as evidence. Files generated under `.product-brief-agent-stm/` are working artifacts, not evidence sources, and must never be cited in the final brief.
+- Only user-provided context material (documents, links, pasted content) qualifies as evidence. Files generated under `.product-brief-agent-stm/` are working artifacts, not evidence sources, and must never be cited in the final brief or in any evidence log.
+- The Evidence Log section must ONLY be included if the user explicitly requests it in their prompt. If the user does not ask for an evidence log, omit the section entirely — do not auto-generate it.
+- Even when explicitly requested, the Evidence Log must reference only external user-provided sources (file names and dates). It must NEVER reference any file under `.product-brief-agent-stm/`, any intermediate agent artifact (evidence-log.md, decision-model.md, contradictions.md, etc.), or any agent-generated content.
 - Missing information is explicitly labeled using `Insufficient data`, `Assumptions`, and `Open Questions`.
 - Zero links in final output (standalone document policy).
 
@@ -141,7 +147,7 @@ When included, all sections follow this fixed order:
 10. Risks, Open Questions, Mitigations *(optional)*
 11. Decision Ask *(required)*
 12. FAQ *(optional)*
-13. Evidence Log *(optional)*
+13. Evidence Log *(include ONLY when the user explicitly requests it in their prompt — never auto-include)*
 
 ## Mandatory Editing Pass (Post-Composer Draft)
 
@@ -225,6 +231,8 @@ Verify the brief enables the reader to champion this proposal in meetings where 
 ### 10. Optional Section Gate
 
 For each optional section in the draft, verify that the user's source material explicitly contains information for that section. Remove any optional section whose content was inferred or generated without explicit source support.
+
+**Evidence Log special gate**: The Evidence Log section must ONLY appear if the user explicitly requested it in their prompt. If the user did not ask for an evidence log, remove it from the draft regardless of available source material. When the evidence log IS included, verify every source reference points to user-provided external material only — reject and rewrite any entry that references `.product-brief-agent-stm/` paths, agent-generated artifacts, or any intermediate working file.
 
 ### 11. Readability and Plain Language
 
