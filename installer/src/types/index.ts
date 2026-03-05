@@ -42,6 +42,7 @@ export interface PackRegistry {
       rulesFolders: string[];
       mergedFiles?: string[]; // All merged files (not in rules-{slug}/) owned by this pack
       copilotCliFiles?: string[]; // Files installed for copilot-cli packs
+      gitignoreEntries?: string[]; // .gitignore entries added by this pack (e.g., STM dirs)
     };
   };
 }

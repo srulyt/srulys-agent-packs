@@ -4,20 +4,8 @@ import { RoomodesService } from '../services/roomodes.js';
 import { FilesystemService } from '../services/filesystem.js';
 import { RegistryService } from '../services/registry.js';
 import { logger } from '../utils/logger.js';
+import { extractStmGitignoreEntries } from '../utils/stm.js';
 import type { GitHubConfig } from '../types/index.js';
-
-function extractStmGitignoreEntries(files: Array<{ path: string }>): string[] {
-  const stmDirs = new Set<string>();
-
-  for (const file of files) {
-    const match = file.path.match(/^(\.[^/]*stm)\//i);
-    if (match) {
-      stmDirs.add(`${match[1]}/`);
-    }
-  }
-
-  return [...stmDirs];
-}
 
 export async function installCommand(
   packNames: string[],
@@ -217,15 +205,29 @@ export async function installCommand(
         
         // Update registry
         const version = await github.getLatestCommitHash();
-        registry.registerPack(packName, version, 'copilot-cli', [], [], undefined, copilotCliFiles);
+        registry.registerPack(
+          packName,
+          version,
+          'copilot-cli',
+          [],
+          [],
+          undefined,
+          copilotCliFiles,
+          stmGitignoreEntries
+        );
         
         logger.success(`Successfully installed ${packName}`);
         logger.dim(`  Type: Copilot CLI agent`);
         logger.dim(`  Version: ${version}`);
-        logger.log('');
-        logger.info('To use Ralph, run:');
-        logger.dim('  PowerShell: .\\ralph-loop.ps1 -Task "your task"');
-        logger.dim('  Bash: ./ralph-loop.sh "your task"');
+        const hasRalphScript = scriptFiles.some(
+          file => file.path === 'ralph-loop.ps1' || file.path === 'ralph-loop.sh'
+        );
+        if (hasRalphScript) {
+          logger.log('');
+          logger.info('To use Ralph, run:');
+          logger.dim('  PowerShell: .\\ralph-loop.ps1 -Task "your task"');
+          logger.dim('  Bash: ./ralph-loop.sh "your task"');
+        }
       }
 
     } catch (error) {

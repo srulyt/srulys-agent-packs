@@ -33,7 +33,8 @@ export class RegistryService {
     slugs: string[],
     rulesFolders: string[],
     mergedFiles?: string[],
-    copilotCliFiles?: string[]
+    copilotCliFiles?: string[],
+    gitignoreEntries?: string[]
   ): void {
     const registry = this.load();
     registry.installedPacks[packName] = {
@@ -43,7 +44,8 @@ export class RegistryService {
       slugs,
       rulesFolders,
       mergedFiles,
-      copilotCliFiles
+      copilotCliFiles,
+      gitignoreEntries
     };
     this.save(registry);
   }

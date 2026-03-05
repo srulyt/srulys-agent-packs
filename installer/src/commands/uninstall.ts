@@ -3,19 +3,7 @@ import { RoomodesService } from '../services/roomodes.js';
 import { FilesystemService } from '../services/filesystem.js';
 import { RegistryService } from '../services/registry.js';
 import { logger } from '../utils/logger.js';
-
-function extractStmGitignoreEntries(files: string[] = []): string[] {
-  const stmDirs = new Set<string>();
-
-  for (const filePath of files) {
-    const match = filePath.match(/^(\.[^/]*stm)\//i);
-    if (match) {
-      stmDirs.add(`${match[1]}/`);
-    }
-  }
-
-  return [...stmDirs];
-}
+import { extractStmGitignoreEntries } from '../utils/stm.js';
 
 export async function uninstallCommand(packNames: string[]): Promise<void> {
   logger.title('🗑️  Agent Pack Uninstaller');
@@ -102,7 +90,9 @@ export async function uninstallCommand(packNames: string[]): Promise<void> {
         spinner.succeed(`Removed ${packInfo.copilotCliFiles?.length || 0} files`);
 
         spinner.start('Updating .gitignore...');
-        const stmGitignoreEntries = extractStmGitignoreEntries(packInfo.copilotCliFiles);
+        const stmGitignoreEntries = packInfo.gitignoreEntries || extractStmGitignoreEntries(
+          (packInfo.copilotCliFiles || []).map(path => ({ path }))
+        );
         if (stmGitignoreEntries.length > 0) {
           fs.removeFromGitignore(stmGitignoreEntries);
           spinner.succeed(`Updated .gitignore (${stmGitignoreEntries.join(', ')})`);
