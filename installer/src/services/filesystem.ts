@@ -204,6 +204,36 @@ export class FilesystemService {
     }
   }
 
+  removeFromGitignore(entries: string[]): void {
+    if (entries.length === 0) {
+      return;
+    }
+
+    const gitignorePath = path.join(this.cwd, '.gitignore');
+    if (!fs.existsSync(gitignorePath)) {
+      return;
+    }
+
+    const lines = fs.readFileSync(gitignorePath, 'utf-8').split('\n');
+    const entriesToRemove = new Set(entries.map(entry => entry.trim()));
+    const filteredLines = lines.filter(line => !entriesToRemove.has(line.trim()));
+
+    // If a Copilot CLI section header has no entries left, remove the header too.
+    const cleanedLines: string[] = [];
+    for (let i = 0; i < filteredLines.length; i++) {
+      const line = filteredLines[i];
+      if (line.trim() === '# Agent Pack: Copilot CLI') {
+        const next = filteredLines[i + 1]?.trim() || '';
+        if (!next || next.startsWith('#')) {
+          continue;
+        }
+      }
+      cleanedLines.push(line);
+    }
+
+    fs.writeFileSync(gitignorePath, cleanedLines.join('\n'), 'utf-8');
+  }
+
   // Registry file operations
   registryExists(): boolean {
     return fs.existsSync(path.join(this.cwd, '.roo', '.agent-packs-registry.json'));

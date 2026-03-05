@@ -6,6 +6,19 @@ import { RegistryService } from '../services/registry.js';
 import { logger } from '../utils/logger.js';
 import type { GitHubConfig } from '../types/index.js';
 
+function extractStmGitignoreEntries(files: Array<{ path: string }>): string[] {
+  const stmDirs = new Set<string>();
+
+  for (const file of files) {
+    const match = file.path.match(/^(\.[^/]*stm)\//i);
+    if (match) {
+      stmDirs.add(`${match[1]}/`);
+    }
+  }
+
+  return [...stmDirs];
+}
+
 export async function installCommand(
   packNames: string[],
   options: { repo?: string; branch?: string }
@@ -194,8 +207,13 @@ export async function installCommand(
         
         // 3. Add to .gitignore
         spinner.start('Updating .gitignore...');
-        fs.appendToGitignore(['.ralph-stm/']);
-        spinner.succeed('Updated .gitignore');
+        const stmGitignoreEntries = extractStmGitignoreEntries(files);
+        if (stmGitignoreEntries.length > 0) {
+          fs.appendToGitignore(stmGitignoreEntries);
+          spinner.succeed(`Updated .gitignore (${stmGitignoreEntries.join(', ')})`);
+        } else {
+          spinner.succeed('No STM ignore entries detected');
+        }
         
         // Update registry
         const version = await github.getLatestCommitHash();
