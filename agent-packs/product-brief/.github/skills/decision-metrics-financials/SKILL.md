@@ -1,6 +1,6 @@
 ---
 name: decision-metrics-financials
-description: Practical frameworks for leading with recommendation, option tradeoffs in compact table format, KPI/OKR design, milestone planning, dependencies, and financial/resource decision framing without links. Trigger keywords: tradeoff matrix, KPI baseline target guardrail, milestone plan, resourcing, ROI range, recommendation.
+description: "Practical frameworks for leading with recommendation, option tradeoffs in compact table format, KPI/OKR design, milestone planning, dependencies, and financial/resource decision framing without links. Trigger keywords: tradeoff matrix, KPI baseline target guardrail, milestone plan, resourcing, ROI range, recommendation."
 ---
 
 # Decision Metrics Financials

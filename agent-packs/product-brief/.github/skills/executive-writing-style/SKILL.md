@@ -1,6 +1,6 @@
 ---
 name: executive-writing-style
-description: Comprehensive executive writing craft for product briefs. Decision-maker framing, persuasive structure, "so what?" test, tone rules, filler phrase elimination, good/bad examples, anti-repetition rules, and markdown quality. Trigger keywords: executive summary, concise writing, plain language, active voice, so what, decision-maker, persuasive.
+description: "Comprehensive executive writing craft for product briefs. Decision-maker framing, persuasive structure, so what? test, tone rules, filler phrase elimination, good/bad examples, anti-repetition rules, and markdown quality. Trigger keywords: executive summary, concise writing, plain language, active voice, so what, decision-maker, persuasive."
 ---
 
 # Executive Writing Style

@@ -1,7 +1,6 @@
-```skill
 ---
 name: stakeholder-psychology
-description: Psychological principles for making product briefs championing-ready. Covers the cascade principle, cognitive burden minimization, incentive alignment, psychological risk reduction, and championing language. Trigger keywords: stakeholder championing, psychological risk, incentive alignment, cascade principle, championing test, business outcome framing.
+description: "Psychological principles for making product briefs championing-ready. Covers the cascade principle, cognitive burden minimization, incentive alignment, psychological risk reduction, and championing language. Trigger keywords: stakeholder championing, psychological risk, incentive alignment, cascade principle, championing test, business outcome framing."
 ---
 
 # Stakeholder Psychology
@@ -112,5 +111,3 @@ Each major section should contain at least one statement that is:
 - **Product Brief Framework**: The executive summary serves double duty as the reader's championing script
 
 Championing language is especially critical for Decision Ask and Recommendation closing types, where the reader must actively advocate. However, the cascade principle applies to all closing types — even informational briefs must give the reader repeatable statements for their own conversations.
-
-```

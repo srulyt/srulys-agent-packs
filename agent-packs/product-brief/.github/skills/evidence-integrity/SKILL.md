@@ -1,6 +1,6 @@
 ---
 name: evidence-integrity
-description: Methods for evidence quality, decision-relevance filtering, compact table formatting, source traceability without links, contradiction handling, and explicit assumption/open-question labeling. Trigger keywords: evidence quality, source traceability, contradiction resolution, confidence, assumptions, decision-relevance.
+description: "Methods for evidence quality, decision-relevance filtering, compact table formatting, source traceability without links, contradiction handling, and explicit assumption/open-question labeling. Trigger keywords: evidence quality, source traceability, contradiction resolution, confidence, assumptions, decision-relevance."
 ---
 
 # Evidence Integrity

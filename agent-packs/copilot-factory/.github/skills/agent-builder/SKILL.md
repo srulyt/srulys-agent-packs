@@ -123,6 +123,8 @@ Instructions (max 5,000 words)
 
 ### Copilot CLI
 - [ ] `description` field present (required)
+- [ ] **`description` value is always wrapped in double quotes** — bare strings containing `:` cause YAML parse errors (e.g. `description: "... Trigger keywords: foo, bar."`)
+- [ ] **YAML frontmatter starts at line 1** — never wrap it in a code fence (` ```skill ` or similar)
 - [ ] `tools` uses correct aliases
 - [ ] Agent prompt under 30,000 characters
 - [ ] Skill under 5,000 words

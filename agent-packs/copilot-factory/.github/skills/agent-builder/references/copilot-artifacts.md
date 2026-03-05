@@ -172,10 +172,14 @@ Markdown with YAML frontmatter.
 ```yaml
 ---
 name: "skill-name"                    # Required: identifier
-description: "What and when"          # Required: triggers
+description: "What and when"          # Required: triggers — MUST be double-quoted
 license: "MIT"                        # Optional: license info
 ---
 ```
+
+> **YAML Safety Rules**
+> - `description` MUST always be wrapped in double quotes (`"..."`). Bare strings containing `:` (e.g. `Trigger keywords: foo`) cause a parse error.
+> - The YAML frontmatter (`---` block) MUST start at line 1. Never wrap a SKILL.md in a code fence (e.g. ` ```skill `).
 
 ### Content Guidelines
 

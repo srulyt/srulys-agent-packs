@@ -1,6 +1,6 @@
 ---
 name: product-brief-framework
-description: Framework for decision-grade product briefs with canonical section order, agency-over-formatting rules, section distinctness contract, hardcore brevity protocol, standalone document policy, and markdown lint compliance. Trigger keywords: product brief, decision memo, section order, decision ask, closing section, recommendation, next steps, call to action, summary, FAQ, evidence log, brevity, standalone.
+description: "Framework for decision-grade product briefs with canonical section order, agency-over-formatting rules, section distinctness contract, hardcore brevity protocol, standalone document policy, and markdown lint compliance. Trigger keywords: product brief, decision memo, section order, decision ask, closing section, recommendation, next steps, call to action, summary, FAQ, evidence log, brevity, standalone."
 ---
 
 # Product Brief Framework
