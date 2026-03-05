@@ -19,19 +19,20 @@ gh copilot
 
 ### Using with Roo Code
 
-This pack is designed for Copilot CLI, but the concepts and skills can be referenced when using Roo Code's Agent Factory.
+This pack runs in GitHub Copilot CLI and can generate artifacts for both Roo Code and Copilot targets.
 
 ## What It Does
 
 The Copilot Factory guides you through creating complete agent packs:
 
 1. **Intake**: Captures your requirements and asks which platform you're targeting
-2. **Design**: Delegates architecture creation to `@factory-architect`
-3. **Review-Arch**: Delegates architecture validation to `@factory-critic`
-4. **Approval**: Presents the architecture for your approval
-5. **Build**: Delegates artifact generation to `@factory-engineer`
-6. **Review-Prompts**: Delegates implementation validation to `@factory-critic`
-7. **Complete**: Provides usage instructions
+2. **Improve-Analysis** (improvement mode): Delegates existing-pack analysis to `@factory-critic`
+3. **Design**: Delegates architecture creation to `@factory-architect`
+4. **Review-Arch**: Delegates architecture validation to `@factory-critic`
+5. **Approval**: Presents the architecture for your approval
+6. **Build**: Delegates artifact generation to `@factory-engineer`
+7. **Review-Prompts**: Delegates implementation validation to `@factory-critic`
+8. **Complete**: Provides usage instructions
 
 ## Target Platforms
 
@@ -53,6 +54,7 @@ When you invoke the factory, you'll be asked to choose a target:
 User Request
     ↓
 @copilot-factory
+    ├── → @factory-critic (improvement analysis, improvement mode)
     ├── → @factory-architect (design)
     ├── → @factory-critic (review architecture)
     ├── → User approval gate (required)
@@ -107,6 +109,8 @@ agent-packs/{pack-name}/
 **Skill not loading**: Check that `.github/skills/` exists and contains valid `SKILL.md` files.
 
 **Session issues**: Delete `.copilot-factory/` to start fresh.
+
+**Git noise**: Add `.copilot-factory/` to your project's `.gitignore` to avoid committing session state.
 
 ## License
 

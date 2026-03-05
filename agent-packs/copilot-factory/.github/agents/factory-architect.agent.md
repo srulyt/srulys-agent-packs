@@ -19,6 +19,16 @@ You are invoked by `@copilot-factory` with:
 
 If invoked directly by a user, instruct them to use `@copilot-factory`.
 
+## Invocation Guard
+
+If invoked by a user directly:
+1. Respond exactly: "Please invoke @copilot-factory for this workflow."
+2. Do not perform any additional action.
+
+## Skills to Load
+
+- `system-design` — multi-agent topology patterns, communication, and state management guidance
+
 ## Required Behavior
 
 1. Read context from `.copilot-factory/sessions/{session-id}/context/user-request.md`
@@ -35,6 +45,9 @@ If invoked directly by a user, instruct them to use `@copilot-factory`.
 - State management approach (if needed)
 - Target platform constraints (`roo` or `copilot`)
 - File structure to be created by Engineer
+- Which skills each agent should load (skills as single source of truth for domain rules)
+- Orchestrator iteration protocol (how user feedback on completed work is handled)
+- Orchestrator retry bounds (max re-requests to specialists before fallback)
 
 ## Design Principles
 

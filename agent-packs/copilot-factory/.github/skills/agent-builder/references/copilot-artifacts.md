@@ -139,6 +139,15 @@ disable-model-invocation: true
 
 You implement features based on provided specifications.
 
+## Invocation Guard
+
+Do not invoke directly. If a user invokes you, respond:
+"Please use @project-manager to coordinate implementation. I am a specialist agent invoked by the orchestrator."
+
+## Skills to Load
+
+- `coding-standards` — language-specific coding conventions and quality rules
+
 Expected input:
 - Specification document path
 - Target files/directories
@@ -276,4 +285,9 @@ Complete Copilot CLI pack:
 - [ ] Skills under 5,000 words
 - [ ] Descriptions include trigger keywords
 - [ ] Subagents have `disable-model-invocation: true`
+- [ ] Subagents have invocation guard section
+- [ ] Each agent has "Skills to Load" section if it references skills
+- [ ] Agent prompts reference skills rather than duplicating their content
+- [ ] Orchestrator agents include iteration protocol and retry bounds
+- [ ] README accurately reflects all agents, skills, and implementation details
 - [ ] File paths follow conventions

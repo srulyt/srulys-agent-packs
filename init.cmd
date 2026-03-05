@@ -71,20 +71,14 @@ if not exist "%ROOT%agent-packs\copilot-factory\.github" (
     exit /b 1
 )
 
-:: Copy .github subdirectories (agents, skills, instructions)
-if exist "%ROOT%agent-packs\copilot-factory\.github\agents" (
-    xcopy "%ROOT%agent-packs\copilot-factory\.github\agents" "%ROOT%.github\agents" /E /I /Y /Q >nul
-    echo   [OK] .github/agents/ installed
-)
-
-if exist "%ROOT%agent-packs\copilot-factory\.github\skills" (
-    xcopy "%ROOT%agent-packs\copilot-factory\.github\skills" "%ROOT%.github\skills" /E /I /Y /Q >nul
-    echo   [OK] .github/skills/ installed
-)
-
-if exist "%ROOT%agent-packs\copilot-factory\.github\instructions" (
-    xcopy "%ROOT%agent-packs\copilot-factory\.github\instructions" "%ROOT%.github\instructions" /E /I /Y /Q >nul
-    echo   [OK] .github/instructions/ installed
+:: Copy all .github subdirectories dynamically
+for /d %%D in ("%ROOT%agent-packs\copilot-factory\.github\*") do (
+    xcopy "%%D" "%ROOT%.github\%%~nxD" /E /I /Y /Q >nul
+    if errorlevel 1 (
+        echo   [WARN] Failed to copy .github/%%~nxD/
+    ) else (
+        echo   [OK] .github/%%~nxD/ installed
+    )
 )
 
 :done

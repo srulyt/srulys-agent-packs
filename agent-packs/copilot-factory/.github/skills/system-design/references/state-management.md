@@ -84,17 +84,13 @@ Generation:
   "version": "1.0.0",
   "created_at": "2026-02-23T09:00:00Z",
   "updated_at": "2026-02-23T09:30:00Z",
-  "phase": "intake|design|review|approval|build|complete",
+  "phase": "intake|design|review-arch|approval|build|review-prompts|complete",
   "mode": "creation|improvement",
+  "target_platform": "roo|copilot",
+  "target_system": "my-agent-pack",
   "iteration": 1,
-  "target": {
-    "platform": "roo|copilot",
-    "name": "my-agent-pack"
-  },
-  "flags": {
-    "user_approved": false,
-    "review_passed": false
-  },
+  "user_approved": false,
+  "review_passed": false,
   "deliverables": {
     "architecture": null,
     "artifacts": []
@@ -106,19 +102,20 @@ Generation:
 ## State Transitions
 
 ```
-intake → design → review → approval → build → complete
-                    │          │
-                    │          └── (changes requested)
-                    │                    │
-                    └────────────────────┘
+intake → design → review-arch → approval → build → review-prompts → complete
+                       │            │
+                       │            └── (changes requested)
+                       │                       │
+                       └───────────────────────┘
 ```
 
 **Transition Rules**:
 - `intake → design`: Requirements captured
-- `design → review`: Architecture written
-- `review → approval`: Review passed
+- `design → review-arch`: Architecture written
+- `review-arch → approval`: Review passed
 - `approval → build`: User approved
-- `build → complete`: All artifacts created
+- `build → review-prompts`: Implementation complete
+- `review-prompts → complete`: Implementation review passed
 - `approval → design`: Changes requested (increment iteration)
 
 ## Atomic Updates
@@ -152,9 +149,10 @@ On startup:
 
 For each phase, check preconditions:
 - `design`: Has `context/user-request.md`?
-- `review`: Has `artifacts/architecture.md`?
-- `build`: Has approved architecture?
-- `complete`: Has build manifest?
+- `review-arch`: Has `artifacts/architecture.md`?
+- `build`: Has approved architecture and `user_approved: true`?
+- `review-prompts`: Has build manifest?
+- `complete`: Has passed implementation review?
 
 ### Error Recovery
 

@@ -111,4 +111,6 @@ Each major section should contain at least one statement that is:
 - **Decision Metrics Financials**: Options tables should include stakeholder-friendly impact language, not just technical criteria
 - **Product Brief Framework**: The executive summary serves double duty as the reader's championing script
 
+Championing language is especially critical for Decision Ask and Recommendation closing types, where the reader must actively advocate. However, the cascade principle applies to all closing types — even informational briefs must give the reader repeatable statements for their own conversations.
+
 ```

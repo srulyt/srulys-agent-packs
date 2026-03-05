@@ -11,7 +11,7 @@ Use this skill to keep briefs grounded in verifiable, decision-relevant inputs p
 
 Only extract and include evidence that directly informs one of:
 
-- The decision ask (what stakeholders must decide)
+- The closing section purpose (what the brief asks of readers — a decision, recommendation, action, input request, or informational synthesis)
 - Available options and their tradeoffs
 - Risks, blockers, or open concerns
 - Success metrics or financial impact

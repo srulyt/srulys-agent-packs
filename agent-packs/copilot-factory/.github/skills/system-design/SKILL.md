@@ -70,6 +70,21 @@ Design for:
 - Recovery from any phase
 - Clear error signals
 
+### 4. Skills as Single Source of Truth
+
+When a multi-agent system includes skills:
+- Skills contain the authoritative domain rules
+- Agent prompts reference skills, never duplicate their content
+- Each agent declares its skill dependencies in a "Skills to Load" section
+- This prevents token waste and maintenance drift
+
+### 5. Orchestrator Resilience
+
+Every orchestrator must plan for:
+- **Iteration protocol**: How to handle user feedback after completion (which specialist to re-invoke, whether to re-run quality gates)
+- **Retry bounds**: Maximum re-requests to a specialist before the orchestrator takes direct action (recommended: 2)
+- **Invocation guards**: Subagents redirect direct user invocations to the orchestrator
+
 ## Topology Patterns
 
 For detailed topology patterns, see [references/agent-patterns.md](references/agent-patterns.md).
@@ -171,6 +186,11 @@ Before finalizing design:
 - [ ] State management handles interruptions
 - [ ] Target platform requirements considered
 - [ ] Error recovery paths defined
+- [ ] Skills identified as single source of truth for domain rules
+- [ ] Each agent's skill dependencies are specified
+- [ ] Orchestrator includes iteration protocol for user feedback
+- [ ] Orchestrator includes retry bounds on specialist re-requests
+- [ ] Subagents have invocation guards specified
 
 ## Anti-Patterns
 
@@ -181,6 +201,9 @@ Before finalizing design:
 | Shared State | Race conditions | Session isolation |
 | Implicit Deps | Hidden coupling | Document all dependencies |
 | Over-Engineering | Too many agents | Start simple, add complexity as needed |
+| Duplicated rules | Skills and agents repeat same content | Skills are truth; agents reference them |
+| No feedback loop | Users cannot iterate on completed work | Add iteration protocol to orchestrator |
+| Unbounded retries | Infinite loops on failing specialists | Add max retry count with fallback |
 
 ## References
 

@@ -127,11 +127,17 @@ Instructions (max 5,000 words)
 - [ ] Agent prompt under 30,000 characters
 - [ ] Skill under 5,000 words
 - [ ] Descriptions include trigger keywords
+- [ ] Subagents have invocation guard redirecting to orchestrator
+- [ ] Each agent has explicit "Skills to Load" section if it uses skills
+- [ ] Agent prompts reference skills rather than duplicating their content
 
 ### Both Platforms
 - [ ] README has clear usage instructions
+- [ ] README counts/names/descriptions match actual artifacts
 - [ ] All file paths are correct
 - [ ] Build manifest is accurate
+- [ ] Orchestrator has iteration protocol for user feedback
+- [ ] Orchestrator has retry bounds on specialist re-requests
 
 ## Common Patterns
 
@@ -160,6 +166,11 @@ Instructions (max 5,000 words)
 | Huge prompts | Slow, unfocused | Defer to skills |
 | Mixed platforms | Confusion | One target per pack |
 | No README | Unusable pack | Always include setup guide |
+| Duplicated skill content in agents | Wasted tokens, maintenance drift | Reference skills, don't copy them |
+| Missing invocation guard on subagent | Users bypass orchestrator | Add guard redirecting to orchestrator |
+| No explicit skill loading section | Implicit dependencies | Add "Skills to Load" section to each agent |
+| No iteration protocol in orchestrator | No path for user feedback | Add iteration and retry sections |
+| README drift from implementation | Misleading documentation | Verify README matches actual artifacts |
 
 ## References
 

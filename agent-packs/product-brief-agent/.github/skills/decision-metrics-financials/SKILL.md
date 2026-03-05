@@ -91,10 +91,22 @@ Prefer a small, high-signal metric set.
 - Use ranges under uncertainty; avoid false precision.
 - Declare assumptions behind any estimate.
 
-## Decision Ask Readiness Check
+## Closing Section Readiness Check
 
-A decision ask is ready when:
+A closing section is ready when its type-specific criteria are met:
 
-- Scope and commitment requested are explicit.
-- Timing/by-when is clear when available.
-- Metrics and risk posture are understandable to leadership.
+- **Decision Ask readiness**: Scope and commitment requested are explicit; timing is clear; metrics and risk posture are understandable to leadership.
+- **Recommendation readiness**: Recommended direction is clearly stated; rationale is evidence-backed; impact of adoption vs. non-adoption is concrete.
+- **Next Steps readiness**: Actions are specific and ordered; owners/DRIs are identified (or flagged as unknown); timeline is stated.
+- **Call to Action readiness**: The ask is specific (what, from whom, by when); the reason for the ask is clear; the next step after input is stated.
+- **Summary readiness**: Key takeaways are synthesized (not restated); current state is clear; conditions for future action are identified.
+
+## Maturity-Aware Output
+
+Not every brief needs the full strategy model. The orchestrator will specify the brief maturity level. Scope your outputs accordingly:
+
+- **Early-stage briefs**: You should not be invoked. If invoked, return only what minimal framing the evidence supports.
+- **Mid-stage briefs**: Focus on options/tradeoffs and risks. Include metrics, milestones, or financials only if the evidence explicitly contains that data.
+- **Late-stage briefs**: Full scope — options, metrics, milestones, financials as supported by evidence.
+
+When evidence does not support a particular output section (e.g., no financial data in sources), do not generate it. Instead, include a brief note in a "Gaps" section listing what was not produced and why.

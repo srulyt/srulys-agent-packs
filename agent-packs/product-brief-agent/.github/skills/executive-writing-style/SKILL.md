@@ -26,11 +26,11 @@ Design rules:
 - Supporting evidence follows the lead, not precedes it
 - Never open a section with background or context — open with the conclusion
 
-### State the Ask Early, Reinforce Late
+### State the Purpose Early, Reinforce Late
 
-- Executive summary states the decision requested
-- Decision ask section reinforces with specifics
-- The reader should know what you want within the first 30 seconds
+- Executive summary states the brief's purpose: the decision requested, recommendation, planned actions, input needed, or key findings
+- The closing section reinforces with specifics appropriate to its type
+- The reader should know what the brief is asking of them (or informing them about) within the first 30 seconds
 
 ### Structure Each Section
 

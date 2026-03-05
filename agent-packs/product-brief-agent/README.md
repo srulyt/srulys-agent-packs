@@ -55,7 +55,7 @@ This pack implements multiple quality gates:
 
 | Agent | Role |
 |-------|------|
-| `brief-orchestrator` | Coordination, delegation, mandatory 8-point editing pass, quality gates, final artifact assembly |
+| `brief-orchestrator` | Coordination, delegation, mandatory 11-point editing pass, quality gates, final artifact assembly |
 | `evidence-analyst` | Decision-relevant evidence extraction, contradiction surfacing, compact table output |
 | `strategy-modeler` | Options/tradeoffs (recommendation-first), metrics, milestones, financial framing |
 | `brief-composer` | Executive-ready narrative drafting with agency-over-formatting and anti-bloat rules |
@@ -68,6 +68,7 @@ This pack implements multiple quality gates:
 | `evidence-integrity` | Decision-relevance filter, compact evidence tables, no-links policy, confidence labeling |
 | `decision-metrics-financials` | Lead-with-recommendation, compact tables, KPI/OKR design, financial framing |
 | `executive-writing-style` | Decision-maker framing, persuasive structure, "so what?" test, tone rules, good/bad examples |
+| `stakeholder-psychology` | Cascade principle, championing language, psychological risk reduction, incentive alignment |
 
 ## Typical Prompt
 
@@ -81,6 +82,6 @@ Decision needed: whether to fund and prioritize in the next planning cycle.
 ## Notes
 
 - If required data is missing, the system preserves all sections and marks `Insufficient data`, with explicit `Assumptions` and `Open Questions`.
-- The orchestrator performs a mandatory 8-point editing pass on every draft before producing the final artifact.
+- The orchestrator performs a mandatory 11-point editing pass on every draft before producing the final artifact.
 - Drafts exceeding the hard ceiling are rejected and returned to the composer for condensation.
 - The orchestrator is responsible for deterministic output paths and final quality validation.

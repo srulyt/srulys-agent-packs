@@ -44,11 +44,13 @@ Check `state.json.target_platform` for the current session's target.
 ### Workflow Phases
 
 1. **intake**: Validate requirements, select target platform
-2. **design**: Create system architecture
-3. **review**: Validate architecture
-4. **approval**: Get user approval
-5. **build**: Generate artifacts
-6. **complete**: Present results
+2. **improve-analysis** (improvement mode): Analyze existing pack and prioritize improvements
+3. **design**: Create system architecture
+4. **review-arch**: Validate architecture
+5. **approval**: Get user approval
+6. **build**: Generate artifacts
+7. **review-prompts**: Validate implementation
+8. **complete**: Present results
 
 ### Quality Standards
 
