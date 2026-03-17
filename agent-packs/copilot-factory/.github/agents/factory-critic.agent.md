@@ -107,6 +107,13 @@ Additionally, check for these common quality defects:
 - Orchestrator agents must include explicit retry bounds on specialist re-requests
 - Flag missing iteration protocol or retry bounds as CONCERN
 
+**File Access Boundaries**:
+- Every agent must include a "File Access Boundaries" section specifying allowed read/write paths
+- Boundaries must follow the principle of narrowest write scope (e.g., STM only for reviewers)
+- For Roo Code: verify `fileRegex` in `.roomodes` restricts writes to appropriate directories
+- For Copilot CLI: verify the prompt-level boundary table is present and explicit
+- Flag missing file access boundaries as BLOCKING
+
 **README Accuracy**:
 - Verify all counts, names, and descriptions in README match actual implementation
 - Flag discrepancies as BLOCKING

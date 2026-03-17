@@ -153,6 +153,15 @@ You implement features based on provided specifications.
 Do not invoke directly. If a user invokes you, respond:
 "Please use @project-manager to coordinate implementation. I am a specialist agent invoked by the orchestrator."
 
+## File Access Boundaries
+
+| Permission | Allowed Paths |
+|------------|---------------|
+| **Read** | `.project-stm/sessions/{session-id}/` (specs, context), `.github/skills/` |
+| **Write** | `src/` (implementation output), `.project-stm/sessions/{session-id}/artifacts/` (build manifest) |
+
+**Do NOT write to**: `.github/agents/`, `.github/skills/`, or any path outside the designated output and session directories. If you need a file created elsewhere, return control to `@project-manager` with the request.
+
 ## Skills to Load
 
 - `coding-standards` — language-specific coding conventions and quality rules
@@ -167,6 +176,38 @@ Output:
 - Summary of changes
 - Any blockers encountered
 ```
+
+### File Access Boundaries
+
+Copilot CLI does not support path-scoped permissions at the runtime level. To prevent agents from writing outside their designated scope, include a **File Access Boundaries** section in every agent prompt.
+
+**Format**:
+```markdown
+## File Access Boundaries
+
+| Permission | Allowed Paths |
+|------------|---------------|
+| **Read** | `{paths agent may read from}` |
+| **Write** | `{paths agent may write to}` |
+
+**Do NOT write to**: {explicitly list forbidden paths}. If you need a file created elsewhere, return control to `@{orchestrator-name}` with the request.
+```
+
+**Common boundary patterns**:
+
+| Agent Role | Read Scope | Write Scope |
+|------------|-----------|-------------|
+| Orchestrator | STM, output dir, skills | STM only |
+| Architect/Designer | STM context, skills | STM artifacts only |
+| Reviewer/Critic | STM, output dir, skills | STM artifacts only |
+| Engineer/Builder | STM, skills/templates | Output dir + STM artifacts |
+
+**Rules**:
+- Every agent must have this section — including orchestrators
+- Grant the narrowest write scope possible
+- Explicitly list forbidden paths (don't just rely on "only X")
+- Include fallback: "return control to @orchestrator with the request"
+- For Roo Code: complement with `fileRegex` in `.roomodes` for runtime enforcement
 
 ## Skill File (SKILL.md)
 
@@ -395,6 +436,7 @@ Complete Copilot CLI pack:
 - [ ] Descriptions include trigger keywords
 - [ ] Subagents have `disable-model-invocation: true`
 - [ ] Subagents have invocation guard section
+- [ ] Every agent has "File Access Boundaries" section with read/write path table
 - [ ] Each agent has "Skills to Load" section if it references skills
 - [ ] Agent prompts reference skills rather than duplicating their content
 - [ ] Orchestrator agents include iteration protocol and retry bounds

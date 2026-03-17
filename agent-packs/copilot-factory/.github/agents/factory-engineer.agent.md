@@ -250,6 +250,7 @@ Apply all prompt engineering rules from the `agent-builder` skill, especially:
 - **Skills as single source of truth** — agent prompts reference skills, never duplicate them
 - **Explicit skill loading declarations** — every agent that uses skills gets a "Skills to Load" section
 - **Invocation guards** — every subagent includes a guard redirecting to the orchestrator
+- **File access boundaries** — every agent gets a "File Access Boundaries" section with a read/write path table (see `agent-builder` skill for format and patterns)
 - **Orchestrator iteration protocol** — orchestrators include iteration + retry sections
 - **README accuracy** — verify all counts and names match implementation
 

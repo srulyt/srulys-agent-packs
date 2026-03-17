@@ -139,6 +139,7 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 - [ ] Slugs are lowercase with hyphens
 - [ ] Slug matches rules directory name
 - [ ] `fileRegex` is valid JavaScript regex
+- [ ] `fileRegex` restricts writes to appropriate directories per agent role
 - [ ] `customInstructions` points to rules file
 
 ### Copilot CLI
@@ -152,6 +153,7 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 - [ ] Subagents have invocation guard redirecting to orchestrator
 - [ ] Each agent has explicit "Skills to Load" section if it uses skills
 - [ ] Agent prompts reference skills rather than duplicating their content
+- [ ] Every agent has a "File Access Boundaries" section with read/write path table
 
 ### Both Platforms
 - [ ] README has clear usage instructions
@@ -179,6 +181,34 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 **Roo**: Set `customInstructions` with delegation rules
 **Copilot**: `disable-model-invocation: true`
 
+### File Access Boundaries (Both Platforms)
+
+Every agent must have explicit path-scoped read/write boundaries.
+
+**Roo Code**: Use `fileRegex` in `.roomodes` (runtime-enforced):
+```yaml
+fileRegex: "^\\.my-stm/.*$"  # Can only edit files in .my-stm/
+```
+
+**Copilot CLI**: Add a "File Access Boundaries" table in the agent prompt (prompt-level guardrail):
+```markdown
+## File Access Boundaries
+
+| Permission | Allowed Paths |
+|------------|---------------|
+| **Read** | `.my-stm/sessions/{session-id}/`, `.github/skills/` |
+| **Write** | `.my-stm/sessions/{session-id}/artifacts/` only |
+
+**Do NOT write to**: `src/`, `.github/agents/`, or any path outside the session artifacts directory.
+```
+
+**Rules**:
+- Grant narrowest write scope possible per agent role
+- Orchestrators: write only to STM directories
+- Reviewers/critics: write only to STM artifacts
+- Engineers: write to output dir + STM artifacts
+- Agents exceeding their boundary must return control to the orchestrator
+
 ## Anti-Patterns
 
 | Anti-Pattern | Problem | Solution |
@@ -192,6 +222,7 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 | Missing invocation guard on subagent | Users bypass orchestrator | Add guard redirecting to orchestrator |
 | No explicit skill loading section | Implicit dependencies | Add "Skills to Load" section to each agent |
 | No iteration protocol in orchestrator | No path for user feedback | Add iteration and retry sections |
+| No file access boundaries | Agents write outside scope, crash silently | Add File Access Boundaries section per agent |
 | README drift from implementation | Misleading documentation | Verify README matches actual artifacts |
 
 ## References

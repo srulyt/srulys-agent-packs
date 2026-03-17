@@ -85,6 +85,38 @@ Every orchestrator must plan for:
 - **Retry bounds**: Maximum re-requests to a specialist before the orchestrator takes direct action (recommended: 2)
 - **Invocation guards**: Subagents redirect direct user invocations to the orchestrator
 
+### 6. File Access Boundaries
+
+Every agent in a multi-agent system must have explicit path-scoped read/write boundaries defined in its prompt. This prevents agents from writing outside their designated scope, which can cause silent crashes, permission hangs, or corrupted state.
+
+**Design rules**:
+- Each agent's architecture entry must specify which directories it may **read** and which it may **write**
+- Grant the **narrowest write scope** possible (e.g., STM session dir only, or output dir only)
+- Agents that exceed their boundary must return control to the orchestrator with the request
+- For Roo Code: enforce via `fileRegex` in `.roomodes` (runtime-level restriction)
+- For Copilot CLI: enforce via a "File Access Boundaries" section in the agent prompt (prompt-level guardrail, since the runtime has no path-scoping)
+
+**Common boundary patterns**:
+
+| Agent Role | Read Scope | Write Scope |
+|------------|-----------|-------------|
+| Orchestrator | STM, output dir, skills | STM only |
+| Architect/Designer | STM context, skills | STM artifacts only |
+| Reviewer/Critic | STM, output dir, skills | STM artifacts only |
+| Engineer/Builder | STM, skills/templates | Output dir + STM artifacts |
+
+**Copilot CLI example** (include in agent prompt body):
+```markdown
+## File Access Boundaries
+
+| Permission | Allowed Paths |
+|------------|---------------|
+| **Read** | `.my-stm/sessions/{session-id}/`, `.github/skills/` |
+| **Write** | `.my-stm/sessions/{session-id}/artifacts/` only |
+
+**Do NOT write to**: `src/`, `.github/agents/`, or any path outside the session artifacts directory.
+```
+
 ## Topology Patterns
 
 For detailed topology patterns, see [references/agent-patterns.md](references/agent-patterns.md).
@@ -182,6 +214,7 @@ Before finalizing design:
 
 - [ ] Each agent has clear, non-overlapping responsibility
 - [ ] All agents have appropriate tool restrictions
+- [ ] All agents have file access boundaries defined (read/write paths)
 - [ ] Communication paths are documented
 - [ ] State management handles interruptions
 - [ ] Target platform requirements considered
@@ -204,6 +237,7 @@ Before finalizing design:
 | Duplicated rules | Skills and agents repeat same content | Skills are truth; agents reference them |
 | No feedback loop | Users cannot iterate on completed work | Add iteration protocol to orchestrator |
 | Unbounded retries | Infinite loops on failing specialists | Add max retry count with fallback |
+| No file access boundaries | Agents write outside scope, silent crashes | Add read/write path guards per agent |
 
 ## References
 

@@ -50,6 +50,7 @@ If invoked by a user directly:
 
 - System overview and success criteria
 - Agent definitions (role, boundaries, tools)
+- **File access boundaries per agent** (read/write paths — see `system-design` skill for patterns)
 - Communication and handoff patterns
 - State management approach (if needed)
 - Target platform constraints (`roo` or `copilot`)
@@ -70,6 +71,7 @@ If invoked by a user directly:
 - [ ] All requirements are addressed
 - [ ] Architecture is internally consistent
 - [ ] Tool restrictions are explicit per agent
+- [ ] File access boundaries (read/write paths) are specified per agent
 - [ ] Buildable for selected target platform
 - [ ] Includes artifact paths for Engineer
 
