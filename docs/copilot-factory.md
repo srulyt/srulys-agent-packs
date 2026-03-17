@@ -4,41 +4,67 @@ A GitHub Copilot CLI agent pack for creating multi-agent systems targeting eithe
 
 ## Overview
 
-The Copilot Factory is a two-agent system that guides users through designing and building multi-agent packs. It mirrors the workflow of the Roo Code Agent Factory but uses Copilot CLI idioms.
+The Copilot Factory is a four-agent system that guides users through designing and building multi-agent packs. It uses a hierarchical pattern with an orchestrator delegating to specialized architect, engineer, and critic agents.
 
 ### Key Features
 
 - **Target Platform Selection**: Generate artifacts for Roo Code OR Copilot CLI
-- **Structured Workflow**: Intake → Design → Review → Approval → Build → Complete
+- **Structured Workflow**: Intake → Design → Review → Approval → Build → Review → Complete
+- **Improvement Mode**: Analyze existing packs with incremental or full rebuild options
 - **Skill-Based Knowledge**: Design patterns and templates loaded on demand
 - **Session Management**: Persistent state for multi-turn workflows
+- **Reusable Prompts**: Pre-built prompts for common workflows
 
 ## Agent Roster
 
 | Agent | Role | Tools |
 |-------|------|-------|
-| **Copilot Factory** | Orchestrator - manages workflow and user interaction | read, edit, search, execute, agent, github/* |
-| **Factory Engineer** | Implementer - creates agent pack files | read, edit, search |
+| **Copilot Factory** | Orchestrator — manages workflow, user interaction, and delegation | read, edit, search, execute, agent |
+| **Factory Architect** | Designer — creates system architecture documents | read, edit, search, web |
+| **Factory Engineer** | Implementer — creates agent pack files from architecture | read, edit, search |
+| **Factory Critic** | Quality gate — reviews architecture and implementation | read, search |
 
 ### Copilot Factory (Orchestrator)
 
 The main entry point for users. Responsibilities:
 - Validate user requirements
 - Prompt for target platform selection
-- Design system architecture (with skill support)
-- Get user approval
+- Delegate architecture design to Factory Architect
+- Gate on critic review before user approval
 - Delegate implementation to Factory Engineer
+- Gate on implementation review before delivery
 - Present results with usage instructions
+
+### Factory Architect (Designer)
+
+Called by the Orchestrator to create architecture. Responsibilities:
+- Read user requirements
+- Design agent topology, boundaries, and communication patterns
+- Specify tool restrictions per agent
+- Write architecture document
+
+**Note**: Has `disable-model-invocation: true` and `web` tool for research.
 
 ### Factory Engineer (Implementer)
 
 Called by the Orchestrator to generate files. Responsibilities:
 - Read architecture document
 - Generate platform-specific artifacts
+- Support both full builds and incremental improvements
 - Create README and documentation
 - Update build manifest
 
-**Note**: This agent has `disable-model-invocation: true` to prevent direct user access.
+**Note**: Has `disable-model-invocation: true`.
+
+### Factory Critic (Quality Gate)
+
+Called by the Orchestrator for reviews. Responsibilities:
+- Review architecture for requirement-fit and buildability
+- Review implementation for architecture alignment
+- Analyze existing packs for improvement opportunities
+- Return PASS/BLOCKING verdicts with remediation guidance
+
+**Note**: Has `disable-model-invocation: true` and read-only tools.
 
 ## Skills
 
@@ -80,26 +106,37 @@ Templates and implementation patterns for both platforms.
 
 ## Workflow Phases
 
+### Creation Mode
 ```
-┌─────────┐    ┌─────────┐    ┌─────────┐
-│ Intake  │───▶│ Design  │───▶│ Review  │
-└─────────┘    └─────────┘    └────┬────┘
-                                   │
-     ┌─────────────────────────────┘
+┌─────────┐    ┌─────────┐    ┌────────────┐    ┌──────────┐
+│ Intake  │───▶│ Design  │───▶│ Review-Arch│───▶│ Approval │
+└─────────┘    └─────────┘    └────────────┘    └────┬─────┘
+                                                     │
+     ┌───────────────────────────────────────────────┘
      ▼
-┌──────────┐    ┌─────────┐    ┌──────────┐
-│ Approval │───▶│  Build  │───▶│ Complete │
-└──────────┘    └─────────┘    └──────────┘
+┌─────────┐    ┌────────────────┐    ┌──────────┐
+│  Build  │───▶│ Review-Prompts │───▶│ Complete │
+└─────────┘    └────────────────┘    └──────────┘
+```
+
+### Improvement Mode
+```
+┌─────────┐    ┌──────────────────┐
+│ Intake  │───▶│ Improve-Analysis │──┬──▶ incremental ──▶ Build ──▶ Review ──▶ Complete
+└─────────┘    └──────────────────┘  │
+                                     └──▶ rebuild ──▶ Design ──▶ (full pipeline)
 ```
 
 ### Phase Details
 
-1. **Intake**: Capture requirements, select target platform (`roo` or `copilot`)
-2. **Design**: Create architecture with agent definitions, tools, boundaries
-3. **Review**: Validate architecture against requirements
-4. **Approval**: Present architecture, get user sign-off
-5. **Build**: Delegate to Factory Engineer, generate all files
-6. **Complete**: Present summary and usage instructions
+1. **Intake**: Capture requirements, select target platform (`roo` or `copilot`), determine mode
+2. **Improve-Analysis** (improvement only): Critic analyzes existing pack, user chooses incremental or rebuild
+3. **Design**: Architect creates architecture with agent definitions, tools, boundaries
+4. **Review-Arch**: Critic validates architecture against requirements (PASS/BLOCKING)
+5. **Approval**: Present architecture, get user sign-off
+6. **Build**: Engineer generates all files (full build or incremental edits)
+7. **Review-Prompts**: Critic validates implementation against architecture (PASS/BLOCKING)
+8. **Complete**: Present summary and usage instructions
 
 ## State Management
 
@@ -220,7 +257,9 @@ agent-packs/copilot-factory/
 ├── .github/
 │   ├── agents/
 │   │   ├── copilot-factory.agent.md    # Orchestrator
-│   │   └── factory-engineer.agent.md   # Implementer
+│   │   ├── factory-architect.agent.md  # Designer
+│   │   ├── factory-engineer.agent.md   # Implementer
+│   │   └── factory-critic.agent.md     # Quality gate
 │   ├── skills/
 │   │   ├── system-design/
 │   │   │   ├── SKILL.md
@@ -229,8 +268,12 @@ agent-packs/copilot-factory/
 │   │       ├── SKILL.md
 │   │       ├── references/
 │   │       └── assets/
-│   └── instructions/
-│       └── factory.instructions.md
+│   ├── instructions/
+│   │   └── factory.instructions.md
+│   └── prompts/
+│       ├── analyze-and-improve.prompt.md
+│       ├── create-pack.prompt.md
+│       └── resume-session.prompt.md
 ├── .copilot-factory/                    # State (gitignored)
 └── README.md
 ```
@@ -240,11 +283,12 @@ agent-packs/copilot-factory/
 | Aspect | Roo Factory | Copilot Factory |
 |--------|-------------|-----------------|
 | Location | Repository root | `agent-packs/copilot-factory/` |
-| Agents | 4 (Orchestrator, Architect, Engineer, Critic) | 2 (Factory, Engineer) |
-| Design Knowledge | Separate Architect agent | system-design skill |
-| Validation | Separate Critic agent | Built-in code-review |
+| Agents | 4 (Orchestrator, Architect, Engineer, Critic) | 4 (Factory, Architect, Engineer, Critic) |
+| Design Knowledge | Separate Architect agent | Architect agent + system-design skill |
+| Validation | Separate Critic agent | Critic agent with PASS/BLOCKING verdicts |
 | Orchestration | Explicit boomerang protocol | Implicit subagent returns |
 | Tool Restrictions | `fileRegex` patterns | `tools` property |
+| Improvement Mode | N/A | Incremental or full rebuild |
 
 ## Troubleshooting
 

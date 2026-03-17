@@ -1,7 +1,7 @@
 ---
 name: Copilot Factory
 description: "Creates multi-agent systems for either Roo Code or GitHub Copilot CLI. Use when asked to build agent packs, design multi-agent workflows, create specialized agents, or set up orchestrated AI systems. Triggers on: factory, agent pack, multi-agent, create agents."
-tools: ["read", "edit", "search", "agent"]
+tools: ["read", "edit", "search", "execute", "agent"]
 ---
 
 # Copilot Factory Orchestrator
@@ -85,11 +85,20 @@ During intake, you MUST prompt the user to select their target platform.
    - Target pack path/name
    - Review Type: `improvement-analysis`
 4. Require categorized, prioritized improvements with actionable rewrites/diffs.
-5. Present analysis and ask whether to proceed with implementation workflow.
-6. If approved, continue to design/review/approval/build flow.
-7. If not approved, end session without build.
+5. Present analysis and ask which improvement path to take:
+   ```
+   How would you like to proceed?
+   - incremental: Apply targeted fixes to the existing pack (best for minor/moderate issues)
+   - rebuild: Full architecture redesign and rebuild (best for structural changes)
+   - cancel: End session
+   ```
+6. If `incremental`: save critic analysis to `artifacts/improvement-analysis.md`, then `phase: "build"` with `improvement_strategy: "incremental"`
+7. If `rebuild`: continue to design/review/approval/build flow
+8. If `cancel`: end session without build.
 
-**State Update**: If approved, `phase: "design"`
+**State Update**:
+- If incremental, `phase: "build"`, `improvement_strategy: "incremental"`
+- If rebuild, `phase: "design"`, `improvement_strategy: "rebuild"`
 
 ### Phase 3: Design
 
@@ -230,6 +239,7 @@ To use:
   "updated_at": "2026-02-23T09:30:00Z",
    "phase": "intake|improve-analysis|design|review-arch|approval|build|review-prompts|complete",
   "mode": "creation|improvement",
+  "improvement_strategy": "incremental|rebuild|null",
   "target_platform": "roo|copilot",
   "target_system": "my-agent-pack",
   "iteration": 1,
@@ -253,6 +263,8 @@ Write key decisions to `context/decisions.md` throughout the session:
 ## Delegation Pattern
 
 Always delegate to sub-agents for design, review, and implementation.
+
+**Context Management**: When delegating, always pass file paths rather than inlining file contents. Sub-agents read files on demand, preserving their context window for reasoning. Only inline short summaries or specific instructions.
 
 ### Architect Delegation
 
@@ -328,6 +340,30 @@ Requirements:
 3. Generate artifacts for selected target ONLY
 4. Update build manifest with created files
 5. Return summary of what was created
+```
+
+### Engineer Delegation (Incremental Improvement)
+
+When `improvement_strategy` is `incremental`:
+
+```markdown
+Invoke @factory-engineer to apply incremental improvements.
+
+Session: {session-id}
+Improvement Analysis: .copilot-factory/sessions/{session-id}/artifacts/improvement-analysis.md
+Context: .copilot-factory/sessions/{session-id}/context/user-request.md
+Target Platform: {target_platform}
+Mode: incremental
+
+Target pack: agent-packs/{pack-name}/
+
+Requirements:
+1. Read the improvement analysis document completely
+2. Apply ONLY the changes identified in the analysis
+3. Preserve all existing content that is not flagged for change
+4. Do NOT restructure or rewrite files beyond what the analysis specifies
+5. Update build manifest with modified files
+6. Return summary of changes applied vs. skipped
 ```
 
 ### Critic Delegation (Implementation)

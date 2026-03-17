@@ -23,6 +23,14 @@ model: "gpt-4"                        # Optional: model override (IDE only)
 ---
 ```
 
+### Model Selection
+
+The optional `model` field lets you specify which LLM model an agent uses. Useful for:
+- **Fast/cheap models** for reviewers, linters, simple transformations
+- **Powerful models** for architects, complex reasoning, code generation
+
+When omitted, the IDE default model is used. Model availability varies by environment.
+
 ### Required Fields
 
 Only `description` is required. Must include:
@@ -44,6 +52,7 @@ description: "Creates unit tests for Python code. Use when asked to write tests,
 | `edit` | `Edit`, `MultiEdit`, `Write`, `NotebookEdit` | Creating/modifying files |
 | `search` | `Grep`, `Glob` | Finding files/text |
 | `web` | `WebSearch`, `WebFetch` | Web access |
+| `vision` | `Vision` | Analyzing images and diagrams |
 | `agent` | `custom-agent`, `Task` | Invoking other agents |
 | `github/*` | All GitHub MCP tools | Repository operations |
 
@@ -262,6 +271,97 @@ This workspace uses the Copilot Factory pattern.
 - Artifacts in `artifacts/`
 ```
 
+## Prompt Files (.prompt.md)
+
+### Location
+`.github/prompts/{prompt-name}.prompt.md`
+
+### Format
+Markdown with YAML frontmatter.
+
+### Schema
+
+```yaml
+---
+description: "What this prompt does"   # Required: shown in prompt picker
+agent: "Agent Name"                    # Optional: route to specific agent
+mode: "agent"                          # Optional: agent | edit | ask
+---
+```
+
+### Purpose
+
+Reusable prompt templates for common workflows. Users invoke them from the prompt picker or command palette. Useful for:
+- Guided multi-step workflows (e.g., "create a new feature")
+- Pre-filled context for repetitive tasks
+- Routing complex requests to the right agent
+
+### Example
+
+```markdown
+---
+description: "Create a new agent pack using the Copilot Factory workflow"
+agent: "Copilot Factory"
+---
+
+## Create Agent Pack
+
+I need you to create a new agent pack.
+
+**Mode**: `creation`
+
+### Requirements
+
+- Describe the agents needed and their responsibilities
+- Specify target platform: `roo` or `copilot`
+- Include any specific tool requirements or constraints
+```
+
+## Memory Files
+
+### Location
+`.github/memory/*.md`
+
+### Purpose
+
+Persistent storage for cross-session learnings. Memory files survive between conversations and are automatically loaded as context. Useful for:
+- Recording architectural decisions and rationale
+- Tracking patterns that work well in a codebase
+- Storing user preferences discovered during sessions
+- Accumulating domain-specific knowledge
+
+### Format
+
+Plain markdown. No frontmatter required. Content is appended over time.
+
+### Guidelines
+
+- Keep entries concise and factual
+- Use timestamped entries for traceability
+- Organize by topic (one file per knowledge domain)
+- Periodically prune stale or superseded entries
+
+### Example
+
+```markdown
+# Architecture Decisions
+
+## 2026-03-10 — Agent topology
+Hierarchical pattern chosen over flat because specialists need coordinated sequencing.
+
+## 2026-03-12 — State management
+Session-based STM with JSON state files. Filesystem-based for recovery.
+```
+
+### Structure
+
+```
+.github/memory/
+├── decisions.md          # Key decisions and rationale
+├── patterns.md           # Patterns that work well
+└── preferences.md        # User/project preferences
+```
+
 ## Directory Structure
 
 Complete Copilot CLI pack:
@@ -275,15 +375,20 @@ Complete Copilot CLI pack:
 │   │   └── {skill-name}/
 │   │       ├── SKILL.md
 │   │       └── references/
-│   └── instructions/
-│       └── workspace.instructions.md
+│   ├── instructions/               # Optional: file-scoped context
+│   │   └── workspace.instructions.md
+│   ├── prompts/                    # Optional: reusable workflows
+│   │   └── common-task.prompt.md
+│   └── memory/                     # Optional: persistent learnings
+│       └── decisions.md
 ├── README.md
-└── .{state-dir}/            # Optional: state management
+└── .{state-dir}/                   # Optional: state management
 ```
 
 ## Validation Checklist
 
 - [ ] All agents have `description` in frontmatter
+- [ ] All `description` values are double-quoted (YAML safety)
 - [ ] Tool aliases are correct (`edit` not `write`)
 - [ ] Agent prompts under 30,000 characters
 - [ ] Skills under 5,000 words
@@ -294,4 +399,6 @@ Complete Copilot CLI pack:
 - [ ] Agent prompts reference skills rather than duplicating their content
 - [ ] Orchestrator agents include iteration protocol and retry bounds
 - [ ] README accurately reflects all agents, skills, and implementation details
+- [ ] Prompt files have `description` and optional `agent` field
+- [ ] Memory files (if used) are plain markdown, no frontmatter
 - [ ] File paths follow conventions

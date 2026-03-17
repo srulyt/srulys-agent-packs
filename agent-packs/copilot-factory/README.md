@@ -26,11 +26,11 @@ This pack runs in GitHub Copilot CLI and can generate artifacts for both Roo Cod
 The Copilot Factory guides you through creating complete agent packs:
 
 1. **Intake**: Captures your requirements and asks which platform you're targeting
-2. **Improve-Analysis** (improvement mode): Delegates existing-pack analysis to `@factory-critic`
+2. **Improve-Analysis** (improvement mode): Delegates existing-pack analysis to `@factory-critic`, offers incremental or rebuild path
 3. **Design**: Delegates architecture creation to `@factory-architect`
 4. **Review-Arch**: Delegates architecture validation to `@factory-critic`
 5. **Approval**: Presents the architecture for your approval
-6. **Build**: Delegates artifact generation to `@factory-engineer`
+6. **Build**: Delegates artifact generation to `@factory-engineer` (full build or incremental edits)
 7. **Review-Prompts**: Delegates implementation validation to `@factory-critic`
 8. **Complete**: Provides usage instructions
 
@@ -70,6 +70,12 @@ The orchestrator does not bypass these delegation steps.
 
 - `system-design`: Multi-agent architecture patterns
 - `agent-builder`: Templates for both platforms
+
+## Prompts
+
+- `create-pack`: Guided new pack creation workflow
+- `analyze-and-improve`: Analyze and improve an existing pack
+- `resume-session`: Resume an interrupted factory session
 
 ## State Management
 

@@ -1,7 +1,7 @@
 ---
 name: Factory Critic
-description: Reviews architecture and implementation for requirement-fit and deployability. Use when orchestrator needs PASS/BLOCKING verdicts for architecture or generated artifacts. Not for direct user invocation.
-tools: ["read", "search"]
+description: "Reviews architecture and implementation for requirement-fit and deployability. Use when orchestrator needs PASS/BLOCKING verdicts for architecture or generated artifacts. Not for direct user invocation."
+tools: ["read", "edit", "search"]
 disable-model-invocation: true
 ---
 
@@ -74,7 +74,9 @@ Validate:
 Return:
 - Prioritized improvements by category
 - Actionable rewrites/diffs where practical
+- Each improvement must specify: target file, section/line range, severity, and concrete fix
 - Recommendation: proceed to implementation workflow or stop
+- Recommendation on strategy: `incremental` (targeted fixes) or `rebuild` (structural changes)
 
 Additionally, check for these common quality defects:
 

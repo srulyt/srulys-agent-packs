@@ -1,0 +1,11 @@
+# Session state — managed by story-orchestrator at runtime
+.story-telling-stm/current-session.json
+.story-telling-stm/runs/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated decks (keep only in session directories)
+output.pptx

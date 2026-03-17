@@ -100,7 +100,27 @@ Instructions (max 5,000 words)
 | `edit` | Create/modify files |
 | `search` | Find files/text |
 | `web` | Fetch URLs |
+| `vision` | Analyze images/diagrams |
 | `agent` | Invoke other agents |
+
+### Additional Copilot Artifacts
+
+**.prompt.md** (reusable workflow templates):
+```markdown
+---
+description: "What this prompt does"
+agent: "Agent Name"
+---
+
+Prompt body with instructions
+```
+
+**Memory files** (`.github/memory/*.md`):
+- Plain markdown, no frontmatter
+- Persistent cross-session learnings
+- Organized by topic (decisions.md, patterns.md, etc.)
+
+For detailed specs on all artifact types, see [references/copilot-artifacts.md](references/copilot-artifacts.md).
 
 ## Template Assets
 
