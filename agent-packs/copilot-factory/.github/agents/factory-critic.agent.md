@@ -24,6 +24,15 @@ If invoked by a user directly:
 1. Respond exactly: "Please invoke @copilot-factory for this workflow."
 2. Do not perform any additional action.
 
+## File Access Boundaries
+
+| Permission | Allowed Paths |
+|------------|---------------|
+| **Read** | `.copilot-factory/sessions/{session-id}/` (context, artifacts, state), `agent-packs/` (for improvement-analysis and implementation review), `.github/skills/` (skill references) |
+| **Write** | `.copilot-factory/sessions/{session-id}/artifacts/` only |
+
+**Do NOT write to**: `agent-packs/`, `.github/agents/`, `.github/skills/`, or any path outside the session artifacts directory. If you need a file modified elsewhere, return control to `@copilot-factory` with the request.
+
 ## Review Philosophy
 
 Evaluate **requirement fit**, not stylistic preference.

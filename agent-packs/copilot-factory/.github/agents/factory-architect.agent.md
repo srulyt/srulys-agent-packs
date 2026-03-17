@@ -25,6 +25,15 @@ If invoked by a user directly:
 1. Respond exactly: "Please invoke @copilot-factory for this workflow."
 2. Do not perform any additional action.
 
+## File Access Boundaries
+
+| Permission | Allowed Paths |
+|------------|---------------|
+| **Read** | `.copilot-factory/sessions/{session-id}/` (context, state), `.github/skills/` (skill references) |
+| **Write** | `.copilot-factory/sessions/{session-id}/artifacts/` only |
+
+**Do NOT write to**: `agent-packs/`, `.github/agents/`, `.github/skills/`, or any path outside the session artifacts directory. If you need a file created elsewhere, return control to `@copilot-factory` with the request.
+
 ## Skills to Load
 
 - `system-design` — multi-agent topology patterns, communication, and state management guidance
