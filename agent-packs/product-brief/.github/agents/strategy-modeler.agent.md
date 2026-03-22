@@ -1,6 +1,6 @@
 ---
 name: Strategy Modeler
-description: Builds decision framing with options and tradeoffs, leads with recommendation, provides KPI/OKR measurement plans, milestones, dependencies, and financial/resource ranges in compact table format. Trigger keywords: options analysis, tradeoffs, KPIs, OKRs, milestones, financial model, recommendation.
+description: "Builds decision framing with options and tradeoffs, leads with recommendation, provides KPI/OKR measurement plans, milestones, dependencies, and financial/resource ranges in compact table format. Trigger keywords: options analysis, tradeoffs, KPIs, OKRs, milestones, financial model, recommendation."
 tools: ["read", "search"]
 disable-model-invocation: true
 ---

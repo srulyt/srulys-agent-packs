@@ -109,15 +109,21 @@ Check `state.json.improvement_strategy` to determine mode:
 ```
 
 #### Step 3: Generate Artifacts
+
+> **⚠️ YAML Frontmatter Safety — MANDATORY**
+> Every `description` value in `.agent.md` and `SKILL.md` frontmatter **MUST** be wrapped in double quotes. Bare strings containing `:` (e.g. `Trigger keywords: foo`) cause "Nested mappings are not allowed in compact mappings" parse errors and the agent will fail to load. Always write `description: "..."` — no exceptions.
+
 ```
 For each agent in architecture:
   - Create appropriate file (.roomodes entry or .agent.md)
   - Create rules/prompt content
+  - VERIFY: description value is double-quoted in frontmatter
   
 For each skill in architecture:
   - Create skill directory
   - Create SKILL.md with frontmatter
   - Create any references/ files
+  - VERIFY: description value is double-quoted in frontmatter
 ```
 
 #### Step 4: Create Supporting Files
@@ -184,6 +190,7 @@ Apply the full quality checklist from the `agent-builder` skill before reporting
 
 - [ ] All agents defined in architecture are created
 - [ ] All skills defined in architecture are created
+- [ ] **Every `description` value in YAML frontmatter is wrapped in double quotes**
 - [ ] Platform-specific syntax and structure are correct (see `agent-builder` skill)
 - [ ] README matches actual artifacts (counts, names, descriptions)
 - [ ] Build manifest is complete and accurate

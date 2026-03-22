@@ -65,6 +65,16 @@ How to return results
 
 ## Copilot CLI Artifacts
 
+> **⚠️ CRITICAL — YAML `description` Quoting Rule**
+>
+> Every `description` value in `.agent.md` and `SKILL.md` frontmatter **MUST** be wrapped in double quotes.
+> Bare strings containing `:` (e.g. `Trigger keywords: foo`) cause a **"Nested mappings are not allowed in compact mappings"** YAML parse error and the agent **will not load**.
+>
+> ✅ `description: "Orchestrates workflows. Trigger keywords: build, deploy."`
+> ❌ `description: Orchestrates workflows. Trigger keywords: build, deploy.`
+>
+> This is the single most common cause of agent load failures. **Always quote. No exceptions.**
+
 For detailed Copilot patterns, see [references/copilot-artifacts.md](references/copilot-artifacts.md).
 
 ### Quick Reference

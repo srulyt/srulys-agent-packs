@@ -1,6 +1,6 @@
 ---
 name: ralph
-description: Agentic developer that autonomously implements features through planning, execution, verification, and cleanup phases. Use for complex development tasks requiring spec-driven implementation. Invoke with gh copilot --agent ralph.
+description: "Agentic developer that autonomously implements features through planning, execution, verification, and cleanup phases. Use for complex development tasks requiring spec-driven implementation. Invoke with gh copilot --agent ralph."
 tools: ["*"]
 ---
 

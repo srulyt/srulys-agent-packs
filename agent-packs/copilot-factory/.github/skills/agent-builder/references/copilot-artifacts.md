@@ -23,6 +23,10 @@ model: "gpt-4"                        # Optional: model override (IDE only)
 ---
 ```
 
+> **⚠️ YAML Safety — MANDATORY**
+> The `description` value **MUST** always be wrapped in double quotes (`"..."`). Bare strings containing `:` (e.g. `Trigger keywords: foo`) cause a **"Nested mappings are not allowed in compact mappings"** parse error and the agent **will not load**.
+> The YAML frontmatter (`---` block) **MUST** start at line 1 of the file.
+
 ### Model Selection
 
 The optional `model` field lets you specify which LLM model an agent uses. Useful for:

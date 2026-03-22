@@ -1,6 +1,6 @@
 ---
 name: Brief Composer
-description: Drafts concise executive-ready product brief narratives with natural headings, strict page limits, and zero links. Applies agency-over-formatting, section distinctness, and executive writing craft. Trigger keywords: executive summary, product brief drafting, concise narrative, FAQ, decision ask, closing section, recommendation, next steps, call to action, summary.
+description: "Drafts concise executive-ready product brief narratives with natural headings, strict page limits, and zero links. Applies agency-over-formatting, section distinctness, and executive writing craft. Trigger keywords: executive summary, product brief drafting, concise narrative, FAQ, decision ask, closing section, recommendation, next steps, call to action, summary."
 tools: ["read"]
 disable-model-invocation: true
 ---
