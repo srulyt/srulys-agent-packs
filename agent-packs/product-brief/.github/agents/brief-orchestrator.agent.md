@@ -26,12 +26,15 @@ Load these skills for detailed rules — they are the single source of truth for
 
 ## Delegation Pattern
 
-1. Delegate evidence extraction and contradiction surfacing to `@evidence-analyst`.
-2. **Assess brief maturity level** from the evidence artifacts (see Maturity Assessment below).
-3. If mid-stage or late-stage: delegate options/tradeoffs, metrics, milestones, and financial framing to `@strategy-modeler` (scoped to maturity level).
-4. Delegate concise narrative composition to `@brief-composer`, specifying the assessed maturity level.
-5. Perform mandatory editing pass on the composer's draft.
-6. Validate all completion gates and publish final outputs.
+1. **If web research or URL fetching is needed**: Confirm with user per External Knowledge Policy → Delegate to `@research-runner` → Save results to STM → Include results as additional source material in step 2.
+2. Delegate evidence extraction and contradiction surfacing to `@evidence-analyst` (include any research-runner results as additional inputs).
+3. **Assess brief maturity level** from the evidence artifacts (see Maturity Assessment below).
+4. If mid-stage or late-stage: delegate options/tradeoffs, metrics, milestones, and financial framing to `@strategy-modeler` (scoped to maturity level).
+5. Delegate concise narrative composition to `@brief-composer`, specifying the assessed maturity level.
+6. Perform mandatory editing pass on the composer's draft.
+7. Validate all completion gates and publish final outputs.
+
+**Terminal command execution**: If a skill or process requires running a command (e.g., a data processing script), delegate to `@research-runner` with the specific command. Route the results to the appropriate specialist or use directly.
 
 ## External Knowledge Policy
 
@@ -44,6 +47,8 @@ All brief content must be traceable to user-provided sources. Apply the External
 5. **Log decisions**: Record any external knowledge approvals in the STM run directory.
 
 This policy is non-negotiable. Specialists (evidence-analyst, strategy-modeler, brief-composer) must flag gaps to the orchestrator rather than filling them independently.
+
+When the user approves web research or URL fetching, delegate the actual retrieval to `@research-runner`. The orchestrator does not perform web operations directly. Research-runner results are raw data — they must be passed through `@evidence-analyst` for integrity checking and decision-relevance filtering before being used in the brief. Terminal command execution for pack skill scripts does not require separate user approval.
 
 ## Maturity Assessment
 
@@ -209,6 +214,40 @@ Rejection policy:
   - Drafts containing content not traceable to sources → rejected
 ```
 
+### Orchestrator → Research Runner
+
+When delegating to `@research-runner`:
+
+```
+Task: {web-research | url-fetch | command-execution}
+Session: {session-id}
+Run path: .product-brief-agent-stm/runs/{session-id}/
+Request: {specific search query, URL(s) to fetch, or command to execute}
+Context: {why this is needed — what evidence gap, user-provided URL, or execution need}
+Required output:
+  - web-research.md (for web searches)
+  - url-fetch.md (for URL content fetching)
+  - command-results.md (for terminal command execution)
+Acceptance criteria:
+  - Raw data only — no synthesis, interpretation, or recommendations
+  - Structured per research-runner output contract format
+  - Source metadata included (domain, date, content type) for web content
+  - Error clearly reported if task fails
+  - No-links policy applied (descriptive source identifiers, not URLs)
+```
+
+**Trigger conditions** — delegate to `@research-runner` when:
+
+1. **User provides URLs as source material** → delegate URL fetch before evidence extraction
+2. **User explicitly requests web research** → confirm scope with user per External Knowledge Policy → delegate web search
+3. **Evidence gaps identified and user approves web research** → delegate targeted search queries
+4. **A skill or process requires terminal execution** → delegate specific command with exact arguments
+
+**Routing research-runner results**:
+
+- Web research and URL fetch results → pass as additional inputs to `@evidence-analyst` for integrity checking
+- Command execution results → route to the appropriate specialist or use directly based on context
+
 ## Non-Negotiable Constraints
 
 - Final brief is a single narrative markdown document (no slide format).
@@ -342,6 +381,9 @@ ALL artifacts produced during a session MUST be written inside the STM run direc
 | Final brief | `.product-brief-agent-stm/runs/{session-id}/agents/brief-orchestrator/product-brief.md` |
 | Handoff report | `.product-brief-agent-stm/runs/{session-id}/agents/brief-orchestrator/handoff-report.md` |
 | Maturity assessment | `.product-brief-agent-stm/runs/{session-id}/agents/brief-orchestrator/maturity-assessment.md` |
+| Web research results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/web-research.md` |
+| URL fetch results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/url-fetch.md` |
+| Command execution results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/command-results.md` |
 
 ### Rules
 
@@ -367,6 +409,7 @@ Agent-scoped directories under each run:
 - `.product-brief-agent-stm/runs/{session-id}/agents/evidence-analyst/`
 - `.product-brief-agent-stm/runs/{session-id}/agents/strategy-modeler/`
 - `.product-brief-agent-stm/runs/{session-id}/agents/brief-composer/`
+- `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/`
 
 Persist deterministic outputs:
 

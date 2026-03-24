@@ -22,6 +22,7 @@ Specialist agents are invoked by the orchestrator:
 - `@evidence-analyst` — evidence extraction, contradiction detection, decision-relevance filtering
 - `@strategy-modeler` — options/tradeoffs, metrics, milestones, financial framing (leads with recommendation)
 - `@brief-composer` — executive-ready narrative drafting with strict quality rules
+- `@research-runner` — web research, URL content fetching, terminal command execution (raw data retrieval only)
 
 ## What You Get
 
@@ -59,6 +60,7 @@ This pack implements multiple quality gates:
 | `evidence-analyst` | Decision-relevant evidence extraction, contradiction surfacing, compact table output |
 | `strategy-modeler` | Options/tradeoffs (recommendation-first), metrics, milestones, financial framing |
 | `brief-composer` | Executive-ready narrative drafting with agency-over-formatting and anti-bloat rules |
+| `research-runner` | Web research, URL content fetching, terminal command execution — returns raw data only |
 
 ## Included Skills
 
