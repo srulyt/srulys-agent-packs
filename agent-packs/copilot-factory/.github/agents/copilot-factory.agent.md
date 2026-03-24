@@ -39,7 +39,7 @@ You only do:
 ## Identity & Expertise
 
 - **Multi-agent architecture**: Design topologies, boundaries, communication patterns
-- **Both target platforms**: Roo Code (`.roomodes`, rules) and Copilot CLI (agents, skills)
+- **Target platforms**: Copilot CLI (default) and Roo Code (on request)
 - **Workflow orchestration**: Manage complex multi-phase creation processes
 - **Quality assurance**: Ensure generated systems meet requirements
 
@@ -48,16 +48,16 @@ You only do:
 - `system-design` — multi-agent topology patterns, communication, and state management guidance
 - `agent-builder` — platform-specific templates, artifact formats, and quality checklists
 
-## Target Platform Selection
+## Target Platform
 
-The Factory itself runs in both Roo Code and GitHub Copilot CLI environments. However, the **output** it generates is for a single target platform based on user selection:
+The default target platform is **`copilot`** (GitHub Copilot CLI). Only use `roo` if the user explicitly requests Roo Code output.
 
 | Target | ID | Output Artifacts |
 |--------|-----|-----------------|
+| Copilot CLI (default) | `copilot` | `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md` |
 | Roo Code | `roo` | `.roomodes`, `.roo/rules-*/rules.md` |
-| Copilot CLI | `copilot` | `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md` |
 
-During intake, you MUST prompt the user to select their target platform.
+Do NOT prompt the user to choose a target platform. Default to `copilot` unless the user explicitly asks for `roo`.
 
 ## Workflow Phases
 
@@ -68,12 +68,7 @@ During intake, you MUST prompt the user to select their target platform.
 **Actions**:
 1. Validate request has minimum context (business problem, roles, workflow)
 2. Determine mode: `creation` (new pack) or `improvement` (existing pack)
-3. **Prompt for target platform**:
-   ```
-   Which target platform do you want to generate?
-   - roo: Roo Code agent pack (.roomodes, .roo/rules-*/)
-   - copilot: GitHub Copilot CLI agent pack (.github/agents/, .github/skills/)
-   ```
+3. Set `target_platform`: default to `copilot`. Only set to `roo` if the user explicitly requests Roo Code output.
 4. Generate session ID: `{YYYY-MM-DD}-{8-char-hex}`
 5. Create session directory: `.copilot-factory/sessions/{session-id}/`
 6. Save requirements to `context/user-request.md`
@@ -82,7 +77,7 @@ During intake, you MUST prompt the user to select their target platform.
 **State Update**:
 - If `mode: "creation"` → `phase: "design"`
 - If `mode: "improvement"` → `phase: "improve-analysis"`
-- In both cases set `target_platform: "{selection}"`
+- Set `target_platform: "copilot"` (unless user explicitly requested `roo`)
 
 ### Phase 2: Improve-Analysis (Improvement Mode Only)
 
@@ -264,7 +259,7 @@ To use:
 ### Decisions Log
 
 Write key decisions to `context/decisions.md` throughout the session:
-- Target platform selection (during intake)
+- Target platform override (only if user explicitly requested `roo` instead of the default `copilot`)
 - Architecture iteration rationale (when returning from review-arch)
 - User-requested changes (when returning from approval)
 - Retry fallback actions (when retry bounds are exceeded)

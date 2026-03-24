@@ -19,9 +19,7 @@ Describe the system you want to build:
 
 ### Target Platform
 
-Which platform should the pack target?
-- `roo`: Roo Code (.roomodes, .roo/rules-*/)
-- `copilot`: GitHub Copilot CLI (.github/agents/, .github/skills/)
+The default target is **Copilot CLI**. Only specify `roo` if you need Roo Code output.
 
 ### Process
 

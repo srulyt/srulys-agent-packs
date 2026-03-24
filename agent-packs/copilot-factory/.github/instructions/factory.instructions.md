@@ -30,20 +30,20 @@ This workspace contains the Copilot Factory system for creating multi-agent pack
 - **Artifacts**: Generated architecture and build manifests go in `artifacts/`
 - **User context**: Original requirements saved in `context/user-request.md`
 
-### Target Platform Selection
+### Target Platform
 
-The Factory generates artifacts for ONE platform based on user selection:
+The Factory defaults to **Copilot CLI** (`copilot`) output. Only generates Roo Code (`roo`) artifacts if the user explicitly requests it.
 
 | Target | Value | Generated Artifacts |
 |--------|-------|---------------------|
+| Copilot CLI (default) | `copilot` | `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md` |
 | Roo Code | `roo` | `.roomodes`, `.roo/rules-*/rules.md` |
-| Copilot CLI | `copilot` | `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md` |
 
 Check `state.json.target_platform` for the current session's target.
 
 ### Workflow Phases
 
-1. **intake**: Validate requirements, select target platform
+1. **intake**: Validate requirements, set target platform (defaults to `copilot`)
 2. **improve-analysis** (improvement mode): Analyze existing pack and prioritize improvements
 3. **design**: Create system architecture
 4. **review-arch**: Validate architecture

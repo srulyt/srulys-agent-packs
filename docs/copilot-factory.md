@@ -8,7 +8,7 @@ The Copilot Factory is a four-agent system that guides users through designing a
 
 ### Key Features
 
-- **Target Platform Selection**: Generate artifacts for Roo Code OR Copilot CLI
+- **Target Platform Selection**: Defaults to Copilot CLI; supports Roo Code on request
 - **Structured Workflow**: Intake → Design → Review → Approval → Build → Review → Complete
 - **Improvement Mode**: Analyze existing packs with incremental or full rebuild options
 - **Skill-Based Knowledge**: Design patterns and templates loaded on demand
@@ -28,7 +28,7 @@ The Copilot Factory is a four-agent system that guides users through designing a
 
 The main entry point for users. Responsibilities:
 - Validate user requirements
-- Prompt for target platform selection
+- Set target platform (defaults to `copilot`)
 - Delegate architecture design to Factory Architect
 - Gate on critic review before user approval
 - Delegate implementation to Factory Engineer
@@ -129,7 +129,7 @@ Templates and implementation patterns for both platforms.
 
 ### Phase Details
 
-1. **Intake**: Capture requirements, select target platform (`roo` or `copilot`), determine mode
+1. **Intake**: Capture requirements, set target platform (defaults to `copilot`, `roo` only if explicitly requested), determine mode
 2. **Improve-Analysis** (improvement only): Critic analyzes existing pack, user chooses incremental or rebuild
 3. **Design**: Architect creates architecture with agent definitions, tools, boundaries
 4. **Review-Arch**: Critic validates architecture against requirements (PASS/BLOCKING)
@@ -229,7 +229,6 @@ Then invoke:
 **Simple pack**:
 ```
 @copilot-factory Create a code review agent that checks for security issues.
-Target: copilot
 ```
 
 **Multi-agent pack**:
@@ -239,6 +238,11 @@ Target: copilot
 - A designer that creates specs
 - An implementer that writes code
 - A reviewer that checks quality
+```
+
+**Roo Code pack** (explicit override):
+```
+@copilot-factory Create a code review agent that checks for security issues.
 Target: roo
 ```
 
