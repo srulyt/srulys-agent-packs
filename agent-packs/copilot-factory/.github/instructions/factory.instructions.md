@@ -66,3 +66,13 @@ When modifying `state.json`:
 2. Update relevant fields
 3. Always update `updated_at` timestamp
 4. Write complete file (no partial updates)
+
+### Agent Delegation Model
+
+Only `@copilot-factory` communicates with users. Sub-agents (`@factory-architect`, `@factory-engineer`, `@factory-critic`) are invoked by the orchestrator and return results to it. Do not invoke sub-agents directly.
+
+### Common Pitfalls
+
+- Do not manually edit `state.json` while a session is in progress
+- Always use complete file writes (read → modify → write), never partial JSON updates
+- The `improve-analysis` phase only applies to `mode: "improvement"` sessions

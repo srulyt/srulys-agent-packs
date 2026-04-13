@@ -14,4 +14,10 @@ I need to resume a previous factory session.
 3. Report the session ID, phase, and target platform
 4. Continue from the recorded phase
 
+### Error Handling
+
+- If `current-session.json` is missing or empty: offer to start a new session
+- If `state.json` is malformed: report the error and offer to start fresh
+- If the session has unrecoverable errors in `state.json.errors[]`: summarize them and ask how to proceed
+
 If no active session exists, let me know and offer to start a new one.

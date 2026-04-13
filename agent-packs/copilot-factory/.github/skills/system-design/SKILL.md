@@ -188,7 +188,13 @@ Example tree:
 ```yaml
 tools: ["read", "search"]
 ```
-Use for: Reviewers, analyzers, explorers
+Use for: Reviewers, analyzers, explorers that only report findings verbally.
+
+### Review Agents with Artifact Output
+```yaml
+tools: ["read", "edit", "search"]
+```
+Use for: Critics or reviewers that write structured review artifacts to STM directories. Restrict write scope via File Access Boundaries.
 
 ### Implementation Agents
 ```yaml

@@ -36,10 +36,10 @@ The Copilot Factory guides you through creating complete agent packs:
 
 ## Target Platforms
 
-When you invoke the factory, you'll be asked to choose a target:
+The factory defaults to **Copilot CLI** output. To generate Roo Code artifacts instead, specify `roo` in your request.
 
+- `copilot` (default): `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`
 - `roo`: `.roomodes`, `.roo/rules-*/rules.md`
-- `copilot`: `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`
 
 ## Agents
 
@@ -90,6 +90,12 @@ sessions/{session-id}/
     ├── architecture.md # System design
     └── build-manifest.json
 ```
+
+### Cross-Session Learning
+
+For persistent learnings that span across Factory sessions, create memory files in `.github/memory/`:
+- `decisions.md` — Architectural patterns that work well
+- `quirks.md` — Platform-specific gotchas discovered during builds
 
 ## Example Usage
 

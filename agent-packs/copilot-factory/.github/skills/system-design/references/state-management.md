@@ -84,8 +84,9 @@ Generation:
   "version": "1.0.0",
   "created_at": "2026-02-23T09:00:00Z",
   "updated_at": "2026-02-23T09:30:00Z",
-  "phase": "intake|design|review-arch|approval|build|review-prompts|complete",
+  "phase": "intake|improve-analysis|design|review-arch|approval|build|review-prompts|complete",
   "mode": "creation|improvement",
+  "improvement_strategy": "incremental|rebuild|null",
   "target_platform": "roo|copilot",
   "target_system": "my-agent-pack",
   "iteration": 1,
@@ -103,14 +104,21 @@ Generation:
 
 ```
 intake → design → review-arch → approval → build → review-prompts → complete
-                       │            │
-                       │            └── (changes requested)
-                       │                       │
-                       └───────────────────────┘
+   │                    │            │
+   │                    │            └── (changes requested)
+   │                    │                       │
+   │                    └───────────────────────┘
+   │
+   └── improve-analysis → design (rebuild) or build (incremental)
+                │
+                └── (improvement mode only)
 ```
 
 **Transition Rules**:
-- `intake → design`: Requirements captured
+- `intake → design`: Requirements captured (creation mode)
+- `intake → improve-analysis`: Existing pack identified (improvement mode)
+- `improve-analysis → build`: Incremental improvement path
+- `improve-analysis → design`: Rebuild improvement path
 - `design → review-arch`: Architecture written
 - `review-arch → approval`: Review passed
 - `approval → build`: User approved

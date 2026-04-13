@@ -27,37 +27,12 @@ Analyze the provided **agent pack**, including all of its artifacts:
 
 Review the agent pack across the following dimensions:
 
-1. **Clarity & Intent**
-   - Are agent responsibilities, boundaries, and success criteria unambiguous?
-   - Are system instructions concise while remaining complete?
-   - Are implicit assumptions made explicit where useful?
-
-2. **Prompt Quality & Efficiency**
-   - Opportunities to reduce prompt size without losing capability
-   - Removal of redundancy or overlapping instructions
-   - Use of structured directives (steps, constraints, guardrails)
-
-3. **Agent Architecture & Orchestration**
-   - Appropriateness of the agent split (too coarse vs. too granular)
-   - Quality of task handoff, delegation, and return signals
-   - Opportunities to improve parallelism, reuse, or specialization
-
-4. **Business Logic & Reasoning Flow**
-   - Correctness and robustness of decision logic
-   - Handling of edge cases, failure states, or ambiguity
-   - Use of verification, reflection, or corrective loops where appropriate
-
-5. **Agentic Best Practices**
-   - Use of clearly defined inputs/outputs
-   - Deterministic vs. creative behavior alignment
-   - Memory, state, or context management considerations
-   - Alignment with current agentic and LLM prompting best practices
-
-6. **Platform-Specific Quality**
-   - Correct use of frontmatter fields (`description`, `tools`, etc.)
-   - Appropriate tool restrictions per agent role
-   - Trigger keywords present in descriptions
-   - Size limits respected (agents < 30,000 chars, skills < 5,000 words)
+1. **Platform Alignment** — Correct use of frontmatter, tools, trigger keywords, size limits
+2. **Prompt Quality & Efficiency** — Conciseness, redundancy, structured directives
+3. **Orchestration & Handoffs** — Delegation clarity, return signals, error handling
+4. **Completeness & Guardrails** — Invocation guards, file access boundaries, skill loading, retry bounds
+5. **Self-Consistency** — Cross-file alignment of names, references, counts, protocols
+6. **README Accuracy** — Documentation matches actual implementation
 
 ### Output Requirements
 

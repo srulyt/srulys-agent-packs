@@ -131,11 +131,15 @@ Real systems often combine patterns:
 ```
 Orchestrator
     │
+    ├── Critic (improvement analysis, if improvement mode)
+    │
     ├── Architect (design phase)
+    │
+    ├── Critic (architecture review)
     │
     ├── Engineer (build phase)
     │
-    └── Critic (review phase)
+    └── Critic (implementation review)
 ```
 
 **Review System** (Hub-and-Spoke + Flat):

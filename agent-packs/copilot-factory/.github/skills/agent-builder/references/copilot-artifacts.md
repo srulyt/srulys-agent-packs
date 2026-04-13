@@ -316,6 +316,13 @@ This workspace uses the Copilot Factory pattern.
 - Artifacts in `artifacts/`
 ```
 
+### applyTo Behavior
+
+- When `applyTo` is set, the instructions are included only when the user is working with files matching the glob pattern
+- Standard glob syntax: `*` matches within a directory, `**` matches across directories
+- When `applyTo` is omitted, the instructions are always included as context
+- Only one `applyTo` pattern per file; use multiple instruction files for multiple patterns
+
 ## Prompt Files (.prompt.md)
 
 ### Location
@@ -330,7 +337,6 @@ Markdown with YAML frontmatter.
 ---
 description: "What this prompt does"   # Required: shown in prompt picker
 agent: "Agent Name"                    # Optional: route to specific agent
-mode: "agent"                          # Optional: agent | edit | ask
 ---
 ```
 

@@ -162,6 +162,7 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 - [ ] Descriptions include trigger keywords
 - [ ] Subagents have invocation guard redirecting to orchestrator
 - [ ] Each agent has explicit "Skills to Load" section if it uses skills
+  > Note: In Copilot CLI, skills are matched by `description` keywords. The "Skills to Load" section documents intent and aids the model in referencing the right skill. Ensure skill `description` fields contain keywords that match the agent's use case.
 - [ ] Agent prompts reference skills rather than duplicating their content
 - [ ] Every agent has a "File Access Boundaries" section with read/write path table
 
@@ -239,3 +240,4 @@ fileRegex: "^\\.my-stm/.*$"  # Can only edit files in .my-stm/
 
 - [Roo Artifacts](references/roo-artifacts.md) - Detailed Roo Code formats
 - [Copilot Artifacts](references/copilot-artifacts.md) - Detailed Copilot CLI formats
+- [Delegation Templates](references/delegation-templates.md) - Orchestrator delegation patterns

@@ -37,6 +37,7 @@ If invoked by a user directly:
 ## Skills to Load
 
 - `system-design` — multi-agent topology patterns, communication, and state management guidance
+- `agent-builder` — platform-specific artifact formats, tool mappings, and quality constraints (needed for buildable designs)
 
 ## Required Behavior
 

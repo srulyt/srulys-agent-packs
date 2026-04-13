@@ -73,9 +73,12 @@ Load this skill when:
 
 ## References
 
-For detailed information:
-- [Reference 1](references/ref1.md) - {Description}
-- [Reference 2](references/ref2.md) - {Description}
+Detailed documentation split into focused reference files:
+- [Reference 1](references/ref1.md) - {Detailed patterns}
+- [Reference 2](references/ref2.md) - {Extended examples}
+
+> **Tip**: Keep SKILL.md under 5,000 words. Move detailed content to `references/` files.
+> The agent will load reference files on demand, saving context tokens in SKILL.md.
 
 ## Assets
 

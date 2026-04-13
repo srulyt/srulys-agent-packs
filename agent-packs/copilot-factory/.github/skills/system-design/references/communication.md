@@ -150,9 +150,10 @@ Defaults: What I'll assume if no answer
 ## Platform Considerations
 
 ### Copilot CLI
-- Subagents return automatically (no boomerang protocol)
-- Use `agent` tool for delegation
-- Results flow back through tool response
+- Delegation via the `agent` tool is synchronous: the calling agent pauses until the subagent completes
+- The subagent's final response is returned as the tool result to the caller
+- No explicit boomerang protocol or `attempt_completion` needed
+- Use structured return formats (markdown with sections) for parseable results
 
 ### Roo Code
 - Explicit boomerang protocol required

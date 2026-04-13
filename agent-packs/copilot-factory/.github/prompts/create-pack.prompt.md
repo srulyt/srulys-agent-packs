@@ -11,11 +11,17 @@ I need you to create a new agent pack.
 
 ### What I Need
 
-Describe the system you want to build:
-- What problem does it solve?
-- What agents/roles are needed?
-- What should each agent do?
-- What tools do they need?
+Fill in as much as you can (the factory will ask clarifying questions if needed):
+
+**Business problem**: What problem does this system solve?
+
+**Agents/Roles**: What specialized roles are needed? (e.g., reviewer, builder, coordinator)
+
+**Workflow**: What's the high-level workflow? (e.g., "analyze → design → implement → review")
+
+**Tools needed**: Any specific tool requirements? (e.g., web access, shell execution)
+
+**Constraints**: Any constraints or requirements? (e.g., "must work offline", "read-only agents only")
 
 ### Target Platform
 

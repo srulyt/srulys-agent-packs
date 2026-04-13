@@ -219,42 +219,21 @@ To use:
 ## State Management
 
 ### Session Directory Structure
-```
-.copilot-factory/
-├── current-session.json           # Pointer to active session
-├── sessions/                      # Active sessions
-│   └── {session-id}/
-│       ├── state.json             # Workflow state
-│       ├── context/
-│       │   ├── user-request.md    # Original requirements
-│       │   └── decisions.md       # Key decisions made
-│       └── artifacts/
-│           ├── architecture.md    # System design
-│           └── build-manifest.json
-└── history/                       # Archived sessions
-```
+
+See the `system-design` skill's [state-management reference](references/state-management.md) for the canonical directory structure and state schema.
+
+The Factory uses `.copilot-factory/` as its STM root.
 
 ### state.json Schema
-```json
-{
-  "session_id": "2026-02-23-a1b2c3d4",
-  "version": "1.0.0",
-  "created_at": "2026-02-23T09:00:00Z",
-  "updated_at": "2026-02-23T09:30:00Z",
-   "phase": "intake|improve-analysis|design|review-arch|approval|build|review-prompts|complete",
-  "mode": "creation|improvement",
-  "improvement_strategy": "incremental|rebuild|null",
-  "target_platform": "roo|copilot",
-  "target_system": "my-agent-pack",
-  "iteration": 1,
-  "user_approved": false,
-  "review_passed": false,
-  "deliverables": {
-    "architecture": null,
-    "artifacts": []
-  }
-}
-```
+
+See the `system-design` skill's [state-management reference](references/state-management.md) for the canonical schema.
+
+Key fields for orchestrator decisions:
+- `phase` — current workflow phase
+- `mode` — `creation` or `improvement`
+- `improvement_strategy` — `incremental`, `rebuild`, or `null`
+- `user_approved` — gate for build phase
+- `target_platform` — `copilot` or `roo`
 
 ### Decisions Log
 
@@ -268,137 +247,23 @@ Write key decisions to `context/decisions.md` throughout the session:
 
 Always delegate to sub-agents for design, review, and implementation.
 
-**Context Management**: When delegating, always pass file paths rather than inlining file contents. Sub-agents read files on demand, preserving their context window for reasoning. Only inline short summaries or specific instructions.
+**Context Management**: Pass file paths rather than inlining file contents. Sub-agents read files on demand.
 
-### Architect Delegation
+For delegation templates, refer to the `agent-builder` skill's [delegation-templates reference](references/delegation-templates.md).
 
-```markdown
-Invoke @factory-architect to design the system architecture.
+### Summary of Delegations
 
-Session: {session-id}
-Context: .copilot-factory/sessions/{session-id}/context/user-request.md
-Target Platform: {target_platform}
-Output: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
-
-Requirements:
-1. Design for requirement fit, not template compliance
-2. Define clear agent boundaries and tool restrictions
-3. Include communication and state strategy (if needed)
-4. Return implementation-ready architecture
-```
-
-### Critic Delegation (Architecture)
-
-```markdown
-Invoke @factory-critic to review architecture.
-
-Session: {session-id}
-Requirements: .copilot-factory/sessions/{session-id}/context/user-request.md
-Architecture: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
-Review Type: architecture
-
-Return:
-- PASS or BLOCKING
-- Blocking issues with remediation
-- Optional non-blocking concerns
-```
-
-### Critic Delegation (Improvement Analysis)
-
-```markdown
-Invoke @factory-critic to analyze and improve an existing agent pack.
-
-Session: {session-id}
-Target Pack: {pack-path-or-name}
-Requirements: .copilot-factory/sessions/{session-id}/context/user-request.md
-Review Type: improvement-analysis
-
-Return:
-- Prioritized improvements by category
-- Actionable rewrites or diffs where possible
-- Recommendation: proceed to implementation workflow or stop
-```
-
-When invoking `@factory-engineer`:
-
-```markdown
-Invoke @factory-engineer to implement the system.
-
-Session: {session-id}
-Architecture: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
-Context: .copilot-factory/sessions/{session-id}/context/user-request.md
-Target Platform: {target_platform}
-
-Output location: agent-packs/{pack-name}/
-
-Artifacts to generate:
-- If roo: .roomodes, .roo/rules-{slug}/rules.md
-- If copilot: .github/agents/*.agent.md, .github/skills/*/SKILL.md
-- Always: README.md
-
-Build manifest: .copilot-factory/sessions/{session-id}/artifacts/build-manifest.json
-
-Requirements:
-1. Read architecture document completely
-2. Check target_platform in state.json
-3. Generate artifacts for selected target ONLY
-4. Update build manifest with created files
-5. Return summary of what was created
-```
-
-### Engineer Delegation (Incremental Improvement)
-
-When `improvement_strategy` is `incremental`:
-
-```markdown
-Invoke @factory-engineer to apply incremental improvements.
-
-Session: {session-id}
-Improvement Analysis: .copilot-factory/sessions/{session-id}/artifacts/improvement-analysis.md
-Context: .copilot-factory/sessions/{session-id}/context/user-request.md
-Target Platform: {target_platform}
-Mode: incremental
-
-Target pack: agent-packs/{pack-name}/
-
-Requirements:
-1. Read the improvement analysis document completely
-2. Apply ONLY the changes identified in the analysis
-3. Preserve all existing content that is not flagged for change
-4. Do NOT restructure or rewrite files beyond what the analysis specifies
-5. Update build manifest with modified files
-6. Return summary of changes applied vs. skipped
-```
-
-### Critic Delegation (Implementation)
-
-```markdown
-Invoke @factory-critic to review implementation.
-
-Session: {session-id}
-Architecture: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
-Build Manifest: .copilot-factory/sessions/{session-id}/artifacts/build-manifest.json
-Review Type: implementation
-
-Return:
-- PASS or BLOCKING
-- Architecture alignment findings
-- Blocking issues if any
-```
+| Phase | Delegate To | Key Inputs | Output |
+|-------|-------------|------------|--------|
+| Design | `@factory-architect` | user-request.md, target_platform | architecture.md |
+| Review-Arch | `@factory-critic` | architecture.md, user-request.md | PASS/BLOCKING |
+| Improve-Analysis | `@factory-critic` | target pack path | improvement-analysis.md |
+| Build | `@factory-engineer` | architecture.md or improvement-analysis.md | agent pack files |
+| Review-Prompts | `@factory-critic` | build-manifest.json, architecture.md | PASS/BLOCKING |
 
 ## Quality Standards
 
-### Architecture Quality
-- Clear agent boundaries (no overlapping responsibilities)
-- Appropriate tool restrictions per role
-- Scalable communication patterns
-- Recoverable state design (if applicable)
-
-### Generated Pack Quality
-- Valid syntax (YAML, markdown)
-- Comprehensive descriptions with trigger keywords
-- Tested patterns and anti-patterns documented
-- Platform-specific best practices followed
+Apply the quality checklist from the `agent-builder` skill for generated pack quality and the `system-design` skill for architecture quality.
 
 ## Iteration Protocol
 
