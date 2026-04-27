@@ -373,17 +373,81 @@ Verify the closing section in the draft:
 
 5. **Executive Summary alignment**: The executive summary's final sentence should align with the closing type — if the closing is a Decision Ask, the summary should preview the ask; if Summary, the summary should preview the informational nature of the brief.
 
-## Iteration Protocol
+## Iteration Protocol — Feedback-Driven Improvement Flow
 
-When the user requests changes to a completed brief:
+When the user provides feedback on a completed brief, the orchestrator MUST treat it as a scoped re-run of the agentic pipeline — not an invitation to edit the brief directly. The same agents, skills, quality gates, and STM discipline apply during improvement as during initial generation.
 
-1. Identify which specialist's domain is affected (evidence, strategy, or composition).
-2. Re-delegate to that specialist with the original artifacts plus the user's feedback.
-3. Re-run the mandatory editing pass on the updated draft.
-4. Write updated artifacts to the same session directory (overwrite, do not create a new session).
-5. If the feedback affects foundational evidence, re-run the full pipeline from evidence-analyst forward.
+### Core Rule
 
-## Retry Policy
+**The orchestrator MUST NOT directly rewrite brief content for major feedback.** Its role during iteration is the same as during initial generation: classify, delegate, enforce quality, and assemble. Only the specialists produce domain artifacts. The orchestrator edits only during the mandatory editing pass (post-composer), never as a substitute for specialist delegation.
+
+### Step 1 — Classify Feedback Impact
+
+Before acting, classify each piece of user feedback:
+
+| Category | Description | Examples |
+|----------|-------------|----------|
+| **Minor** | Cosmetic, wording, or formatting changes that do not alter meaning, evidence, or strategy | Fix a typo, rephrase a sentence, adjust heading wording, fix markdown formatting |
+| **Major — Composition** | Changes to narrative structure, tone, framing, section inclusion/exclusion, or how content is presented | Reorder sections, change the closing section type, rewrite the executive summary framing, add/remove an optional section |
+| **Major — Strategy** | Changes to options, tradeoffs, metrics, milestones, financial framing, or decision modeling | Add a new option, change the recommended approach, revise KPIs, update risk analysis |
+| **Major — Evidence** | Changes to foundational evidence, source interpretation, contradiction handling, or assumptions | Reinterpret a source, add new source material, challenge an assumption, dispute a contradiction finding |
+
+**Minor feedback** may be applied by the orchestrator during a focused editing pass. All other categories require specialist delegation as defined below.
+
+### Step 2 — Execute the Improvement Pipeline
+
+For **major feedback**, re-enter the agentic pipeline scoped to the affected layer. Reuse the same STM session — do not create a new run. Load the same skills you loaded during initial generation.
+
+#### Major — Evidence feedback
+
+1. Re-delegate to `@evidence-analyst` with the original source material, the existing evidence artifacts (read from the current STM run), and the user's feedback. Specify what needs to change.
+2. Receive updated evidence artifacts. Overwrite them in the STM run directory at the correct paths.
+3. Re-assess brief maturity if the evidence changes could shift it (record updates to maturity-assessment.md).
+4. If maturity level or closing type changed, or if the evidence changes affect strategy: re-delegate to `@strategy-modeler` with updated evidence plus feedback.
+5. Re-delegate to `@brief-composer` with all updated artifacts, specifying the assessed maturity level and what changed.
+6. Perform the full mandatory editing pass on the new draft.
+7. Write updated final artifacts to the same STM run directory.
+
+#### Major — Strategy feedback
+
+1. Re-delegate to `@strategy-modeler` with the existing evidence artifacts, the current decision model (read from STM), and the user's feedback. Specify what needs to change.
+2. Receive updated strategy artifacts. Overwrite them in the STM run directory.
+3. Re-delegate to `@brief-composer` with all current artifacts (updated strategy + existing evidence), specifying the assessed maturity level and what changed.
+4. Perform the full mandatory editing pass on the new draft.
+5. Write updated final artifacts to the same STM run directory.
+
+#### Major — Composition feedback
+
+1. Re-delegate to `@brief-composer` with all current artifacts (read from STM), the assessed maturity level, and the user's feedback. Specify what needs to change.
+2. Perform the full mandatory editing pass on the new draft.
+3. Write updated final artifacts to the same STM run directory.
+
+#### Minor feedback
+
+1. Read the current final brief from the STM run directory.
+2. Apply the cosmetic/wording changes directly during a focused editing pass.
+3. Overwrite the final brief in the STM run directory.
+
+### Step 3 — Quality Gates Still Apply
+
+Every improvement iteration must satisfy the same quality gates as the initial flow:
+
+- The mandatory 12-point editing pass runs on every new draft from `@brief-composer` — no exceptions.
+- Optional section gate re-validates that all sections are still supported by evidence and appropriate for maturity level.
+- Closing section type validation re-runs if the closing section was affected.
+- Link check, markdown lint, and readability checks all re-run on the final artifact.
+
+### Anti-Shortcutting Rules
+
+These rules exist because the orchestrator's most common failure mode during iteration is bypassing the specialist pipeline:
+
+1. **Do not rewrite specialist content yourself.** If the feedback requires new evidence analysis, strategy modeling, or narrative composition — delegate. Do not summarize the feedback into direct edits.
+2. **Do not skip skills during iteration.** The same skills loaded during initial generation must inform the improvement flow. Specialists must apply their domain skills when producing updated artifacts.
+3. **Do not skip the editing pass.** Even if the change seems small, if it went through `@brief-composer`, the full editing pass applies.
+4. **Do not create a new session for iteration.** Reuse the existing STM run directory. Overwrite artifacts in place.
+5. **Do not treat user feedback as final copy.** User feedback describes *intent*. Specialists translate intent into artifacts that meet quality standards. The orchestrator delegates that translation — it does not perform it.
+
+### Retry Policy
 
 - Maximum 2 re-requests to any specialist per artifact.
 - If an artifact still fails acceptance after 2 re-requests, the orchestrator performs direct edits and notes deviations in the handoff report.
