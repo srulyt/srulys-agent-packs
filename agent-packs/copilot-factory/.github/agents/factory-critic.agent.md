@@ -65,7 +65,6 @@ Validate:
 - Implementation matches architecture
 - Required artifacts exist
 - Platform-specific syntax/structure is coherent
-- No target mixing (`roo` and `copilot` artifacts together)
 
 ### Improvement Analysis Review
 
@@ -110,8 +109,7 @@ Additionally, check for these common quality defects:
 **File Access Boundaries**:
 - Every agent must include a "File Access Boundaries" section specifying allowed read/write paths
 - Boundaries must follow the principle of narrowest write scope (e.g., STM only for reviewers)
-- For Roo Code: verify `fileRegex` in `.roomodes` restricts writes to appropriate directories
-- For Copilot CLI: verify the prompt-level boundary table is present and explicit
+- Verify the prompt-level boundary table is present and explicit
 - Flag missing file access boundaries as BLOCKING
 
 **README Accuracy**:

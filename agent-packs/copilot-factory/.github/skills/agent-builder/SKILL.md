@@ -1,6 +1,6 @@
 ---
 name: agent-builder
-description: "Templates and patterns for creating Roo Code or Copilot CLI artifacts. Use when generating .roomodes files, agent rules, custom agents, or skills. Supports both target platforms based on user selection. Keywords: roomodes, agent.md, rules.md, SKILL.md, implementation."
+description: "Templates and patterns for creating GitHub Copilot CLI artifacts. Use when generating custom agents or skills. Keywords: agent.md, SKILL.md, implementation."
 ---
 
 # Agent Builder Skill
@@ -10,58 +10,9 @@ Templates and patterns for implementing multi-agent systems.
 ## When to Use This Skill
 
 Load this skill when:
-- Generating `.roomodes` files (Roo Code)
-- Creating `rules.md` files (Roo Code)
 - Writing `.agent.md` files (Copilot CLI)
 - Building `SKILL.md` files (Copilot CLI)
 - Creating README documentation
-
-## Target Platform Selection
-
-The target platform is set during intake and stored in `state.json`:
-- `target_platform: "roo"` → Generate Roo Code artifacts
-- `target_platform: "copilot"` → Generate Copilot CLI artifacts
-
-**Important**: Generate artifacts for ONE target only. Do not mix platforms.
-
-## Roo Code Artifacts
-
-For detailed Roo Code patterns, see [references/roo-artifacts.md](references/roo-artifacts.md).
-
-### Quick Reference
-
-**.roomodes** (YAML):
-```yaml
-customModes:
-  - slug: agent-slug
-    name: "🎯 Agent Name"
-    groups: ["read", "edit", "browser", "command"]
-    fileRegex: "^allowed/path/.*$"
-    customInstructions: "- See rules: .roo/rules-agent-slug/rules.md"
-```
-
-**rules.md** structure:
-```markdown
-# Agent Name Rules
-
-## Identity
-Role and expertise
-
-## Responsibilities
-What this agent does
-
-## Communication Protocol
-How to return results
-```
-
-### Tool Groups (Roo Code)
-| Group | Capabilities |
-|-------|-------------|
-| `read` | Read files |
-| `edit` | Create/modify files |
-| `browser` | Web access |
-| `command` | Execute shell commands |
-| `mcp` | MCP server tools |
 
 ## Copilot CLI Artifacts
 
@@ -134,25 +85,11 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 
 ## Template Assets
 
-### Roo Code Templates
-- [assets/roo/roomode-template.yaml](assets/roo/roomode-template.yaml)
-- [assets/roo/rules-template.md](assets/roo/rules-template.md)
-
-### Copilot CLI Templates
 - [assets/copilot/agent-template.md](assets/copilot/agent-template.md)
 - [assets/copilot/skill-template.md](assets/copilot/skill-template.md)
 
 ## Quality Checklist
 
-### Roo Code
-- [ ] Valid YAML syntax in `.roomodes`
-- [ ] Slugs are lowercase with hyphens
-- [ ] Slug matches rules directory name
-- [ ] `fileRegex` is valid JavaScript regex
-- [ ] `fileRegex` restricts writes to appropriate directories per agent role
-- [ ] `customInstructions` points to rules file
-
-### Copilot CLI
 - [ ] `description` field present (required)
 - [ ] **`description` value is always wrapped in double quotes** — bare strings containing `:` cause YAML parse errors (e.g. `description: "... Trigger keywords: foo, bar."`)
 - [ ] **YAML frontmatter starts at line 1** — never wrap it in a code fence (` ```skill ` or similar)
@@ -165,8 +102,6 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
   > Note: In Copilot CLI, skills are matched by `description` keywords. The "Skills to Load" section documents intent and aids the model in referencing the right skill. Ensure skill `description` fields contain keywords that match the agent's use case.
 - [ ] Agent prompts reference skills rather than duplicating their content
 - [ ] Every agent has a "File Access Boundaries" section with read/write path table
-
-### Both Platforms
 - [ ] README has clear usage instructions
 - [ ] README counts/names/descriptions match actual artifacts
 - [ ] All file paths are correct
@@ -177,31 +112,21 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 ## Common Patterns
 
 ### Read-Only Agent
-**Roo**: `groups: ["read"]`
-**Copilot**: `tools: ["read", "search"]`
+`tools: ["read", "search"]`
 
 ### Implementation Agent
-**Roo**: `groups: ["read", "edit"]`
-**Copilot**: `tools: ["read", "edit", "search"]`
+`tools: ["read", "edit", "search"]`
 
 ### Orchestrator Agent
-**Roo**: `groups: ["read", "edit", "command"]` + orchestration rules
-**Copilot**: `tools: ["read", "edit", "search", "execute", "agent"]`
+`tools: ["read", "edit", "search", "execute", "agent"]`
 
 ### Subagent (No Direct Invocation)
-**Roo**: Set `customInstructions` with delegation rules
-**Copilot**: `disable-model-invocation: true`
+`disable-model-invocation: true`
 
-### File Access Boundaries (Both Platforms)
+### File Access Boundaries
 
-Every agent must have explicit path-scoped read/write boundaries.
+Every agent must have explicit path-scoped read/write boundaries. Add a "File Access Boundaries" table in the agent prompt (prompt-level guardrail):
 
-**Roo Code**: Use `fileRegex` in `.roomodes` (runtime-enforced):
-```yaml
-fileRegex: "^\\.my-stm/.*$"  # Can only edit files in .my-stm/
-```
-
-**Copilot CLI**: Add a "File Access Boundaries" table in the agent prompt (prompt-level guardrail):
 ```markdown
 ## File Access Boundaries
 
@@ -227,7 +152,6 @@ fileRegex: "^\\.my-stm/.*$"  # Can only edit files in .my-stm/
 | Missing description | Agent won't trigger | Always include clear description |
 | Too many tools | Security risk | Grant minimum needed |
 | Huge prompts | Slow, unfocused | Defer to skills |
-| Mixed platforms | Confusion | One target per pack |
 | No README | Unusable pack | Always include setup guide |
 | Duplicated skill content in agents | Wasted tokens, maintenance drift | Reference skills, don't copy them |
 | Missing invocation guard on subagent | Users bypass orchestrator | Add guard redirecting to orchestrator |
@@ -238,6 +162,5 @@ fileRegex: "^\\.my-stm/.*$"  # Can only edit files in .my-stm/
 
 ## References
 
-- [Roo Artifacts](references/roo-artifacts.md) - Detailed Roo Code formats
 - [Copilot Artifacts](references/copilot-artifacts.md) - Detailed Copilot CLI formats
 - [Delegation Templates](references/delegation-templates.md) - Orchestrator delegation patterns

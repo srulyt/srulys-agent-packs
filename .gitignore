@@ -64,3 +64,17 @@ Thumbs.db
 # Dependencies (if any)
 # ===========================================
 node_modules/
+
+# ===========================================
+# Eval framework working directories
+# Engine code in eval_engine/ is committed.
+# Per-repo evals live in evals/; runtime subdirs are gitignored:
+# ===========================================
+evals/packs/*/workspaces/
+evals/packs/*/results-local/
+evals/packs/*/reports/
+evals/data/
+__pycache__/
+*.pyc
+.pytest_cache/
+

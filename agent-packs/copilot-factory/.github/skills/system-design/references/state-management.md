@@ -87,7 +87,6 @@ Generation:
   "phase": "intake|improve-analysis|design|review-arch|approval|build|review-prompts|complete",
   "mode": "creation|improvement",
   "improvement_strategy": "incremental|rebuild|null",
-  "target_platform": "roo|copilot",
   "target_system": "my-agent-pack",
   "iteration": 1,
   "user_approved": false,
@@ -229,8 +228,3 @@ For systems with multiple concurrent users:
 - State in `.copilot-{system}/`
 - Sessions auto-close on completion
 - No explicit context continuity
-
-### Roo Code
-- State in `.{system}/` or `.factory/`
-- Sessions can span multiple conversations
-- Manual session management

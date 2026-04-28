@@ -23,10 +23,6 @@ Fill in as much as you can (the factory will ask clarifying questions if needed)
 
 **Constraints**: Any constraints or requirements? (e.g., "must work offline", "read-only agents only")
 
-### Target Platform
-
-The default target is **Copilot CLI**. Only specify `roo` if you need Roo Code output.
-
 ### Process
 
 The factory will:

@@ -9,7 +9,6 @@ Invoke @factory-architect to design the system architecture.
 
 Session: {session-id}
 Context: .copilot-factory/sessions/{session-id}/context/user-request.md
-Target Platform: {target_platform}
 Output: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
 
 Requirements:
@@ -59,23 +58,21 @@ Invoke @factory-engineer to implement the system.
 Session: {session-id}
 Architecture: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
 Context: .copilot-factory/sessions/{session-id}/context/user-request.md
-Target Platform: {target_platform}
 
 Output location: agent-packs/{pack-name}/
 
 Artifacts to generate:
-- If roo: .roomodes, .roo/rules-{slug}/rules.md
-- If copilot: .github/agents/*.agent.md, .github/skills/*/SKILL.md
-- Always: README.md
+- .github/agents/*.agent.md
+- .github/skills/*/SKILL.md
+- README.md
 
 Build manifest: .copilot-factory/sessions/{session-id}/artifacts/build-manifest.json
 
 Requirements:
 1. Read architecture document completely
-2. Check target_platform in state.json
-3. Generate artifacts for selected target ONLY
-4. Update build manifest with created files
-5. Return summary of what was created
+2. Generate Copilot CLI artifacts
+3. Update build manifest with created files
+4. Return summary of what was created
 ```
 
 ## Engineer Delegation (Incremental Improvement)
@@ -88,7 +85,6 @@ Invoke @factory-engineer to apply incremental improvements.
 Session: {session-id}
 Improvement Analysis: .copilot-factory/sessions/{session-id}/artifacts/improvement-analysis.md
 Context: .copilot-factory/sessions/{session-id}/context/user-request.md
-Target Platform: {target_platform}
 Mode: incremental
 
 Target pack: agent-packs/{pack-name}/

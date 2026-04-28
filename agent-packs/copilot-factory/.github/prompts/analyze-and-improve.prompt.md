@@ -17,7 +17,7 @@ I need you to analyze and improve an existing agent pack.
 ### Analysis Scope
 
 Analyze the provided **agent pack**, including all of its artifacts:
-- Agent definitions (`.agent.md` files or `.roomodes` + `rules.md`)
+- Agent definitions (`.agent.md` files)
 - Skills / instructions
 - Inter-agent coordination patterns
 - Task decomposition and control flow

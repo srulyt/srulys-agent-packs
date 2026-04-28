@@ -93,8 +93,7 @@ Every agent in a multi-agent system must have explicit path-scoped read/write bo
 - Each agent's architecture entry must specify which directories it may **read** and which it may **write**
 - Grant the **narrowest write scope** possible (e.g., STM session dir only, or output dir only)
 - Agents that exceed their boundary must return control to the orchestrator with the request
-- For Roo Code: enforce via `fileRegex` in `.roomodes` (runtime-level restriction)
-- For Copilot CLI: enforce via a "File Access Boundaries" section in the agent prompt (prompt-level guardrail, since the runtime has no path-scoping)
+- Enforce via a "File Access Boundaries" section in the agent prompt (prompt-level guardrail, since the runtime has no path-scoping)
 
 **Common boundary patterns**:
 
@@ -223,7 +222,6 @@ Before finalizing design:
 - [ ] All agents have file access boundaries defined (read/write paths)
 - [ ] Communication paths are documented
 - [ ] State management handles interruptions
-- [ ] Target platform requirements considered
 - [ ] Error recovery paths defined
 - [ ] Skills identified as single source of truth for domain rules
 - [ ] Each agent's skill dependencies are specified

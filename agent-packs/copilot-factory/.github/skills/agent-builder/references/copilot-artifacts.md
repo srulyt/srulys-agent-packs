@@ -211,7 +211,6 @@ Copilot CLI does not support path-scoped permissions at the runtime level. To pr
 - Grant the narrowest write scope possible
 - Explicitly list forbidden paths (don't just rely on "only X")
 - Include fallback: "return control to @orchestrator with the request"
-- For Roo Code: complement with `fileRegex` in `.roomodes` for runtime enforcement
 
 ## Skill File (SKILL.md)
 
@@ -364,7 +363,6 @@ I need you to create a new agent pack.
 ### Requirements
 
 - Describe the agents needed and their responsibilities
-- Specify target platform: `roo` or `copilot`
 - Include any specific tool requirements or constraints
 ```
 

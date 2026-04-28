@@ -1,6 +1,6 @@
 # Copilot Factory
 
-Create multi-agent systems for Roo Code or GitHub Copilot CLI.
+Create multi-agent systems for GitHub Copilot CLI.
 
 ## Quick Start
 
@@ -17,15 +17,11 @@ gh copilot
 @copilot-factory Create an agent pack for [describe your use case]
 ```
 
-### Using with Roo Code
-
-This pack runs in GitHub Copilot CLI and can generate artifacts for both Roo Code and Copilot targets.
-
 ## What It Does
 
 The Copilot Factory guides you through creating complete agent packs:
 
-1. **Intake**: Captures your requirements and asks which platform you're targeting
+1. **Intake**: Captures your requirements
 2. **Improve-Analysis** (improvement mode): Delegates existing-pack analysis to `@factory-critic`, offers incremental or rebuild path
 3. **Design**: Delegates architecture creation to `@factory-architect`
 4. **Review-Arch**: Delegates architecture validation to `@factory-critic`
@@ -33,13 +29,6 @@ The Copilot Factory guides you through creating complete agent packs:
 6. **Build**: Delegates artifact generation to `@factory-engineer` (full build or incremental edits)
 7. **Review-Prompts**: Delegates implementation validation to `@factory-critic`
 8. **Complete**: Provides usage instructions
-
-## Target Platforms
-
-The factory defaults to **Copilot CLI** output. To generate Roo Code artifacts instead, specify `roo` in your request.
-
-- `copilot` (default): `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`
-- `roo`: `.roomodes`, `.roo/rules-*/rules.md`
 
 ## Agents
 
@@ -69,7 +58,7 @@ The orchestrator does not bypass these delegation steps.
 ## Skills
 
 - `system-design`: Multi-agent architecture patterns
-- `agent-builder`: Templates for both platforms
+- `agent-builder`: Templates for Copilot CLI artifacts
 
 ## Prompts
 
@@ -103,7 +92,6 @@ For persistent learnings that span across Factory sessions, create memory files 
 @copilot-factory Create an agent pack for code review automation.
 The system should have a coordinator that assigns reviews to specialists
 for different areas: security, performance, and style.
-Target: copilot
 ```
 
 ## Generated Pack Location

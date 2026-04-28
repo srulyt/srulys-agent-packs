@@ -33,7 +33,6 @@ Return: Summary of what was done
 ```
 
 **Copilot CLI**: Use `agent` tool
-**Roo Code**: Use `new_task` or manual mode switch
 
 ## Artifact-Based Handoff
 
@@ -154,11 +153,6 @@ Defaults: What I'll assume if no answer
 - The subagent's final response is returned as the tool result to the caller
 - No explicit boomerang protocol or `attempt_completion` needed
 - Use structured return formats (markdown with sections) for parseable results
-
-### Roo Code
-- Explicit boomerang protocol required
-- Subagents must use `attempt_completion`
-- Orchestrator processes returns manually
 
 ## Anti-Patterns
 
