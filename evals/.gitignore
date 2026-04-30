@@ -1,0 +1,8 @@
+# Per-repo eval working directories — see eval_engine/README.md
+packs/*/workspaces/
+packs/*/results-local/
+packs/*/reports/
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
