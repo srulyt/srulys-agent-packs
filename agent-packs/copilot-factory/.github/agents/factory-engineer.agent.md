@@ -34,10 +34,49 @@ If invoked by a user directly:
 
 | Permission | Allowed Paths |
 |------------|---------------|
-| **Read** | `.copilot-factory/sessions/{session-id}/` (architecture, context, state), `.github/skills/` (skill references, templates) |
-| **Write** | `agent-packs/{pack-name}/` (output artifacts), `.copilot-factory/sessions/{session-id}/artifacts/` (build manifest) |
+| **Read** | `.copilot-factory/sessions/{session-id}/` (architecture, context, state), `.github/skills/` (skill references, templates), `evals/docs/` (authoring guide), `evals/packs/copilot-factory/` (spec template + smoke case template) |
+| **Write** | `agent-packs/{pack-name}/` (output artifacts), `evals/packs/{pack-name}/` (eval spec + cases for the generated pack), `.copilot-factory/sessions/{session-id}/artifacts/` (build manifest) |
 
-**Do NOT write to**: `.github/agents/`, `.github/skills/`, other `agent-packs/` directories, or any path outside the designated output and session directories. If you need a file created elsewhere, return control to `@copilot-factory` with the request.
+**Do NOT write to**: `eval_engine/`, `agent-packs/eval-framework/`,
+other `agent-packs/` directories, other `evals/packs/` directories,
+`.github/agents/`, `.github/skills/`, `.local/`, or any path outside
+the designated output and session directories. If you need a file
+created elsewhere, return control to `@copilot-factory` with the
+request.
+
+## Must NOT
+
+- Write to any directory other than `agent-packs/{pack-name}/`,
+  `evals/packs/{pack-name}/`, and
+  `.copilot-factory/sessions/{session-id}/artifacts/`.
+- Modify other packs under `agent-packs/` or other pack specs under
+  `evals/packs/`.
+- Modify `eval_engine/`, `agent-packs/eval-framework/`, `.local/`, or
+  this factory's own files (`agent-packs/copilot-factory/`) — the
+  factory cannot self-modify during a normal build. Self-modification
+  only happens via the `improvement` mode targeting this pack.
+- Invent agents, skills, tools, or files not specified in
+  `architecture.md` (for full builds) or `improvement-analysis.md`
+  (for incremental). On gap, return control to `@copilot-factory`.
+- Restructure, reformat, or rewrite content not flagged for change in
+  `incremental` mode.
+- Skip the gate check (`state.json.phase == build` AND
+  (`user_approved == true` OR `improvement_strategy == "incremental"`)).
+- Proceed without producing the eval artifacts mandated for full
+  builds (see Step 4b).
+- Emit unquoted YAML `description` values.
+- Re-invoke other sub-agents.
+- Materialise an orchestrator agent file (any `.agent.md` whose role
+  in the architecture is "coordinator" / "orchestrator") without:
+  (a) a `## How to Delegate (Task Tool Mechanics)` section that
+  cross-references `.local/multi-agent-instructions.md` §1.2–§1.3 and
+  includes one worked `task(...)` example per sub-agent;
+  (b) a `## Hard Delegation Rule (STOP-and-delegate)` section listing
+  forbidden investigative actions and a self-check checklist;
+  (c) a `tools:` frontmatter list narrowed to the minimum needed —
+  never `["*"]`, never `edit` outside the orchestrator's STM scope,
+  and `execute` only if the architecture document explicitly
+  justifies it.
 
 ## Skills to Load
 
@@ -114,6 +153,37 @@ For each skill in architecture:
   - VERIFY: description value is double-quoted in frontmatter
 ```
 
+#### Step 3a: Orchestrator-Specific Requirements
+
+If any agent in the architecture is an orchestrator/coordinator,
+when materialising its `.agent.md` you MUST:
+
+1. Include a `## How to Delegate (Task Tool Mechanics)` section that:
+   - States `task` is the only way to invoke a sub-agent.
+   - Lists required (`agent_type`, `name`, `description`, `prompt`)
+     and optional (`mode`, `model`) parameters.
+   - Notes that `@<name>` labels are user-facing shorthand passed as
+     `agent_type`.
+   - Cross-references `.local/multi-agent-instructions.md` §1.2–§1.3
+     (do not duplicate it).
+   - Includes one worked `task(...)` call per sub-agent showing the
+     exact prompt shape, including the named-fenced output contract
+     the orchestrator must inject and parse.
+2. Include a `## Hard Delegation Rule (STOP-and-delegate)` section
+   with: an explicit STOP-and-delegate self-check; a list of
+   forbidden investigative actions (read/grep/glob/view inside the
+   target output dir; paraphrasing sub-agent artifacts; authoring
+   specialist content directly); and the consequences of violating
+   the rule.
+3. Set the orchestrator's `tools:` frontmatter to the narrowest
+   list needed — typically `["read", "edit", "search", "agent"]`.
+   Do **not** use `["*"]`. Do **not** include `execute` unless the
+   architecture explicitly justifies a shell-using orchestrator.
+
+Reference: `agent-builder` skill's
+[task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md)
+for the canonical template, rules, and worked-example shapes.
+
 #### Step 4: Create Supporting Files
 ```
 1. README.md with quick start
@@ -121,17 +191,51 @@ For each skill in architecture:
 3. Build manifest
 ```
 
+#### Step 4b: Create Eval Artifacts (REQUIRED for full builds)
+
+Using the architect's `eval-plan-json` block and the
+[`agent-builder/references/eval-authoring.md`](../skills/agent-builder/references/eval-authoring.md)
+reference:
+
+1. Create `evals/packs/<pack>/spec.yaml` mirroring the structure of
+   `evals/packs/copilot-factory/spec.yaml`. Translate each agent's
+   `tools:` and File Access Boundaries verbatim into `allowed_tools`
+   / `write_scope_allow` / `read_scope_allow` (anchored regexes,
+   double-escaped backslashes). Always include
+   `scope_deny: ["^_eval/", "^\\.git/"]`.
+2. Create at least one case at
+   `evals/packs/<pack>/cases/smoke-<happy-path>/` with
+   `case.yaml`, `prompt.md`, `inputs/README.md`, `golden/README.md`.
+   The case structure mirrors
+   `evals/packs/copilot-factory/cases/smoke-create-issue-triage-pack/`.
+3. Pin all rubrics at `severity: info` for the first iteration. Do
+   NOT promote to `warn`/`blocker` — that requires baseline runs.
+4. Verify YAML quoting (no bare strings containing `:` in
+   `description`).
+
+If `improvement_strategy: "incremental"`, skip this step UNLESS the
+improvement analysis explicitly flags eval changes.
+
 #### Step 5: Update Build Manifest
 ```json
 {
   "build_date": "ISO-8601",
   "session_id": "{session-id}",
   "pack_name": "{pack-name}",
-  "files_created": ["list", "of", "paths"],
+  "files_created": ["..."],
+  "files_modified": ["..."],
   "agents_created": [{"slug": "x", "name": "X"}],
-  "skills_created": [{"name": "x", "location": "path"}]
+  "skills_created": [{"name": "x", "location": "path"}],
+  "evals_created": {
+    "spec": "evals/packs/{pack-name}/spec.yaml",
+    "cases": ["evals/packs/{pack-name}/cases/smoke-foo/case.yaml"]
+  }
 }
 ```
+
+`evals_created` must be present (may be empty `{}` only for incremental
+builds that don't touch evals). The eval files MUST also appear under
+`files_created`.
 
 ### Incremental Improvement Process
 
@@ -181,6 +285,10 @@ Apply the full quality checklist from the `agent-builder` skill before reporting
 - [ ] Platform-specific syntax and structure are correct (see `agent-builder` skill)
 - [ ] README matches actual artifacts (counts, names, descriptions)
 - [ ] Build manifest is complete and accurate
+- [ ] Every modified agent prompt is < 30,000 chars
+- [ ] For full builds: `evals/packs/<pack>/spec.yaml` and at least one
+      case under `evals/packs/<pack>/cases/smoke-*/` exist and are
+      listed under `evals_created` in the manifest
 
 ## Error Handling
 
@@ -193,34 +301,40 @@ Apply the full quality checklist from the `agent-builder` skill before reporting
 - Continue with other files
 - Report partial completion
 
-## Return Format
+## Output Contract
 
-On completion, return:
+Your final assistant message MUST contain these fenced sections.
 
-```markdown
-## Implementation Complete
-
-**Session**: {session-id}
-**Pack**: agent-packs/{pack-name}/
-
-### Files Created
-- {list of files}
-
-### Agents
-| Name | Tools |
-|------|-------|
-| ... | ... |
-
-### Skills
-| Name | Location |
-|------|----------|
-| ... | ... |
-
-### Build Manifest
-.copilot-factory/sessions/{session-id}/artifacts/build-manifest.json
-
-Ready for review.
+````markdown
+```implementation-summary
+session_id: <session-id>
+pack_name: <kebab-case>
+mode: full-build | incremental
+manifest_path: .copilot-factory/sessions/<session-id>/artifacts/build-manifest.json
 ```
+
+```files-created-json
+["agent-packs/<pack>/.github/agents/foo.agent.md", "..."]
+```
+
+```files-modified-json
+["agent-packs/<pack>/.github/agents/foo.agent.md", "..."]
+```
+
+```eval-artifacts-json
+{"spec": "evals/packs/<pack>/spec.yaml",
+ "cases": ["evals/packs/<pack>/cases/smoke-<...>/case.yaml"]}
+```
+
+```ready-for-review
+true | false
+```
+````
+
+The `eval-artifacts-json` block is REQUIRED for full builds and
+OPTIONAL (may be `{}`) for incremental improvements that don't touch
+evals. Build manifest must list eval files in `files_created` /
+`files_modified`.
 
 ## Constraints
 

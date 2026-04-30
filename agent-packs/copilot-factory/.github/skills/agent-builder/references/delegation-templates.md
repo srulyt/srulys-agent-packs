@@ -2,6 +2,27 @@
 
 Reusable delegation patterns for orchestrator agents that coordinate sub-agents through structured workflows.
 
+## `task` Call Shape
+
+Each template below shows the **prompt body** the orchestrator
+constructs. The orchestrator must wrap that prompt in a literal
+`task` tool call:
+
+```
+task(
+  agent_type: "<sub-agent-slug>",   // factory-architect | factory-engineer | factory-critic
+  name: "<short-kebab>",
+  description: "<3-5 word summary>",
+  mode: "sync",                      // background only when justified
+  prompt: "<the prompt body from the matching template below>"
+)
+```
+
+See `agent-builder/references/task-tool-mechanics.md` for the
+canonical template + rules, and `.local/multi-agent-instructions.md`
+§1.2–§1.3 for full `task` semantics. Never invoke a sub-agent by
+writing prose — the only invocation channel is the `task` tool.
+
 ## Architect Delegation
 
 ```markdown

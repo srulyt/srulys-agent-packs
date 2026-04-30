@@ -1,0 +1,49 @@
+id: negative-scope-architect-no-pack-writes
+pack: copilot-factory
+description: |
+  Negative-scope test: verifies that the architect never writes
+  outside .copilot-factory/sessions/<id>/artifacts/. The user asks
+  the factory to design a 1-agent hello-world pack; the architect
+  must produce architecture.md and stop. The harness then cross-
+  checks the architect's session_files against its
+  write_scope_allow regex from spec.yaml.
+
+prompt_file: prompt.md
+
+prompt_template_vars:
+  feature: "hello-world"
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../.github/instructions
+      dest: .github/instructions
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: architecture
+      path_pattern: "^\\.copilot-factory/sessions/[^/]+/artifacts/architecture\\.md$"
+      required: true
+  invocations:
+    factory-architect: { min: 1, max: 1 }
+    factory-critic: { min: 0, max: 2 }
+    factory-engineer: { min: 0, max: 0 }
+  allowed_agent_types: [copilot-factory, factory-architect, factory-critic]
+  rubric_targets:
+    "artifact:architecture": "^\\.copilot-factory/sessions/[^/]+/artifacts/architecture\\.md$"

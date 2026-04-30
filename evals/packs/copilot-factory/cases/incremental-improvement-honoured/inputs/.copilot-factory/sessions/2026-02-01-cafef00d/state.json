@@ -1,0 +1,13 @@
+{
+  "session_id": "2026-02-01-cafef00d",
+  "phase": "build",
+  "mode": "improvement",
+  "improvement_strategy": "incremental",
+  "target_pack": "seed-pack",
+  "user_approved": true,
+  "iteration_counts": {
+    "review-arch": 0,
+    "review-prompts": 0,
+    "improve-analysis": 1
+  }
+}

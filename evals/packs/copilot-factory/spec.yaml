@@ -49,8 +49,11 @@ agents:
       forbidden_downstream: []
     output_contract:
       must_contain_sections:
-        - "Architecture"
-        - "Agents"
+        - "architecture-summary"
+        - "agents-json"
+        - "eval-plan-json"
+        - "open-questions"
+        - "ready-for-review"
     token_budget_max: 80000
     no_subagent_reinvocation: true
 
@@ -59,11 +62,13 @@ agents:
     allowed_tools: [read, search, write, execute]
     write_scope_allow:
       - "^agent-packs/[a-z0-9-]+/.*"
+      - "^evals/packs/[a-z0-9-]+/.*"
       - "^\\.copilot-factory/sessions/[^/]+/artifacts/build-manifest\\.json$"
     read_scope_allow:
       - "^\\.copilot-factory/sessions/[^/]+/.*"
       - "^\\.github/skills/.*"
       - "^agent-packs/.*"
+      - "^evals/.*"
     scope_deny:
       - "^_eval/"
       - "^\\.git/"
@@ -73,9 +78,12 @@ agents:
         - "Output"
       required_fields:
         - "session-id"
+        - "improvement-strategy"
     output_contract:
       must_contain_sections:
-        - "Implementation"
+        - "implementation-summary"
+        - "files-created-json"
+        - "ready-for-review"
     token_budget_max: 120000
     no_subagent_reinvocation: true
 
@@ -84,9 +92,11 @@ agents:
     allowed_tools: [read, search, write]
     write_scope_allow:
       - "^\\.copilot-factory/sessions/[^/]+/artifacts/(architecture|implementation)-review\\.md$"
+      - "^\\.copilot-factory/sessions/[^/]+/artifacts/improvement-analysis\\.md$"
     read_scope_allow:
       - "^\\.copilot-factory/sessions/[^/]+/.*"
       - "^agent-packs/.*"
+      - "^evals/.*"
       - "^\\.github/skills/.*"
     scope_deny:
       - "^_eval/"
@@ -96,11 +106,36 @@ agents:
         - "Inputs"
       required_fields:
         - "session-id"
+        - "iteration-count"
     output_contract:
       must_contain_sections:
-        - "Verdict"
+        - "verdict"
     token_budget_max: 80000
     no_subagent_reinvocation: true
+
+  - name: copilot-factory
+    invocations: { min: 1, max: 1, must_complete: true }
+    allowed_tools: [read, search, write, agent]
+    write_scope_allow:
+      - "^\\.copilot-factory/.*"
+    read_scope_allow:
+      - "^\\.copilot-factory/.*"
+      - "^\\.github/skills/.*"
+      - "^\\.local/multi-agent-instructions\\.md$"
+    scope_deny:
+      - "^_eval/"
+      - "^\\.git/"
+      - "^agent-packs/"
+      - "^evals/packs/"
+    prompt_contract:
+      required_sections:
+        - "Hard Delegation Rule (STOP-and-delegate)"
+        - "How to Delegate (Task Tool Mechanics)"
+        - "Mandatory Delegation"
+        - "Must NOT"
+      required_fields: []
+    token_budget_max: 60000
+    no_subagent_reinvocation: false
 
 rubrics:
   - id: coherence
@@ -114,4 +149,5 @@ rubrics:
     severity: info
   - id: format-compliance
     apply_to: artifact:architecture
-    severity: info
+    severity: warn
+    threshold: 0.7

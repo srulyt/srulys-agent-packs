@@ -108,6 +108,32 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 - [ ] Build manifest is accurate
 - [ ] Orchestrator has iteration protocol for user feedback
 - [ ] Orchestrator has retry bounds on specialist re-requests
+- [ ] Every agent has a `## Must NOT` (negative-scope) section enumerating
+      forbidden actions, file paths, sub-agent re-invocations, and
+      verdict-tampering (for reviewers)
+- [ ] Every sub-agent has a machine-parseable `## Output Contract`
+      using named fenced sections (e.g. ```verdict ...```)
+- [ ] Orchestrator parses each sub-agent's fenced output before
+      transitioning phase
+- [ ] Orchestrator surfaces hard iteration caps (max 2 re-requests
+      per artifact per review type) and persists counters in state
+- [ ] Generated pack ships with `evals/packs/<pack>/spec.yaml` and at
+      least one case at `evals/packs/<pack>/cases/smoke-*/`
+      (see [Eval Authoring](references/eval-authoring.md))
+- [ ] Engineer build manifest lists eval artifacts under
+      `files_created` / `files_modified` and `evals_created`
+- [ ] Critic verifies eval artifacts exist and reference paths
+      resolve; missing eval artifacts are BLOCKING in implementation
+      review
+- [ ] Skill-visibility rule applied to every piece of extracted
+      content (see system-design skill's
+      [skill-visibility reference](../system-design/references/skill-visibility.md))
+- [ ] For generated orchestrators: prompt contains both
+      `## How to Delegate (Task Tool Mechanics)` and
+      `## Hard Delegation Rule (STOP-and-delegate)` sections per
+      [Task Tool Mechanics](references/task-tool-mechanics.md), and
+      `tools:` is narrowest possible (no `["*"]`, no unjustified
+      `execute`)
 
 ## Common Patterns
 
@@ -164,3 +190,5 @@ Every agent must have explicit path-scoped read/write boundaries. Add a "File Ac
 
 - [Copilot Artifacts](references/copilot-artifacts.md) - Detailed Copilot CLI formats
 - [Delegation Templates](references/delegation-templates.md) - Orchestrator delegation patterns
+- [Eval Authoring](references/eval-authoring.md) - Eval spec + case scaffolding for generated packs
+- [Task Tool Mechanics](references/task-tool-mechanics.md) - Required orchestrator delegation sections + worked-example shapes

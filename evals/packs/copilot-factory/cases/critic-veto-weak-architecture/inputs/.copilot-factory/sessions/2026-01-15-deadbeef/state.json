@@ -1,0 +1,12 @@
+{
+  "session_id": "2026-01-15-deadbeef",
+  "phase": "review-arch",
+  "mode": "creation",
+  "improvement_strategy": null,
+  "user_approved": false,
+  "iteration_counts": {
+    "review-arch": 0,
+    "review-prompts": 0,
+    "improve-analysis": 0
+  }
+}

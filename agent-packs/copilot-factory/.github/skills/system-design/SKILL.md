@@ -15,6 +15,7 @@ Load this skill when:
 - Planning agent boundaries and responsibilities
 - Designing communication patterns
 - Setting up state management
+- Deciding whether content belongs in a skill vs an agent prompt (see [Skill Visibility](references/skill-visibility.md))
 
 ## Decision Framework
 
@@ -228,6 +229,7 @@ Before finalizing design:
 - [ ] Orchestrator includes iteration protocol for user feedback
 - [ ] Orchestrator includes retry bounds on specialist re-requests
 - [ ] Subagents have invocation guards specified
+- [ ] For each piece of extracted content, the skill-visibility rule is applied (see [references/skill-visibility.md](references/skill-visibility.md))
 
 ## Anti-Patterns
 
@@ -248,3 +250,4 @@ Before finalizing design:
 - [Agent Patterns](references/agent-patterns.md) - Detailed topology patterns
 - [Communication](references/communication.md) - Inter-agent communication
 - [State Management](references/state-management.md) - STM/LTM patterns
+- [Skill Visibility](references/skill-visibility.md) - Skill vs agent-prompt placement rule

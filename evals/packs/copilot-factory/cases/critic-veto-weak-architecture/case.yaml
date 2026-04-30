@@ -1,0 +1,45 @@
+id: critic-veto-weak-architecture
+pack: copilot-factory
+description: |
+  Critic-veto test: a deliberately weak architecture document is
+  pre-staged in the session's artifacts directory (no agents, no
+  boundaries, no skills). The user asks the factory to "resume the
+  session and run review-arch only". The critic must return a
+  BLOCKING verdict for the architecture review.
+
+prompt_file: prompt.md
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../.github/instructions
+      dest: .github/instructions
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: architecture-review
+      path_pattern: "^\\.copilot-factory/sessions/[^/]+/artifacts/architecture-review\\.md$"
+      required: true
+  invocations:
+    factory-architect: { min: 0, max: 0 }
+    factory-engineer: { min: 0, max: 0 }
+    factory-critic: { min: 1, max: 1 }
+  allowed_agent_types: [copilot-factory, factory-critic]
+  rubric_targets:
+    "artifact:architecture-review": "^\\.copilot-factory/sessions/[^/]+/artifacts/architecture-review\\.md$"

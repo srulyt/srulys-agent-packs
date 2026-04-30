@@ -1,0 +1,50 @@
+id: incremental-improvement-honoured
+pack: copilot-factory
+description: |
+  Incremental-mode test: a tiny seed pack and a pre-baked
+  improvement-analysis.md are staged. state.json declares
+  improvement_strategy: "incremental", phase: "build",
+  user_approved: true. The user asks the factory to resume and apply
+  the staged improvement. The architect must NOT be invoked (no
+  rebuild); the engineer applies surgical edits; the critic runs
+  review-prompts once.
+
+prompt_file: prompt.md
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../.github/instructions
+      dest: .github/instructions
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: build-manifest
+      path_pattern: "^\\.copilot-factory/sessions/[^/]+/artifacts/build-manifest\\.json$"
+      required: true
+    - id: pack-output
+      path_pattern: "^agent-packs/seed-pack/.*\\.agent\\.md$"
+      required: true
+  invocations:
+    factory-architect: { min: 0, max: 0 }
+    factory-engineer: { min: 1, max: 1 }
+    factory-critic: { min: 1, max: 1 }
+  allowed_agent_types: [copilot-factory, factory-engineer, factory-critic]
+  rubric_targets:
+    "artifact:architecture": "^\\.copilot-factory/sessions/[^/]+/artifacts/architecture\\.md$"

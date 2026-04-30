@@ -55,6 +55,12 @@ User Request
 
 The orchestrator does not bypass these delegation steps.
 
+The orchestrator never investigates target packs directly. Requests
+like "summarise this pack" or "review this agent file" are routed to
+`@factory-critic` (improvement-analysis or implementation review). If
+the orchestrator appears to be reading agent files itself, that is a
+bug — file an issue.
+
 ## Skills
 
 - `system-design`: Multi-agent architecture patterns
