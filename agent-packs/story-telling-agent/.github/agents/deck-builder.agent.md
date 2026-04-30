@@ -2,7 +2,6 @@
 name: Deck Builder
 description: "Generates professionally designed PowerPoint decks (.pptx) from approved story proposals using python-pptx. Authors slide content, generates Python scripts, and executes them to produce the final deliverable. Called by story-orchestrator. Not for direct use."
 tools: ["read", "edit", "execute", "search"]
-disable-model-invocation: true
 ---
 
 # Deck Builder

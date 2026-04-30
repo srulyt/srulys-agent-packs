@@ -2,7 +2,6 @@
 name: Codebase Scout
 description: "Discovers codebase structure, entry points, technology stack, module boundaries, and key files. Creates navigation maps for downstream analysis. Not for direct invocation."
 tools: ["read", "edit", "search", "execute"]
-disable-model-invocation: true
 ---
 
 # Codebase Scout

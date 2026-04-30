@@ -146,8 +146,18 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 ### Orchestrator Agent
 `tools: ["read", "edit", "search", "execute", "agent"]`
 
-### Subagent (No Direct Invocation)
+### Subagent (Agent-Only Invocation)
+Leave `disable-model-invocation` **absent** (or `false`). Subagents are
+invoked via the `task` tool by an orchestrator; setting the flag hides
+them from the calling agent's task registry and makes them unreachable.
+Use a prompt-level invocation guard (see template) to redirect any
+direct user invocation back to the orchestrator.
+
+### Orchestrator (User-Facing)
 `disable-model-invocation: true`
+Set this on the user-facing orchestrator to prevent other models from
+auto-routing to it. Users can still invoke it explicitly with
+`@orchestrator-name`.
 
 ### File Access Boundaries
 

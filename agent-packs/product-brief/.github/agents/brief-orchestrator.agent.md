@@ -2,6 +2,7 @@
 name: Brief Orchestrator
 description: "Orchestrates decision-grade product brief creation from notes, docs, links, and transcripts; enforces section order, evidence integrity, quality gates, and mandatory editing pass. Trigger keywords: product brief, decision memo, executive brief, prioritization, funding ask."
 tools: ["read", "search", "edit", "agent"]
+disable-model-invocation: true
 ---
 
 # Brief Orchestrator

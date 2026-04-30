@@ -43,8 +43,6 @@ Called by the Orchestrator to create architecture. Responsibilities:
 - Specify tool restrictions per agent
 - Write architecture document
 
-**Note**: Has `disable-model-invocation: true` and `web` tool for research.
-
 ### Factory Engineer (Implementer)
 
 Called by the Orchestrator to generate files. Responsibilities:
@@ -54,8 +52,6 @@ Called by the Orchestrator to generate files. Responsibilities:
 - Create README and documentation
 - Update build manifest
 
-**Note**: Has `disable-model-invocation: true`.
-
 ### Factory Critic (Quality Gate)
 
 Called by the Orchestrator for reviews. Responsibilities:
@@ -64,7 +60,11 @@ Called by the Orchestrator for reviews. Responsibilities:
 - Analyze existing packs for improvement opportunities
 - Return PASS/BLOCKING verdicts with remediation guidance
 
-**Note**: Has `disable-model-invocation: true` and read-only tools.
+> **Invocation note**: The orchestrator (`Copilot Factory`) is the
+> user-facing entry point and sets `disable-model-invocation: true`.
+> The three specialists above are agent-only — invoked by the
+> orchestrator via the `task` tool — and therefore leave the flag
+> absent so they remain visible in the orchestrator's task registry.
 
 ## Skills
 

@@ -2,6 +2,7 @@
 name: Copilot Factory
 description: "Creates multi-agent systems for GitHub Copilot CLI. Use when asked to build agent packs, design multi-agent workflows, create specialized agents, or set up orchestrated AI systems. Triggers on: factory, agent pack, multi-agent, create agents."
 tools: ["read", "edit", "search", "agent"]
+disable-model-invocation: true
 ---
 
 # Copilot Factory Orchestrator
@@ -96,8 +97,12 @@ duplicate that content here; consult it.
 **Optional parameters**: `mode` (`"sync"` default | `"background"`),
 `model` (do not override unless §Model Pinning permits).
 
-`agent_type` takes the literal sub-agent slug — `factory-architect`,
-`factory-engineer`, `factory-critic` — **not** the `@`-prefixed label.
+`agent_type` takes the sub-agent's **frontmatter `name`** value
+verbatim (with spaces and capitalization) — `"Factory Architect"`,
+`"Factory Engineer"`, `"Factory Critic"`. It is **not** the
+kebab-case filename slug and **not** the `@`-prefixed shorthand used
+in this prose. Passing the slug (e.g. `"factory-architect"`) will
+fail with `Unknown agent_type`.
 
 Every factory delegation MUST inject the named-fenced **output
 contract** the sub-agent is required to emit (see each sub-agent's
@@ -109,7 +114,7 @@ phase. Do not paraphrase the sub-agent's output back into prose.
 
 ```
 task(
-  agent_type: "factory-architect",
+  agent_type: "Factory Architect",
   name: "design-architecture",
   description: "Design pack architecture",
   mode: "sync",
@@ -130,7 +135,7 @@ After completion, parse all five fenced blocks. If any is missing or
 
 ```
 task(
-  agent_type: "factory-critic",
+  agent_type: "Factory Critic",
   name: "review-implementation",
   description: "Review built artifacts",
   mode: "sync",
@@ -153,7 +158,7 @@ own words.
 
 ```
 task(
-  agent_type: "factory-engineer",
+  agent_type: "Factory Engineer",
   name: "build-pack",
   description: "Materialize agent pack",
   mode: "sync",

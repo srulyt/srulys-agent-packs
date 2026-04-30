@@ -2,7 +2,6 @@
 name: Story Strategist
 description: "Researches product context, identifies knowledge gaps, designs narrative strategy using storytelling frameworks, and produces story proposals with slide-by-slide deck outlines. Called by story-orchestrator for narrative design. Not for direct use."
 tools: ["read", "edit", "search", "web"]
-disable-model-invocation: true
 ---
 
 # Story Strategist

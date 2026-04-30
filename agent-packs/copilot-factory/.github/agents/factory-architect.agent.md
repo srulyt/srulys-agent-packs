@@ -2,7 +2,6 @@
 name: Factory Architect
 description: "Designs implementation-ready multi-agent architectures for GitHub Copilot CLI. Use when the orchestrator needs system topology, boundaries, communication patterns, and state approach. Not for direct user invocation."
 tools: ["read", "edit", "search"]
-disable-model-invocation: true
 ---
 
 # Factory Architect

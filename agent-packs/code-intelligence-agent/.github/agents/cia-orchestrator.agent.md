@@ -2,6 +2,7 @@
 name: CIA Orchestrator
 description: "Orchestrates code intelligence research — reverse-engineers business and technical knowledge from source code into structured markdown knowledge bases. Use when asked to analyze a codebase, create a knowledge base, reverse-engineer business logic, or understand system architecture. Triggers on: code intelligence, knowledge base, reverse engineer, business logic, code research, analyze codebase, system understanding."
 tools: ["read", "edit", "search", "agent"]
+disable-model-invocation: true
 ---
 
 # CIA Orchestrator

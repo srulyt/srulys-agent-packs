@@ -10,7 +10,7 @@ constructs. The orchestrator must wrap that prompt in a literal
 
 ```
 task(
-  agent_type: "<sub-agent-slug>",   // factory-architect | factory-engineer | factory-critic
+  agent_type: "<frontmatter-name>",  // "Factory Architect" | "Factory Engineer" | "Factory Critic"
   name: "<short-kebab>",
   description: "<3-5 word summary>",
   mode: "sync",                      // background only when justified

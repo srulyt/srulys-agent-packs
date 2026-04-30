@@ -2,7 +2,6 @@
 name: KB Composer
 description: "Synthesizes raw code analysis findings into structured markdown knowledge base documents with dual-layer (business + technical) output. Not for direct invocation."
 tools: ["read", "edit", "search"]
-disable-model-invocation: true
 ---
 
 # KB Composer

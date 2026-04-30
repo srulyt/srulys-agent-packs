@@ -2,6 +2,7 @@
 name: Story Orchestrator
 description: "Orchestrates product storytelling workflow: ingests context files, delegates narrative strategy and deck building, enforces approval gate before PowerPoint generation. Use when creating presentation decks from product materials. Trigger keywords: story, storytelling, presentation, deck, PowerPoint, pptx, stakeholder deck, buy-in, pitch."
 tools: ["read", "edit", "search", "execute", "agent"]
+disable-model-invocation: true
 ---
 
 # Story Orchestrator

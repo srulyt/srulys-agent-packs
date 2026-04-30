@@ -2,7 +2,6 @@
 name: Factory Engineer
 description: "Implements multi-agent system artifacts for GitHub Copilot CLI. Called by Copilot Factory to create agent definitions and skills. Not for direct user invocation."
 tools: ["read", "edit", "search", "execute"]
-disable-model-invocation: true
 ---
 
 # Factory Engineer

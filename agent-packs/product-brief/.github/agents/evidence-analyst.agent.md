@@ -2,7 +2,6 @@
 name: Evidence Analyst
 description: "Extracts verifiable product evidence, maps claims to source pointers, detects contradictions, and filters for decision-relevance. Outputs compact evidence tables with file-name-only references. Trigger keywords: evidence log, source mapping, contradiction detection, assumptions, open questions, decision-relevance."
 tools: ["read", "search"]
-disable-model-invocation: true
 ---
 
 # Evidence Analyst

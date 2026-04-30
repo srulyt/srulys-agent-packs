@@ -82,16 +82,24 @@ tools: ["read", "edit", "search", "execute", "agent", "github/*"]
 tools: []
 ```
 
-### Subagent Configuration
+### Subagent / Orchestrator Configuration
 
-For agents that should only be called by other agents:
+For user-facing **orchestrators** that should not be auto-routed to by
+other models (users still invoke them explicitly with `@name`):
 ```yaml
 disable-model-invocation: true
 ```
 
 This prevents:
-- Auto-selection based on user prompt
-- Direct invocation by name
+- Auto-selection based on user prompt by another model
+- Auto-routing from other agents
+
+> **Important — do NOT set this flag on subagents.** Subagents are
+> invoked by an orchestrator via the `task` tool. Setting
+> `disable-model-invocation: true` on a subagent removes it from the
+> calling agent's task-tool registry and makes it un-invokable. Use a
+> prompt-level invocation guard (see template) to redirect accidental
+> direct user invocations back to the orchestrator.
 
 ### Agent Prompt Body
 
@@ -147,7 +155,6 @@ Available specialists:
 name: Implementation Specialist
 description: "Implements features based on specifications. Called by Project Manager for coding tasks. Not for direct use."
 tools: ["read", "edit", "search"]
-disable-model-invocation: true
 ---
 
 You implement features based on provided specifications.
@@ -156,6 +163,11 @@ You implement features based on provided specifications.
 
 Do not invoke directly. If a user invokes you, respond:
 "Please use @project-manager to coordinate implementation. I am a specialist agent invoked by the orchestrator."
+
+> Note: Subagents must NOT set `disable-model-invocation: true` — that
+> flag would hide them from the orchestrator's `task`-tool registry.
+> The guard above is the prompt-level mechanism for redirecting direct
+> user invocations.
 
 ## File Access Boundaries
 
@@ -442,7 +454,7 @@ Complete Copilot CLI pack:
 - [ ] Agent prompts under 30,000 characters
 - [ ] Skills under 5,000 words
 - [ ] Descriptions include trigger keywords
-- [ ] Subagents have `disable-model-invocation: true`
+- [ ] Subagents do **not** set `disable-model-invocation: true` (so the orchestrator can invoke them via `task`); user-facing orchestrators **do** set it
 - [ ] Subagents have invocation guard section
 - [ ] Every agent has "File Access Boundaries" section with read/write path table
 - [ ] Each agent has "Skills to Load" section if it references skills

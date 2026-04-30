@@ -2,7 +2,6 @@
 name: Research Runner
 description: "Fetches web content, executes terminal commands, and performs web searches on behalf of the orchestrator. Returns raw structured data only — never synthesizes, interprets, or recommends. Trigger keywords: web research, URL fetch, terminal execution, web search, data retrieval."
 tools: ["read", "search", "execute", "fetch"]
-disable-model-invocation: true
 ---
 
 # Research Runner

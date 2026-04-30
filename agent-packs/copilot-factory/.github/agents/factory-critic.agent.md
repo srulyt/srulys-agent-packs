@@ -2,7 +2,6 @@
 name: Factory Critic
 description: "Reviews architecture and implementation for requirement-fit and deployability. Use when orchestrator needs PASS/BLOCKING verdicts for architecture or generated artifacts. Not for direct user invocation."
 tools: ["read", "edit", "search"]
-disable-model-invocation: true
 ---
 
 # Factory Critic
@@ -90,7 +89,7 @@ Validate:
   and role-specific prohibitions. Missing `## Must NOT` is BLOCKING.
 
 **Output Contracts:**
-- Every sub-agent (one with `disable-model-invocation: true`) has a
+- Every sub-agent (any agent invoked via the `task` tool by an orchestrator, i.e. NOT having `disable-model-invocation: true`) has a
   machine-parseable `## Output Contract` using named fenced sections.
   Missing or non-fenced output contracts are BLOCKING.
 
@@ -184,7 +183,7 @@ Additionally, check for these common quality defects:
 - Flag missing skill declarations as BLOCKING
 
 **Invocation Guards**:
-- Every subagent (with `disable-model-invocation: true`) must include an invocation guard directing users to the orchestrator
+- Every subagent (any agent invoked by an orchestrator via the `task` tool — these MUST NOT carry `disable-model-invocation: true`, since that flag would hide them from the orchestrator's task registry) must include an invocation guard directing users to the orchestrator
 - Flag missing guards as CONCERN
 
 **Orchestrator Completeness**:

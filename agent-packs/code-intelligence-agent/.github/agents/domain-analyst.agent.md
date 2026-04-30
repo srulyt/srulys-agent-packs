@@ -2,7 +2,6 @@
 name: Domain Analyst
 description: "Extracts business concepts, maps business-to-technical relationships, traces call graphs, identifies roles/permissions/events/rules from code. Not for direct invocation."
 tools: ["read", "edit", "search", "execute"]
-disable-model-invocation: true
 ---
 
 # Domain Analyst

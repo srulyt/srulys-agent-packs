@@ -18,24 +18,28 @@ Every generated orchestrator (`.agent.md` whose architectural role is
 coordinator / orchestrator) must include a section literally titled
 `## How to Delegate (Task Tool Mechanics)` containing:
 
-1. A statement that `task` is the only way to invoke a sub-agent and
-   that `@<name>` labels are user-facing shorthand, passed as
-   `agent_type`.
+1. A statement that `task` is the only way to invoke a sub-agent. The
+   `@<name>` labels in prose are user-facing shorthand only; the value
+   passed as `agent_type` MUST be the sub-agent's **frontmatter `name`**
+   value (verbatim, including spaces and capitalization), not the
+   kebab-case filename slug. Passing the slug fails with `Unknown
+   agent_type`.
 2. Required parameters — `agent_type`, `name`, `description`,
    `prompt` — and optional parameters — `mode`, `model`.
 3. A cross-reference to `.local/multi-agent-instructions.md` §1.2–§1.3
    (do not duplicate that content).
 4. One worked `task(...)` example **per sub-agent** the orchestrator
-   delegates to. Each example shows: the literal `agent_type` slug;
-   the prompt structure including session/artifact paths the
-   sub-agent will need; and the named-fenced output contract blocks
-   the orchestrator will parse from the sub-agent's final message.
+   delegates to. Each example shows: the literal `agent_type` value
+   (matching the sub-agent's frontmatter `name`); the prompt structure
+   including session/artifact paths the sub-agent will need; and the
+   named-fenced output contract blocks the orchestrator will parse
+   from the sub-agent's final message.
 
 ## Worked example shape (template)
 
 ```
 task(
-  agent_type: "<sub-agent-slug>",
+  agent_type: "<sub-agent-frontmatter-name>",
   name: "<short-kebab-case>",
   description: "<3-5 word summary>",
   mode: "sync" | "background",
@@ -95,7 +99,7 @@ sub-agent names, slugs, and contract block names.
 
 ```
 task(
-  agent_type: "<designer-slug>",
+  agent_type: "<designer-frontmatter-name>",
   name: "design-system",
   description: "Produce architecture",
   mode: "sync",
@@ -109,7 +113,7 @@ task(
 
 ```
 task(
-  agent_type: "<critic-slug>",
+  agent_type: "<critic-frontmatter-name>",
   name: "review-artifact",
   description: "Quality gate",
   mode: "sync",
@@ -123,7 +127,7 @@ task(
 
 ```
 task(
-  agent_type: "<engineer-slug>",
+  agent_type: "<engineer-frontmatter-name>",
   name: "build-artifacts",
   description: "Materialise pack",
   mode: "sync",

@@ -223,10 +223,17 @@ disable-model-invocation: true
 ```
 
 **Set `disable-model-invocation: true` when:**
+- The agent is a **user-facing orchestrator** that should not be auto-routed to by another model (users still invoke it with `@name`)
 - The agent does something destructive or irreversible
 - The agent should only run when explicitly requested
 - Multiple agents have overlapping descriptions
 - The agent is experimental or under development
+
+**Do NOT set `disable-model-invocation: true` on subagents.** Subagents
+are invoked by an orchestrator via the `task` tool; this flag hides
+them from the calling agent's task-tool registry and makes them
+unreachable. Use a prompt-level invocation guard to redirect
+accidental direct invocations.
 
 **Leave inference enabled when:**
 - The agent has a clear, non-overlapping specialty
