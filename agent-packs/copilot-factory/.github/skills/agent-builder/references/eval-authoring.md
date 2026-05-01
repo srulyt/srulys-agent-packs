@@ -1,10 +1,11 @@
 # Eval Authoring (cross-cutting reference)
 
-This is a short summary of the eval authoring rules every generated
-pack must satisfy. The **source of truth** is
-[`evals/docs/authoring-guide.md`](../../../../../../evals/docs/authoring-guide.md).
-Read that guide for full details; this reference only covers what an
-agent in the factory pipeline needs to scaffold a working eval.
+This file documents the eval authoring rules every generated pack
+must satisfy. When the pack is deployed standalone, this reference
+is authoritative. When this pack ships inside the
+`srulyt/srulys-agent-packs` monorepo, the in-repo
+`evals/docs/authoring-guide.md` provides additional examples but does
+not override anything stated here.
 
 ## Required directory shape per generated pack
 
@@ -73,9 +74,23 @@ Source: see authoring-guide §2.1.
 
 ### Translating an `.agent.md` into the spec
 
-1. `tools:` front-matter → `allowed_tools` (canonical names only:
-   `read`, `search`, `write`, `execute`, `agent`, `mcp`,
-   `mcp:<server>`).
+1. `tools:` front-matter → `allowed_tools`. The eval spec uses
+   internal canonical names (`read`, `search`, `write`, `execute`,
+   `agent`, `mcp`, `mcp:<server>`); map agent-profile aliases via
+   this table:
+
+   | `.agent.md` `tools:` (Copilot CLI alias) | `spec.yaml` `allowed_tools` (eval canonical) |
+   |---|---|
+   | `read` | `read` |
+   | `edit` (covers `Write`, `Edit`, `MultiEdit`, `NotebookEdit`) | `write` |
+   | `search` | `search` |
+   | `execute` (covers `shell`, `Bash`, `powershell`) | `execute` |
+   | `agent` (covers `Task`, `custom-agent`) | `agent` |
+   | `web` | `web` |
+   | `vision` | `vision` |
+   | `<server>/<tool>` (MCP) | `mcp:<server>` |
+
+   Source: [Copilot docs — Custom agents configuration: Tool aliases](https://docs.github.com/en/copilot/reference/custom-agents-configuration#tool-aliases).
 2. `## File Access Boundaries` table → `write_scope_allow` and
    `read_scope_allow` as anchored regexes (start with `^`,
    double-escape backslashes).
@@ -162,7 +177,7 @@ Source: see authoring-guide §2.2.
 
 ## Source of truth
 
-When this reference disagrees with
-[`evals/docs/authoring-guide.md`](../../../../../../evals/docs/authoring-guide.md),
-the authoring guide wins. Update this reference only after the guide
-itself changes.
+When run inside the `srulys-agent-packs` monorepo, the in-repo
+`evals/docs/authoring-guide.md` is the harness's authoritative spec
+and supersedes this reference. When this pack is deployed standalone,
+this reference is authoritative.

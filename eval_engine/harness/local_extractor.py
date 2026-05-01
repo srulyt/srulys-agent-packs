@@ -592,6 +592,28 @@ def build_fixture(
         os.path.normcase(os.path.abspath(f["file_path"]))
         for f in file_writes
     }
+    # --- workspace-walk: capture all writable artifacts left in the workspace.
+    # Some files are harness scaffolding (the operator's stdout capture, the
+    # case staging files) and must NOT be attributed to the SUT. Skip them
+    # by basename pattern; everything else goes to the orchestrator's bucket
+    # via the workspace-walk path below.
+    _HARNESS_INTERNAL_PREFIXES = ("_sut", "_runstate", "_eval")
+    _HARNESS_INTERNAL_BASENAMES = {"plan.log", "judge-plan.log"}
+
+    def _is_harness_internal(p: Path, ws: Path) -> bool:
+        try:
+            rel = p.resolve().relative_to(ws.resolve())
+        except (ValueError, OSError):
+            return False
+        parts = rel.parts
+        if not parts:
+            return False
+        if parts[0].startswith(_HARNESS_INTERNAL_PREFIXES):
+            return True
+        if rel.name in _HARNESS_INTERNAL_BASENAMES:
+            return True
+        return False
+
     ws_path = Path(workspace_root)
     session_start_epoch: float | None = None
     if session_created_at:
@@ -612,6 +634,8 @@ def build_fixture(
                 continue
             if rel_norm in explicit_paths:
                 continue
+            if _is_harness_internal(p, ws_path):
+                continue
             if session_start_epoch is not None and stat.st_mtime < session_start_epoch:
                 continue
             file_writes.append(
@@ -624,13 +648,46 @@ def build_fixture(
             )
 
     # --- agent_windows[].
+    # The platform's `task` tool accepts:
+    #   - agent_type: the registered agent identity (e.g. "Factory Architect"
+    #     or a filename slug like "factory-architect"). This is the canonical
+    #     name and matches the spec's `agents[].name` after normalization.
+    #   - name:        a short invocation alias the caller chooses
+    #                  (e.g. "design-architecture") — orchestrator-local only.
+    #   - description: a 3-5 word UI label.
+    # We must prefer ``agent_type`` for spec matching; ``name`` is the alias.
+    def _normalize_agent_slug(value: str) -> str:
+        # Canonicalize display names ("Factory Architect") to filename slugs
+        # ("factory-architect") so they line up with how packs key their
+        # agents in spec.yaml. Idempotent for already-slug values.
+        if not value:
+            return value
+        s = value.strip()
+        if not s:
+            return s
+        # If any whitespace is present, treat as a display name.
+        if any(c.isspace() for c in s):
+            s = "-".join(s.lower().split())
+        # Lowercase trailing pass; keep hyphens/underscores/dots as-is.
+        return s.lower()
+
+    # Built-in Copilot CLI agent_types that are not pack sub-agents:
+    # the orchestrator can dispatch generic shell/research subtasks via these.
+    # They must NOT be reported as pack sub-agent invocations.
+    _BUILTIN_AGENT_TYPES = {
+        "task", "explore", "general-purpose", "rubber-duck",
+        "code-review", "configure-copilot",
+    }
+
     agent_windows: list[dict[str, Any]] = []
     for tcid, ws, we in windows:
         tu = all_tool_uses.get(tcid)
         args = (tu or {}).get("arguments_json") or {}
-        # The orchestrator's task call has agent_type, name, prompt, mode.
-        agent_type = args.get("name") or args.get("agent_type") or "unknown"
-        agent_name = args.get("description") or args.get("name") or ""
+        raw_agent_type = args.get("agent_type") or args.get("name") or "unknown"
+        agent_type = _normalize_agent_slug(raw_agent_type)
+        if agent_type in _BUILTIN_AGENT_TYPES:
+            continue
+        agent_name = args.get("name") or args.get("description") or ""
         prompt = args.get("prompt") or ""
         # Pull the sub-agent's final assistant message as final_response:
         # it's the last response (no tool_uses, just text) inside the
@@ -726,6 +783,17 @@ def build_fixture(
 
     # Build invocations.
     orch_iid = "orchestrator"
+    # The orchestrator's "prompt" is its own system prompt — i.e. the
+    # `.github/agents/{pack}.agent.md` file content visible to the model.
+    # L2-prompt-sections asserts required sections appear there; without
+    # this the orchestrator always trivially fails.
+    orch_prompt = ""
+    try:
+        orch_md = Path(workspace_root) / ".github" / "agents" / f"{pack}.agent.md"
+        if orch_md.is_file():
+            orch_prompt = orch_md.read_text(encoding="utf-8")
+    except OSError:
+        orch_prompt = ""
     invocations: list[dict[str, Any]] = [
         {
             "invocation_id": orch_iid,
@@ -734,7 +802,7 @@ def build_fixture(
             "started_at": session_created_at,
             "ended_at": last_ts,
             "completed": True,
-            "prompt": "",
+            "prompt": orch_prompt,
             "response": final_msg,
             "parent_invocation_id": None,
         }

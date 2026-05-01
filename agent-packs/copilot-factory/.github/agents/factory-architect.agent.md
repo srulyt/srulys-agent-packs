@@ -82,6 +82,17 @@ If invoked by a user directly:
   `evals/packs/<pack>/spec.yaml` and at least one
   `evals/packs/<pack>/cases/smoke-*/` case scenario, including the
   prompt summary, expected artifacts, and expected invocations.
+- **Failure modes**: a `## Failure Modes` section enumerating **at
+  least three** concrete failure modes the pack can encounter
+  (sub-agent stalls, contract violations, malformed inputs, rate
+  limits, infinite-loop traps, etc.) — each paired with a mitigation
+  the orchestrator or sub-agent must apply. Architectures that only
+  describe happy-path behaviour are incomplete.
+- **Risks**: a `## Risks` section enumerating residual hazards that
+  remain even with the chosen mitigations (e.g. label ambiguity,
+  third-party API quotas, model-quality drift, ungoverned write
+  scope expansion). For each risk, name the owner / detection
+  channel. Use "None" only when truly none apply, and justify.
 - **Content Placement** (skill-visibility): a section/table classifying
   every piece of extracted guidance as `agent-prompt`, `skill`, or
   `agent-local file` per the system-design skill's
@@ -92,7 +103,8 @@ If invoked by a user directly:
   orchestrator will use — `agent_type`, `mode` (sync vs. background,
   with rationale), and the named-fenced output contract the
   orchestrator is responsible for parsing from each sub-agent's final
-  message. Reference `.local/multi-agent-instructions.md` §1.2–§1.3
+  message. Reference the `agent-builder` skill's
+  [task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md)
   rather than re-deriving `task` semantics.
 - **Orchestrator delegation discipline**: For any generated pack with
   a coordinator + sub-agents topology, the architecture MUST mandate

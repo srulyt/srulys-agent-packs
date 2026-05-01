@@ -88,7 +88,12 @@ Generation:
   "mode": "creation|improvement",
   "improvement_strategy": "incremental|rebuild|null",
   "target_system": "my-agent-pack",
-  "iteration": 1,
+  "iteration_counts": {
+    "review-arch": 0,
+    "review-prompts": 0,
+    "improve-analysis": 0
+  },
+  "override": false,
   "user_approved": false,
   "review_passed": false,
   "deliverables": {
@@ -98,6 +103,17 @@ Generation:
   "errors": []
 }
 ```
+
+**Field reference**:
+- `iteration_counts` — per-review-type counter object. Incremented
+  before each re-delegation of the same review type. When any value
+  reaches `2` and the latest critic verdict is BLOCKING, the
+  orchestrator escalates to the user instead of looping further.
+- `override` — set to `true` only when the user explicitly chose
+  `force-proceed` after hitting an iteration cap.
+- `improvement_strategy` — `"incremental"` (apply targeted edits to
+  an existing pack), `"rebuild"` (full architecture redesign), or
+  `null` (creation mode).
 
 ## State Transitions
 

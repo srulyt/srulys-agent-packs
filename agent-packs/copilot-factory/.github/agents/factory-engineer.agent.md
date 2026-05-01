@@ -163,7 +163,8 @@ when materialising its `.agent.md` you MUST:
      and optional (`mode`, `model`) parameters.
    - Notes that `@<name>` labels are user-facing shorthand passed as
      `agent_type`.
-   - Cross-references `.local/multi-agent-instructions.md` §1.2–§1.3
+   - Cross-references the `agent-builder` skill's
+     [task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md)
      (do not duplicate it).
    - Includes one worked `task(...)` call per sub-agent showing the
      exact prompt shape, including the named-fenced output contract

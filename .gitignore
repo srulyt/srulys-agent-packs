@@ -68,11 +68,15 @@ node_modules/
 # ===========================================
 # Eval framework working directories
 # Engine code in eval_engine/ is committed.
-# Per-repo evals live in evals/; runtime subdirs are gitignored:
+# Long-term memory IS committed: spec.yaml, cases/, README.md,
+# and promoted runs under evals/packs/*/results/.
+# Per-run scratch output is ignored (it contains absolute paths
+# tied to this checkout and accumulates one entry per run):
 # ===========================================
 evals/packs/*/workspaces/
 evals/packs/*/results-local/
 evals/packs/*/reports/
+evals/packs/*/fixtures/
 evals/data/
 __pycache__/
 *.pyc

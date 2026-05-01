@@ -113,13 +113,23 @@ def _resolve_artifacts(
                 path_pattern = artifact.path_pattern
         if not path_pattern:
             return []
-        # Find all writes whose path matches the pattern.
-        matched = [
-            str(Path(workspace_root) / fa.path)
-            for fa in fixture.file_accesses
-            if fa.op == "write" and re.search(path_pattern, fa.path)
-        ]
-        return sorted(set(matched))
+        ws = Path(workspace_root)
+        # Include both files the SUT wrote AND files already in the workspace
+        # that match the pattern. Cases like `critic-veto-weak-architecture`
+        # pre-stage the artifact via inputs/ — the architect is never invoked,
+        # so no `write` event fires, but the file is still the rubric subject.
+        matched: set[str] = set()
+        for fa in fixture.file_accesses:
+            if fa.op == "write" and re.search(path_pattern, fa.path):
+                matched.add(str(ws / fa.path))
+        if ws.is_dir():
+            for p in ws.rglob("*"):
+                if not p.is_file():
+                    continue
+                rel = p.relative_to(ws).as_posix()
+                if re.search(path_pattern, rel):
+                    matched.add(str(p))
+        return sorted(matched)
     if apply_to.startswith("per_agent:"):
         agent = apply_to.split(":", 1)[1]
         # Per-agent rubrics evaluate the agent's response text directly; we
@@ -157,6 +167,14 @@ def build_manifest(
         artifacts = _resolve_artifacts(
             ref.apply_to, case=case, workspace_root=workspace_root, fixture=fixture,
         )
+        # Skip rubrics whose subject artifacts don't exist for this case
+        # (e.g. cases that pre-stage a different artifact, or that exercise
+        # a flow where the architect never runs). Without a subject, the
+        # judge has nothing to evaluate; emitting a request would force
+        # the judge to score 0 and turn an inapplicable rubric into a
+        # spurious failure. "Not applicable" is the correct semantic.
+        if ref.apply_to.startswith("artifact:") and not artifacts:
+            continue
         golden_paths = sorted([str(p) for p in Path(golden_staging_dir).rglob("*") if p.is_file()])
         # Render rubric prompt template with available fields.
         template_vars = {

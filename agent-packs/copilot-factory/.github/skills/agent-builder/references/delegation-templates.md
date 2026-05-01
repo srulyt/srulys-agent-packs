@@ -18,10 +18,10 @@ task(
 )
 ```
 
-See `agent-builder/references/task-tool-mechanics.md` for the
-canonical template + rules, and `.local/multi-agent-instructions.md`
-§1.2–§1.3 for full `task` semantics. Never invoke a sub-agent by
-writing prose — the only invocation channel is the `task` tool.
+See [`task-tool-mechanics.md`](task-tool-mechanics.md) for the
+canonical template, rules, and full `task` semantics. Never invoke
+a sub-agent by writing prose — the only invocation channel is the
+`task` tool.
 
 ## Architect Delegation
 

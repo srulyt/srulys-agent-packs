@@ -70,13 +70,36 @@ class ToolsTests(unittest.TestCase):
 
 
 class AssertionTests(unittest.TestCase):
-    def _ctx(self, fixture):
+    def setUp(self):
+        # L2-prompt-sections now reads sub-agent system prompts from
+        # ``<workspace>/.github/agents/<name>.agent.md``. Stage a tmp
+        # workspace per test with the architect prompt that satisfies
+        # the spec's required_sections (Inputs + Constraints).
+        import tempfile
+        from pathlib import Path
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        agents_dir = Path(self._tmp.name) / ".github" / "agents"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "factory-architect.agent.md").write_text(
+            "## Inputs\n\nuser-request\n\n## Constraints\n\n- foo\n",
+            encoding="utf-8",
+        )
+
+    def _ctx(self, fixture, *, with_architect_prompt: bool = True):
         spec = F.make_spec()
         case = F.make_case(spec)
-        return AssertionContext(spec=spec, case=case, fixture=fixture, workspace_root="/tmp/ws")
+        ws = self._tmp.name
+        if not with_architect_prompt:
+            # Wipe the staged architect prompt for negative tests.
+            from pathlib import Path
+            p = Path(ws) / ".github" / "agents" / "factory-architect.agent.md"
+            if p.exists():
+                p.unlink()
+        return AssertionContext(spec=spec, case=case, fixture=fixture, workspace_root=ws)
 
-    def _run_all(self, fixture):
-        ctx = self._ctx(fixture)
+    def _run_all(self, fixture, *, with_architect_prompt: bool = True):
+        ctx = self._ctx(fixture, with_architect_prompt=with_architect_prompt)
         results = []
         for a in ASSERTIONS:
             results.extend(a.run(ctx))
@@ -180,7 +203,10 @@ class AssertionTests(unittest.TestCase):
                 F.make_invocation("factory-critic", invocation_id="crit-1"),
             ],
         )
-        results = self._run_all(fix)
+        # Run with the staged architect prompt removed — assertion now reads
+        # the agent's system prompt from disk; an empty/missing file means
+        # all required sections are missing.
+        results = self._run_all(fix, with_architect_prompt=False)
         prompt_section_fails = [
             r for r in results
             if r.assertion_id == "L2-prompt-sections" and r.status == "fail"

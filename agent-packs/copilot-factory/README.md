@@ -71,6 +71,7 @@ bug — file an issue.
 - `create-pack`: Guided new pack creation workflow
 - `analyze-and-improve`: Analyze and improve an existing pack
 - `resume-session`: Resume an interrupted factory session
+- `improve-factory`: Run a self-improvement cycle on the Copilot Factory's own prompts
 
 ## State Management
 

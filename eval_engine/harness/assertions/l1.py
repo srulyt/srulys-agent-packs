@@ -28,8 +28,12 @@ def _l1_set(ctx: AssertionContext) -> Iterable[AssertionResult]:
     actual = {i.name for i in ctx.fixture.invocations if i.name != ctx.spec.orchestrator}
     allowed = set(ctx.case.expected.allowed_agent_types or declared)
     unexpected = actual - allowed
+    # Sub-agents whose min>0 must appear in `actual`. Exclude the orchestrator
+    # itself: it is the entry point, not a delegated sub-agent, and is filtered
+    # out of `actual` above.
     missing_required = {
-        a.name for a in ctx.spec.agents if _expected_invocation(ctx, a.name).min > 0
+        a.name for a in ctx.spec.agents
+        if a.name != ctx.spec.orchestrator and _expected_invocation(ctx, a.name).min > 0
     } - actual
     if unexpected and ctx.spec.flow.no_unexpected_agents:
         yield AssertionResult(

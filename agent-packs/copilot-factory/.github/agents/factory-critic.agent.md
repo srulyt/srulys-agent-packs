@@ -83,51 +83,20 @@ Validate:
 - Required artifacts exist
 - Platform-specific syntax/structure is coherent
 
-**Negative Scope (Must NOT):**
-- Every agent in the generated pack has a `## Must NOT` section listing
-  forbidden paths, forbidden tools, forbidden sub-agent re-invocations,
-  and role-specific prohibitions. Missing `## Must NOT` is BLOCKING.
-
-**Output Contracts:**
-- Every sub-agent (any agent invoked via the `task` tool by an orchestrator, i.e. NOT having `disable-model-invocation: true`) has a
-  machine-parseable `## Output Contract` using named fenced sections.
-  Missing or non-fenced output contracts are BLOCKING.
-
-**Orchestrator Delegation Discipline (BLOCKING):**
-
-For every agent whose role in the architecture is orchestrator /
-coordinator, verify the materialised `.agent.md`:
-
-- [ ] Contains a `## How to Delegate (Task Tool Mechanics)` section
-      that cross-references `.local/multi-agent-instructions.md`
-      §1.2–§1.3 and includes at least one worked `task(...)` example
-      per sub-agent.
-- [ ] Contains a `## Hard Delegation Rule (STOP-and-delegate)`
-      section with a STOP-and-delegate self-check and a list of
-      forbidden investigative actions.
-- [ ] Has a `tools:` frontmatter list scoped to the minimum needed.
-      `["*"]` is BLOCKING. `execute` without architectural
-      justification is BLOCKING. `edit` granted outside the
-      orchestrator's STM scope is BLOCKING.
-
-Missing either section, or a tools list broader than the architecture
-justifies, is BLOCKING for implementation review.
-
-**Skill Visibility:**
-- The architecture's `## Content Placement` section exists and
-  classifies every piece of extracted content per the skill-visibility
-  rule. Missing classification is a CONCERN; demonstrably wrong
-  classification (e.g. critic-only severity model packaged as a skill)
-  is BLOCKING.
+Apply the **Common quality defects** subsection below. Implementation
+review additionally enforces:
 
 **Eval Artifact Verification (BLOCKING for full builds):**
 
 - [ ] `evals/packs/<pack>/spec.yaml` exists.
 - [ ] `pack:` and `orchestrator:` fields equal the directory name.
 - [ ] Every agent in the generated pack appears under `agents:` in
-      the spec with `allowed_tools` matching the agent's `tools:`
-      front-matter and `write_scope_allow` matching its File Access
-      Boundaries (anchored regex; double-escaped backslashes).
+      the spec with `allowed_tools` consistent with the agent's
+      `tools:` front-matter under the alias map in
+      [`agent-builder/references/eval-authoring.md`](../skills/agent-builder/references/eval-authoring.md)
+      (e.g. front-matter `edit` ↔ spec `write`), and
+      `write_scope_allow` matching its File Access Boundaries
+      (anchored regex; double-escaped backslashes).
 - [ ] `scope_deny` includes `^_eval/` and `^\\.git/`.
 - [ ] At least one case directory exists under
       `evals/packs/<pack>/cases/smoke-*/` with `case.yaml`,
@@ -142,6 +111,86 @@ Missing or incorrect eval artifacts are BLOCKING. Reference
 [`evals/docs/authoring-guide.md`](../../../../evals/docs/authoring-guide.md)
 and the
 [`agent-builder` eval-authoring reference](../skills/agent-builder/references/eval-authoring.md).
+
+#### Common quality defects (apply to both implementation review and improvement-analysis)
+
+The following checks apply across review types. Each rule states its
+default severity; review-type-specific overrides are noted below.
+
+**Negative Scope (Must NOT):**
+- Every agent in the generated pack has a `## Must NOT` section listing
+  forbidden paths, forbidden tools, forbidden sub-agent re-invocations,
+  and role-specific prohibitions. Missing `## Must NOT` is BLOCKING.
+
+**Output Contracts:**
+- Every sub-agent (any agent intended to be invoked via the `task`
+  tool by an orchestrator) has a machine-parseable `## Output Contract`
+  using named fenced sections. Missing or non-fenced output contracts
+  are BLOCKING. Note: `disable-model-invocation: true` does NOT
+  disqualify an agent from being a sub-agent — it only disables
+  auto-selection by the model. Sub-agents intended for delegation-only
+  use SHOULD set `user-invocable: false` (and MAY also set
+  `disable-model-invocation: true`) per current Copilot docs.
+
+**Orchestrator Delegation Discipline (BLOCKING):**
+
+For every agent whose role in the architecture is orchestrator /
+coordinator, verify the materialised `.agent.md`:
+
+- [ ] Contains a `## How to Delegate (Task Tool Mechanics)` section
+      that cross-references the `agent-builder` skill's
+      [task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md)
+      and includes at least one worked `task(...)` example
+      per sub-agent.
+- [ ] Contains a `## Hard Delegation Rule (STOP-and-delegate)`
+      section with a STOP-and-delegate self-check and a list of
+      forbidden investigative actions.
+- [ ] Has a `tools:` frontmatter list scoped to the minimum needed.
+      `["*"]` is BLOCKING. `execute` without architectural
+      justification is BLOCKING. `edit` granted outside the
+      orchestrator's STM scope is BLOCKING.
+
+Missing either section, or a tools list broader than the architecture
+justifies, is BLOCKING.
+
+**Skill Visibility:**
+- The architecture's `## Content Placement` section exists and
+  classifies every piece of extracted content per the skill-visibility
+  rule. Missing classification is a CONCERN; demonstrably wrong
+  classification (e.g. critic-only severity model packaged as a skill)
+  is BLOCKING.
+
+**Cross-Artifact Redundancy** (severity BLOCKING):
+- Rules stated in skills should NOT be duplicated verbatim in agent prompts
+- Agent prompts should reference skills, not restate their content
+- Flag any rule/paragraph that appears in both a skill and an agent prompt as BLOCKING
+
+**Skill Loading Declarations**:
+- Every agent that uses skills must have an explicit "Skills to Load" section
+- Flag missing skill declarations as BLOCKING
+
+**Invocation Guards** (severity CONCERN):
+- Every subagent (any agent intended to be invoked by an orchestrator
+  via the `task` tool) must include a prompt-level invocation guard
+  directing users to the orchestrator. The platform mechanism
+  `user-invocable: false` is recommended in addition to (not in place
+  of) the prose guard.
+- Flag missing guards as CONCERN
+
+**Orchestrator Completeness**:
+- Orchestrator agents must include an iteration protocol for handling user feedback after completion
+- Orchestrator agents must include explicit retry bounds on specialist re-requests
+- Flag missing iteration protocol or retry bounds as CONCERN
+
+**File Access Boundaries**:
+- Every agent must include a "File Access Boundaries" section specifying allowed read/write paths
+- Boundaries must follow the principle of narrowest write scope (e.g., STM only for reviewers)
+- Verify the prompt-level boundary table is present and explicit
+- Flag missing file access boundaries as BLOCKING
+
+**README Accuracy**:
+- Verify all counts, names, and descriptions in README match actual implementation
+- Flag discrepancies as BLOCKING
 
 ### Improvement Analysis Review
 
@@ -163,43 +212,13 @@ Return:
 - Recommendation: proceed to implementation workflow or stop
 - Recommendation on strategy: `incremental` (targeted fixes) or `rebuild` (structural changes)
 
-Additionally, check for these common quality defects:
-
-**Cross-Artifact Redundancy**:
-- Rules stated in skills should NOT be duplicated verbatim in agent prompts
-- Agent prompts should reference skills, not restate their content
-- Flag any rule/paragraph that appears in both a skill and an agent prompt as BLOCKING
-
-**Orchestrator Delegation Discipline**:
-- Generated orchestrators must declare `task` tool mechanics and a
-  STOP-and-delegate rule (see Implementation Review checks above).
-- Flag missing `## How to Delegate (Task Tool Mechanics)` or
-  `## Hard Delegation Rule (STOP-and-delegate)` sections as BLOCKING.
-- Flag overly broad orchestrator `tools:` lists (`["*"]`, unjustified
-  `execute`, or `edit` reaching outside STM) as BLOCKING.
-
-**Skill Loading Declarations**:
-- Every agent that uses skills must have an explicit "Skills to Load" section
-- Flag missing skill declarations as BLOCKING
-
-**Invocation Guards**:
-- Every subagent (any agent invoked by an orchestrator via the `task` tool — these MUST NOT carry `disable-model-invocation: true`, since that flag would hide them from the orchestrator's task registry) must include an invocation guard directing users to the orchestrator
-- Flag missing guards as CONCERN
-
-**Orchestrator Completeness**:
-- Orchestrator agents must include an iteration protocol for handling user feedback after completion
-- Orchestrator agents must include explicit retry bounds on specialist re-requests
-- Flag missing iteration protocol or retry bounds as CONCERN
-
-**File Access Boundaries**:
-- Every agent must include a "File Access Boundaries" section specifying allowed read/write paths
-- Boundaries must follow the principle of narrowest write scope (e.g., STM only for reviewers)
-- Verify the prompt-level boundary table is present and explicit
-- Flag missing file access boundaries as BLOCKING
-
-**README Accuracy**:
-- Verify all counts, names, and descriptions in README match actual implementation
-- Flag discrepancies as BLOCKING
+Apply the **Common quality defects** subsection above. Improvement-analysis
+review additionally validates:
+- Clarity and role boundaries
+- Prompt efficiency and redundancy
+- Orchestration quality and handoff signaling
+- Logic robustness and failure handling
+- Platform-specific quality checks (against current Copilot docs)
 
 ## Severity Model
 

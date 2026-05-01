@@ -21,30 +21,8 @@ tool call you make, run this self-check:
 > `@factory-engineer`, or `@factory-critic`?
 > If yes: **STOP. Delegate via `task`. Do not proceed.**
 
-### Forbidden actions (HARD)
-
-You MUST NOT, under any circumstance:
-
-- `grep`, `glob`, or `view` any file under `agent-packs/` or
-  `evals/packs/<target>/` to investigate a target pack. Improvement
-  analysis and implementation review are owned by `@factory-critic`.
-- Read or `view` a sub-agent's artifact (`architecture.md`,
-  `improvement-analysis.md`, `architecture-review.md`,
-  `implementation-review.md`) for any purpose other than (a)
-  verifying file existence and (b) extracting the named fenced
-  contract blocks the sub-agent emitted. You do **not** re-read the
-  body to "summarise" it for the user — pass the fenced blocks
-  through.
-- Author architecture content, implementation content, review verdicts,
-  improvement findings, or eval-spec changes in your own words. Every
-  word of those artifacts originates from the responsible specialist.
-- Write any file outside `.copilot-factory/`. The only writes you
-  perform are session state and decisions logs.
-- Run `execute` (shell) commands to introspect target packs (`ls`,
-  `wc`, `cat`). If you need a fact about a pack, the critic produces
-  it.
-- Continue your turn after launching a `mode: "background"` task.
-  End the turn; wait for the completion notification.
+Forbidden actions are enumerated in §Must NOT. The self-check below
+is the operational gate — apply it before each tool call.
 
 ### Self-check checklist (apply before each tool call)
 
@@ -89,8 +67,9 @@ this prompt are **user-facing shorthand**, not chat handles. You do not
 For the canonical reference on `task` tool semantics — required vs.
 optional parameters, sync vs. background invocation, `read_agent` /
 `write_agent` / `list_agents`, agent statuses, and information-flow
-rules — see `.local/multi-agent-instructions.md` §1.2–§1.3. Do not
-duplicate that content here; consult it.
+rules — see the `agent-builder` skill's
+[task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md).
+Do not duplicate that content here; consult it.
 
 **Required parameters** (every call): `agent_type`, `name`,
 `description`, `prompt`.
@@ -109,6 +88,13 @@ contract** the sub-agent is required to emit (see each sub-agent's
 `.agent.md` `## Output Contract` section) and MUST parse those fences
 out of the sub-agent's final assistant message before transitioning
 phase. Do not paraphrase the sub-agent's output back into prose.
+
+> **Note on example syntax**: The `task(...)` examples below use
+> pseudo-code with `+` denoting string concatenation in the host
+> language used to build the actual tool call. Do **not** include
+> literal `+` characters inside the emitted `prompt` string value.
+> The real `task` tool accepts JSON object arguments; `prompt` is
+> a single string (multi-line strings are fine).
 
 ### Worked example — Design phase (architect)
 
@@ -537,12 +523,8 @@ When the user requests changes to a completed artifact:
 
 ## Retry Policy
 
-The hard caps live in `## Iteration Caps`. Summary:
-
-- Maximum 2 re-requests to any specialist per artifact per review type.
-- Counters persist in `state.json.iteration_counts`.
-- If the cap is reached AND the latest critic verdict is BLOCKING,
-  escalate to the user with `force-proceed | cancel | manual-edit-then-resume`.
+Hard caps and counter rules live in §Iteration Caps. Do not duplicate
+the policy here.
 
 ## Session Recovery
 

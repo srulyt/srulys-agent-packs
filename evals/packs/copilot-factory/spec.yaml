@@ -41,10 +41,10 @@ agents:
       - "^\\.git/"
     prompt_contract:
       required_sections:
-        - "Context"
+        - "Invocation Contract"
       required_fields:
         - "user-request"
-        - "session-id"
+        - "session"
       forbidden_input: []
       forbidden_downstream: []
     output_contract:
@@ -74,11 +74,10 @@ agents:
       - "^\\.git/"
     prompt_contract:
       required_sections:
-        - "Architecture"
-        - "Output"
+        - "Input Expectations"
+        - "Output Contract"
       required_fields:
-        - "session-id"
-        - "improvement-strategy"
+        - "session"
     output_contract:
       must_contain_sections:
         - "implementation-summary"
@@ -103,9 +102,9 @@ agents:
       - "^\\.git/"
     prompt_contract:
       required_sections:
-        - "Inputs"
+        - "Invocation Contract"
       required_fields:
-        - "session-id"
+        - "session"
         - "iteration-count"
     output_contract:
       must_contain_sections:

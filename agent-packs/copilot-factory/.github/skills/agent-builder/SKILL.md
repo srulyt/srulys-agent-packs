@@ -96,7 +96,10 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 - [ ] `tools` uses correct aliases
 - [ ] Agent prompt under 30,000 characters
 - [ ] Skill under 5,000 words
-- [ ] Descriptions include trigger keywords
+- [ ] User-facing agent descriptions include trigger keywords. Sub-agents
+      (those invoked only via `task`) MAY omit trigger keywords since
+      they are bound by `agent_type` (frontmatter `name`), not by
+      description matching.
 - [ ] Subagents have invocation guard redirecting to orchestrator
 - [ ] Each agent has explicit "Skills to Load" section if it uses skills
   > Note: In Copilot CLI, skills are matched by `description` keywords. The "Skills to Load" section documents intent and aids the model in referencing the right skill. Ensure skill `description` fields contain keywords that match the agent's use case.
@@ -143,21 +146,35 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 ### Implementation Agent
 `tools: ["read", "edit", "search"]`
 
-### Orchestrator Agent
-`tools: ["read", "edit", "search", "execute", "agent"]`
+### Orchestrator Agent (default)
+`tools: ["read", "edit", "search", "agent"]`
+
+Add `execute` only with architectural justification documented in the
+generated pack's architecture document. `tools: ["*"]` is valid
+Copilot CLI syntax (means "all tools") but is a pack-level
+anti-pattern — narrow tools are required for predictable behaviour.
 
 ### Subagent (Agent-Only Invocation)
-Leave `disable-model-invocation` **absent** (or `false`). Subagents are
-invoked via the `task` tool by an orchestrator; setting the flag hides
-them from the calling agent's task registry and makes them unreachable.
-Use a prompt-level invocation guard (see template) to redirect any
-direct user invocation back to the orchestrator.
+For sub-agents that should only be reachable via `task` delegation:
+
+```yaml
+disable-model-invocation: true   # blocks auto-selection by the model
+user-invocable: false            # blocks direct user selection
+```
+
+Both fields are platform-supported (see [Copilot docs](https://docs.github.com/en/copilot/reference/custom-agents-configuration)).
+The agent remains invokable via `task` / `agent_type` — these flags
+do **not** remove it from the calling agent's task registry, contrary
+to a previously documented (incorrect) claim. As defence-in-depth,
+keep the prompt-level invocation guard redirecting any direct user
+invocation back to the orchestrator.
 
 ### Orchestrator (User-Facing)
 `disable-model-invocation: true`
-Set this on the user-facing orchestrator to prevent other models from
-auto-routing to it. Users can still invoke it explicitly with
-`@orchestrator-name`.
+Set this on the user-facing orchestrator to prevent **automatic**
+model-driven routing to it. Users can still invoke it explicitly with
+`@orchestrator-name`. This is the correct setting for an entry-point
+orchestrator that should only run when the user asks for it by name.
 
 ### File Access Boundaries
 

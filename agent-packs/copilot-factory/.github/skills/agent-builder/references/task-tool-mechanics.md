@@ -7,10 +7,6 @@ runtime logic (which sub-agent to invoke at which phase, what to do
 on a BLOCKING verdict, etc.) is **not** here — that lives in each
 orchestrator's own prompt.
 
-The **source of truth** for `task` tool semantics is
-[`.local/multi-agent-instructions.md`](../../../../../../.local/multi-agent-instructions.md)
-§1.2–§1.3. This reference summarises only what an orchestrator prompt
-must include verbatim or by reference.
 
 ## Required orchestrator section
 
@@ -26,14 +22,20 @@ coordinator / orchestrator) must include a section literally titled
    agent_type`.
 2. Required parameters — `agent_type`, `name`, `description`,
    `prompt` — and optional parameters — `mode`, `model`.
-3. A cross-reference to `.local/multi-agent-instructions.md` §1.2–§1.3
-   (do not duplicate that content).
+3. A cross-reference to this reference file
+   (`agent-builder/references/task-tool-mechanics.md`) for canonical
+   `task` semantics. Do not re-derive them in the orchestrator prompt.
 4. One worked `task(...)` example **per sub-agent** the orchestrator
    delegates to. Each example shows: the literal `agent_type` value
    (matching the sub-agent's frontmatter `name`); the prompt structure
    including session/artifact paths the sub-agent will need; and the
    named-fenced output contract blocks the orchestrator will parse
    from the sub-agent's final message.
+
+> **Note on example syntax**: The `task(...)` blocks below use
+> pseudo-code; `+` denotes host-language string concatenation. The
+> real tool accepts JSON-object arguments and `prompt` is a single
+> (possibly multi-line) string.
 
 ## Worked example shape (template)
 
@@ -53,7 +55,7 @@ task(
 Rules:
 
 - Pass file *paths*, not inlined file contents. Sub-agents read on
-  demand (see `.local/multi-agent-instructions.md` §1.4).
+  demand.
 - Always inject the sub-agent's named-fenced output contract into the
   prompt so the model emits it. Parse those fences from the final
   assistant message; do not paraphrase.
@@ -138,8 +140,41 @@ task(
 )
 ```
 
-For full `task` parameter semantics, sync vs. background invocation,
+For full `task` parameter semantics — sync vs. background invocation,
 `read_agent` / `write_agent` / `list_agents`, and information-flow
-rules, consult
-[`.local/multi-agent-instructions.md`](../../../../../../.local/multi-agent-instructions.md)
-§1.2–§1.3.
+rules — see the §"Task tool semantics (canonical)" appendix below.
+
+## Task tool semantics (canonical)
+
+**Required parameters per call**:
+- `agent_type` — sub-agent's frontmatter `name` value, verbatim
+  (spaces and capitalization preserved). Not the kebab filename slug.
+- `name` — short kebab-case identifier for this delegation.
+- `description` — 3-5 word human summary.
+- `prompt` — full instructions for the sub-agent. Pass file paths,
+  not inlined contents.
+
+**Optional parameters**:
+- `mode` — `"sync"` (default) or `"background"`. Sync blocks until
+  the sub-agent completes and returns its final assistant message
+  as the tool result. Background returns immediately; the orchestrator
+  ends its turn and resumes when the completion notification fires.
+- `model` — model override. Do not pass unless the pack's eval spec
+  or a documented user override permits it.
+
+**Information flow**:
+- Sub-agents are stateless launches; they receive only the prompt
+  and any files they read on demand. They do NOT see prior orchestrator
+  turns.
+- The orchestrator parses the sub-agent's named-fenced output blocks
+  from the final assistant message. It does NOT paraphrase the body.
+- For multi-turn sub-agents, the orchestrator can `write_agent` to
+  send a follow-up turn to an idle agent, and `read_agent` to retrieve
+  cumulative or since-turn responses.
+
+**When to use background**:
+- Only when the orchestrator can do meaningful parallel work and
+  a notification will drive its next action.
+- After launching a background task, the orchestrator must end its
+  turn with no further tool calls.
+- Never poll; wait for the completion notification.
