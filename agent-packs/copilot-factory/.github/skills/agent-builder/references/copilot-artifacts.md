@@ -84,22 +84,32 @@ tools: []
 
 ### Subagent / Orchestrator Configuration
 
-For user-facing **orchestrators** that should not be auto-routed to by
-other models (users still invoke them explicitly with `@name`):
+The two invocation flags are **orthogonal** — they gate different
+sides of the invocation graph:
+
+| Flag | Effect | Default |
+|---|---|---|
+| `disable-model-invocation: true` | Removes the agent from the **task-tool registry** exposed to the model — i.e., other agents cannot proxy-call it as a sub-agent. (Renamed from `infer`; controls "custom agent tool visibility" per the Copilot CLI changelog.) | `false` (model CAN invoke) |
+| `user-invocable: false` | Hides the agent from the **`/agents` picker** so users cannot select/switch to it. (Per Copilot CLI changelog: "Hide custom agents with `user-invocable: false` from the `/agents` picker".) | `true` (user CAN invoke) |
+
+**Rule for orchestrators** (user-facing entry points):
 ```yaml
-disable-model-invocation: true
+disable-model-invocation: true   # block model-side proxy invocation
+user-invocable: true             # default; users invoke with @name
 ```
 
-This prevents:
-- Auto-selection based on user prompt by another model
-- Auto-routing from other agents
+**Rule for subagents** (delegation-only, called via `task`):
+```yaml
+user-invocable: false            # hide from /agents picker
+# disable-model-invocation: ABSENT — sub-agents MUST stay in the
+#   orchestrator's task-tool registry. Setting it removes the agent
+#   from the registry and makes it un-invokable.
+```
 
-> **Important — do NOT set this flag on subagents.** Subagents are
-> invoked by an orchestrator via the `task` tool. Setting
-> `disable-model-invocation: true` on a subagent removes it from the
-> calling agent's task-tool registry and makes it un-invokable. Use a
-> prompt-level invocation guard (see template) to redirect accidental
-> direct user invocations back to the orchestrator.
+> Always pair `user-invocable: false` with a prompt-level invocation
+> guard (see template). The picker flag does not block
+> `--agent <name>` non-interactive invocation, so the prose guard is
+> defence-in-depth.
 
 ### Agent Prompt Body
 
@@ -133,6 +143,8 @@ Provide specific, actionable feedback with line references.
 name: Project Manager
 description: "Coordinates development workflows across multiple specialists. Use for complex multi-step tasks requiring planning, implementation, and review."
 tools: ["read", "edit", "search", "execute", "agent"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 You are a project coordinator. For complex tasks:
@@ -155,19 +167,25 @@ Available specialists:
 name: Implementation Specialist
 description: "Implements features based on specifications. Called by Project Manager for coding tasks. Not for direct use."
 tools: ["read", "edit", "search"]
+user-invocable: false
 ---
 
 You implement features based on provided specifications.
 
 ## Invocation Guard
 
-Do not invoke directly. If a user invokes you, respond:
-"Please use @project-manager to coordinate implementation. I am a specialist agent invoked by the orchestrator."
+You are invoked exclusively by `@project-manager` via the `task` tool.
+If invoked by a user OR another agent (default Copilot CLI,
+`general-purpose`, or any role-play proxy):
+respond "Please use @project-manager to coordinate implementation. I
+am a specialist agent invoked by the orchestrator." and take no
+further action.
 
-> Note: Subagents must NOT set `disable-model-invocation: true` — that
-> flag would hide them from the orchestrator's `task`-tool registry.
-> The guard above is the prompt-level mechanism for redirecting direct
-> user invocations.
+> Frontmatter rule: subagents set `user-invocable: false` (hides from
+> `/agents` picker). They MUST NOT set `disable-model-invocation:
+> true` — that would remove them from the orchestrator's task-tool
+> registry. The prose guard above is defence-in-depth and catches
+> `--agent <name>` non-interactive invocations.
 
 ## File Access Boundaries
 
@@ -454,8 +472,9 @@ Complete Copilot CLI pack:
 - [ ] Agent prompts under 30,000 characters
 - [ ] Skills under 5,000 words
 - [ ] Descriptions include trigger keywords
-- [ ] Subagents do **not** set `disable-model-invocation: true` (so the orchestrator can invoke them via `task`); user-facing orchestrators **do** set it
-- [ ] Subagents have invocation guard section
+- [ ] Orchestrators set `disable-model-invocation: true` AND have `user-invocable: true` (default; explicit recommended)
+- [ ] Subagents set `user-invocable: false` and do **NOT** set `disable-model-invocation: true` (so the orchestrator can invoke them via `task`)
+- [ ] Subagents have invocation guard section that refuses BOTH direct user invocation AND non-orchestrator agent proxying
 - [ ] Every agent has "File Access Boundaries" section with read/write path table
 - [ ] Each agent has "Skills to Load" section if it references skills
 - [ ] Agent prompts reference skills rather than duplicating their content

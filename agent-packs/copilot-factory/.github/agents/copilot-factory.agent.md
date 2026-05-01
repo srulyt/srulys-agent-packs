@@ -3,6 +3,7 @@ name: Copilot Factory
 description: "Creates multi-agent systems for GitHub Copilot CLI. Use when asked to build agent packs, design multi-agent workflows, create specialized agents, or set up orchestrated AI systems. Triggers on: factory, agent pack, multi-agent, create agents."
 tools: ["read", "edit", "search", "agent"]
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Copilot Factory Orchestrator

@@ -158,23 +158,49 @@ anti-pattern — narrow tools are required for predictable behaviour.
 For sub-agents that should only be reachable via `task` delegation:
 
 ```yaml
-disable-model-invocation: true   # blocks auto-selection by the model
-user-invocable: false            # blocks direct user selection
+user-invocable: false   # hides from /agents picker; users cannot select
+# disable-model-invocation: ABSENT — sub-agents must remain in the
+#   orchestrator's task-tool registry so it can call them.
 ```
 
-Both fields are platform-supported (see [Copilot docs](https://docs.github.com/en/copilot/reference/custom-agents-configuration)).
-The agent remains invokable via `task` / `agent_type` — these flags
-do **not** remove it from the calling agent's task registry, contrary
-to a previously documented (incorrect) claim. As defence-in-depth,
-keep the prompt-level invocation guard redirecting any direct user
-invocation back to the orchestrator.
+`disable-model-invocation: true` controls **tool visibility to the
+model** (the renamed `infer` flag — see Copilot CLI changelog: "Add
+`infer` property to control custom agent tool visibility"; "Custom
+agents use `disable-model-invocation` instead of `infer` (backward
+compatible)"). Setting it on a subagent removes it from the calling
+orchestrator's `task` / `agent_type` registry, making the subagent
+un-invokable. Do **not** set it on subagents.
+
+`user-invocable: false` is orthogonal: it hides the agent from the
+`/agents` picker (Copilot CLI changelog: "Hide custom agents with
+`user-invocable: false` from the `/agents` picker"). This is the
+correct flag to prevent direct user invocation of a delegation-only
+subagent.
+
+As defence-in-depth, keep the prompt-level invocation guard
+redirecting any direct user invocation back to the orchestrator —
+this also covers `--agent <name>` non-interactive invocation, which
+the picker flag does not block.
 
 ### Orchestrator (User-Facing)
-`disable-model-invocation: true`
-Set this on the user-facing orchestrator to prevent **automatic**
-model-driven routing to it. Users can still invoke it explicitly with
-`@orchestrator-name`. This is the correct setting for an entry-point
-orchestrator that should only run when the user asks for it by name.
+```yaml
+disable-model-invocation: true   # blocks model-side / sub-agent proxy invocation
+user-invocable: true             # default; users invoke explicitly with @name
+```
+
+Setting `disable-model-invocation: true` on the orchestrator prevents
+**other agents** (and the default Copilot CLI agent) from proxy-calling
+it via the `task` tool. Users still invoke it explicitly with
+`@orchestrator-name` from the `/agents` picker. This is the correct
+setting for an entry-point orchestrator that should only run when the
+user asks for it by name.
+
+### Quick reference table
+
+| Role | `disable-model-invocation` | `user-invocable` | Effect |
+|---|---|---|---|
+| Orchestrator | `true` | `true` (default) | User-only entry; cannot be proxy-called by other agents |
+| Sub-agent | absent (default `false`) | `false` | Orchestrator-callable via `task`; hidden from user picker |
 
 ### File Access Boundaries
 
