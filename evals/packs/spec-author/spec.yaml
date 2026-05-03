@@ -1,0 +1,171 @@
+# Pack spec for spec-author.
+#
+# Encodes the contracts the four sub-agents and the orchestrator
+# declare in their .agent.md frontmatter and "File Access Boundaries"
+# sections. Cases under cases/* may override severity/expectations
+# per case.
+#
+# Iteration-1 default: every rubric ships at severity: info (C2).
+# Per-case rubric escalations to warn/error are encoded in
+# case.yaml when that case specifically asserts the dimension.
+
+schema_version: 1
+pack: spec-author
+orchestrator: spec-author
+
+models:
+  spec-author:        claude-sonnet-4.6
+  context-detective:  claude-sonnet-4.6
+  prd-interviewer:    claude-sonnet-4.6
+  prd-drafter:        claude-sonnet-4.6
+  prd-critic:         claude-sonnet-4.6
+  judge:              claude-opus-4.7
+
+loops:
+  max_orchestrator_turns: 40
+
+# Repo-wide write-scope deny list (C3): no eval run may scribble in
+# the eval engine's own scratch space or in .git, regardless of any
+# allow rule below.
+scope_deny:
+  - "^_eval/"
+  - "^\\.git/"
+
+flow:
+  ordering:
+    - [context-detective, prd-drafter]
+    - [prd-drafter, prd-critic]
+  no_unexpected_agents: true
+
+agents:
+  - name: context-detective
+    invocations: { min: 1, max: 2, must_complete: true }
+    allowed_tools: [read, search, write]
+    write_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/artifacts/discovery\\.json$"
+      - "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
+    read_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/.*"
+      - "^\\.github/skills/.*"
+      - "^\\.github/copilot-instructions\\.md$"
+    output_contract:
+      must_contain_sections:
+        - discovery-summary
+        - gaps-json
+        - proposed-structure
+        - sources-json
+        - open-questions-json
+        - ready-for-review
+    no_subagent_reinvocation: true
+
+  - name: prd-interviewer
+    invocations: { min: 0, max: 1 }
+    allowed_tools: [read, write]
+    write_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/artifacts/interview-questions\\.md$"
+    read_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/.*"
+      - "^\\.github/skills/.*"
+    output_contract:
+      must_contain_sections:
+        - interview-md
+        - coverage-json
+        - ready-for-review
+    no_subagent_reinvocation: true
+
+  - name: prd-drafter
+    invocations: { min: 1, max: 3, must_complete: true }
+    allowed_tools: [read, write]
+    write_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      - "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+    read_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/.*"
+      - "^\\.github/skills/.*"
+    output_contract:
+      must_contain_sections:
+        - draft-summary
+        - section-decisions-json
+        - spec-path
+        - ready-for-review
+      # changelog-path and version-bump-json are required in
+      # update-mode cases only; per-case overrides extend
+      # must_contain_sections in cases/smoke-update-existing-spec/case.yaml.
+    no_subagent_reinvocation: true
+
+  - name: prd-critic
+    invocations: { min: 1, max: 3, must_complete: true }
+    allowed_tools: [read, write]
+    write_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+    read_scope_allow:
+      - "^\\.spec-author/sessions/[^/]+/.*"
+      - "^\\.github/skills/.*"
+    output_contract:
+      must_contain_sections:
+        - verdict
+        - scores-json
+        - findings-json
+        - ready-for-review
+    no_subagent_reinvocation: true
+
+  - name: spec-author
+    invocations: { min: 1, max: 1, must_complete: true }
+    allowed_tools: [read, search, write, agent]
+    write_scope_allow:
+      - "^\\.spec-author/.*"
+    read_scope_allow:
+      - "^\\.spec-author/.*"
+      - "^\\.github/skills/.*"
+      - "^\\.github/copilot-instructions\\.md$"
+      - "^agent-packs/spec-author/.*"
+    prompt_contract:
+      required_sections:
+        - "Hard Delegation Rule (STOP-and-delegate)"
+        - "How to Delegate (Task Tool Mechanics)"
+        - "Stop A Protocol"
+        - "Stop B Protocol"
+        - "Mandatory Delegation"
+        - "Must NOT"
+    no_subagent_reinvocation: false
+
+# C2: every rubric ships at severity: info. Per-case overrides in
+# case.yaml escalate specific rubrics to warn / error when that
+# case is specifically asserting the dimension.
+rubrics:
+  - id: mandatory-coverage           # D1
+    apply_to: artifact:specification
+    severity: info
+  - id: gated-appropriateness        # D2
+    apply_to: artifact:specification
+    severity: info
+  - id: naming-consistency           # D3
+    apply_to: artifact:specification
+    severity: info
+  - id: content-quality              # D4
+    apply_to: artifact:specification
+    severity: info
+    threshold: 0.7
+  - id: changelog-completeness       # D5 — update mode only
+    apply_to: artifact:changelog
+    severity: info
+    applies_when: "case.mode_kind == 'update'"
+  - id: id-stability                 # D6 — update mode only
+    apply_to: artifact:specification
+    severity: info
+    applies_when: "case.mode_kind == 'update'"
+  - id: versioning-correctness       # D7 — update mode only
+    apply_to: artifact:specification
+    severity: info
+    applies_when: "case.mode_kind == 'update'"
+  - id: section-stability            # D8 — update mode only
+    apply_to: artifact:specification
+    severity: info
+    applies_when: "case.mode_kind == 'update'"
+  - id: faithfulness-to-input
+    apply_to: artifact:specification
+    severity: info
+  - id: format-compliance
+    apply_to: artifact:specification
+    severity: info
+    threshold: 0.8

@@ -8,6 +8,13 @@ for everything else.
 When the v1 doc and this doc disagree, **this doc wins**. Each v1 doc has a
 pointer to this file at the top.
 
+> **Note 2026-05**: the eval-runner role is now implemented as the
+> `capture-local` CLI subcommand in `eval_engine/harness/run.py`, backed
+> by `eval_engine/harness/local_extractor.py`. Earlier drafts of this
+> doc described an `@eval-runner` Copilot CLI agent; that agent was
+> never built and the historical references have been rewritten. See
+> `02-fixture-schema.md` for the canonical capture mechanism.
+
 The numbering below mirrors the critique's numbering for traceability.
 Severity tags: **BLOCKER** = must hold before implementation, **MAJOR** =
 must hold by end of v1, **MINOR** = should hold but acceptable to defer.
@@ -121,7 +128,8 @@ confirmed writes (from `session_files`) with best-effort read detection
 ]
 ```
 
-Inference rules (applied by `@eval-runner` from arguments):
+Inference rules (applied by `capture-local` when parsing the local
+Copilot CLI process log):
 
 - `view`/`Read`/`get_file_contents` → 1 read at the resolved path.
 - `grep` → 1 read per file in `paths` (or workspace if absent).
@@ -263,11 +271,11 @@ Fixture top-level gains:
 }
 ```
 
-`@eval-runner` records the scope/owner/repo it used, and the harness
-validates that `session.repository` matches `<owner>/<repo>` (rejects with a
-clear error if not). Adds explicit error categories to the `@eval-runner`
-agent contract: `not_found`, `wrong_repository`, `not_indexed`,
-`permission_denied`.
+`capture-local` records the scope/owner/repo it observed in the session
+log, and the harness validates that `session.repository` matches
+`<owner>/<repo>` (rejects with a clear error if not). Error categories
+surfaced as `capture-local` exit-code groups: `not_found`,
+`wrong_repository`, `not_indexed`, `permission_denied`.
 
 ---
 
@@ -540,7 +548,7 @@ Disagreement → `status: error`. Info/warn rubrics are judged once.
 
 ## 21. Fixture canonicalization (adopted)
 
-`@eval-runner` writes fixtures with:
+`capture-local` writes fixtures with:
 
 - Stable key ordering (alphabetical at every depth).
 - `workspace_root` stored as the literal token `${WORKSPACE_ROOT}`; the
@@ -614,9 +622,9 @@ do not add fundamentally new ones. Adjustments:
 - `assertions-l2` → splits prompt-forbidden, adds output-forbidden, adds
   prompt-required-fields.
 - `assertions-l3` → adds L3-reads, L3-workspace-escape.
-- `eval-runner-agent` → must produce `tool_calls[]`, `file_accesses[]`,
-  `background_reads[]`, `session_store{}`, blob externalization, stable
-  ordering.
+- `local_extractor.py` (consumed by the `capture-local` subcommand) →
+  must produce `tool_calls[]`, `file_accesses[]`, `background_reads[]`,
+  `session_store{}`, blob externalization, stable ordering.
 - `eval-judge-agent` → must include the preamble; harness adds
   double-invoke wrapper for blocker rubrics.
 - `harness-workspace-mgmt` → adds run-state manifest, prompt rendering,

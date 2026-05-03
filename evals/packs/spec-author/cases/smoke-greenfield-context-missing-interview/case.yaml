@@ -1,0 +1,67 @@
+id: smoke-greenfield-context-missing-interview
+pack: spec-author
+description: "Smoke test: greenfield creation mode where context-detective finds P0 gaps. Stop B fires (interviewer generates ≤12 questions); scripted user answers all P0s on first reply; orchestrator re-runs detective; Stop A fires; APPROVE; drafter; critic. Asserts: detective runs twice (initial + post-interview), interviewer runs exactly once, interview-questions.md and interview-answers.md both exist, drafter does NOT use [TBD] placeholders for any section the user actually answered."
+
+prompt_file: prompt.md
+
+mode_kind: creation
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-interview-answers
+    reply_file: inputs/interview-answers.md
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: discovery
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/discovery\\.json$"
+      required: true
+    - id: context-pack
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
+      required: true
+    - id: interview-questions
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/interview-questions\\.md$"
+      required: true
+    - id: interview-answers
+      path_pattern: "^\\.spec-author/sessions/[^/]+/context/interview-answers\\.md$"
+      required: true
+    - id: specification
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+      required: false
+      forbidden: true
+  invocations:
+    context-detective: { min: 2, max: 2 }
+    prd-interviewer:   { min: 1, max: 1 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:specification": "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+  rubric_overrides:
+    mandatory-coverage:    { severity: error }
+    faithfulness-to-input: { severity: warn }

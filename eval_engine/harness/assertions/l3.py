@@ -9,12 +9,17 @@ These cover the failure modes that matter most for trust:
 * sub-agent fan-out (calling ``task`` from inside another sub-agent)
 * token budget breaches (warn unless spec promotes to blocker)
 * workspace-escape: any access to the ``_eval/`` canary dir
+* artifact-content regex assertions against named expected artifacts
+* typed JSON state assertions against named expected artifacts
 """
 
 from __future__ import annotations
 
+import json
+import os
+import re
 from collections import defaultdict
-from typing import Iterable
+from typing import Any, Iterable
 
 from .. import models, paths, tools
 from .base import Assertion, AssertionContext, AssertionResult, register
@@ -238,4 +243,249 @@ def _l3_workspace_escape(ctx: AssertionContext) -> Iterable[AssertionResult]:
         )
 
 
-ASSERTIONS = [_l3_writes, _l3_reads, _l3_tools, _l3_no_fanout, _l3_budget, _l3_workspace_escape]
+ASSERTIONS = [_l3_writes, _l3_reads, _l3_tools, _l3_no_fanout, _l3_budget,
+              _l3_workspace_escape]
+
+
+# ---------- Content & state assertions -----------------------------------
+
+
+_MISSING = object()
+
+
+def _dotted_get(data: Any, dotted: str) -> Any:
+    """Resolve a dotted key-path against nested dicts; missing -> _MISSING.
+
+    Path segments traverse mappings only. List indexing is intentionally
+    not supported in the first iteration — keep it simple and explicit.
+    """
+    cur = data
+    for part in dotted.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return _MISSING
+    return cur
+
+
+def _resolve_artifact_path(
+    workspace_root: str,
+    artifact_id: str,
+    expected_artifacts: list[models.ExpectedArtifact],
+) -> str | None:
+    """Return absolute path of the first workspace file matching the
+    artifact's ``path_pattern`` regex, or ``None`` if no match exists.
+
+    Files under the reserved ``_eval/`` canary dir are skipped — that
+    directory is for harness scaffolding, never artifacts.
+    """
+    art = next((a for a in expected_artifacts if a.id == artifact_id), None)
+    if art is None:
+        return None
+    try:
+        pattern = re.compile(art.path_pattern)
+    except re.error:
+        return None
+    if not workspace_root or not os.path.isdir(workspace_root):
+        return None
+    for root, dirs, files in os.walk(workspace_root):
+        # Skip canary subtrees and .git for performance.
+        dirs[:] = [d for d in dirs if d.casefold() not in ("_eval", ".git")]
+        for fname in files:
+            full = os.path.join(root, fname)
+            rel = os.path.relpath(full, workspace_root).replace("\\", "/")
+            if pattern.search(rel):
+                return full
+    return None
+
+
+@register(id="L3-artifact-content", layer="L3", default_severity="blocker",
+          description="Each artifact_content_assertion's regex set holds against the resolved file.")
+def _l3_artifact_content(ctx: AssertionContext) -> Iterable[AssertionResult]:
+    cas = list(ctx.case.expected.artifact_content_assertions)
+    if not cas:
+        yield AssertionResult(
+            assertion_id="L3-artifact-content", layer="", severity="",
+            status="skip",
+            message="case declares no artifact_content_assertions",
+        )
+        return
+    for ca in cas:
+        path = _resolve_artifact_path(
+            ctx.workspace_root, ca.artifact, ctx.case.expected.artifacts,
+        )
+        if path is None or not os.path.isfile(path):
+            yield AssertionResult(
+                assertion_id="L3-artifact-content", layer="", severity="",
+                status="fail",
+                message=(
+                    f"artifact {ca.artifact!r}: no file in workspace matched "
+                    f"the declared path_pattern"
+                ),
+                evidence=[{"kind": "missing_artifact", "artifact": ca.artifact}],
+            )
+            continue
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+        except OSError as exc:
+            yield AssertionResult(
+                assertion_id="L3-artifact-content", layer="", severity="",
+                status="error",
+                message=f"artifact {ca.artifact!r}: read failed: {exc}",
+            )
+            continue
+        violations: list[dict[str, Any]] = []
+        for pat in ca.must_match:
+            try:
+                if not re.search(pat, text):
+                    violations.append({"kind": "must_match_miss", "pattern": pat})
+            except re.error as exc:
+                violations.append({"kind": "regex_error", "pattern": pat,
+                                   "error": str(exc)})
+        if ca.must_contain_any:
+            any_hit = False
+            for pat in ca.must_contain_any:
+                try:
+                    if re.search(pat, text):
+                        any_hit = True
+                        break
+                except re.error as exc:
+                    violations.append({"kind": "regex_error", "pattern": pat,
+                                       "error": str(exc)})
+            if not any_hit:
+                violations.append({"kind": "must_contain_any_miss",
+                                   "patterns": list(ca.must_contain_any)})
+        for pat in ca.must_not_match:
+            try:
+                if re.search(pat, text):
+                    violations.append({"kind": "must_not_match_hit", "pattern": pat})
+            except re.error as exc:
+                violations.append({"kind": "regex_error", "pattern": pat,
+                                   "error": str(exc)})
+        if violations:
+            yield AssertionResult(
+                assertion_id="L3-artifact-content", layer="", severity="",
+                status="fail",
+                message=(
+                    f"artifact {ca.artifact!r}: "
+                    f"{len(violations)} content violation(s)"
+                ),
+                evidence=violations,
+            )
+        else:
+            total = (
+                len(ca.must_match) + len(ca.must_not_match)
+                + (1 if ca.must_contain_any else 0)
+            )
+            yield AssertionResult(
+                assertion_id="L3-artifact-content", layer="", severity="",
+                status="pass",
+                message=(
+                    f"artifact {ca.artifact!r}: all {total} pattern set(s) satisfied"
+                ),
+            )
+
+
+@register(id="L3-state-assertions", layer="L3", default_severity="blocker",
+          description="Each state_assertion's typed matchers hold against the JSON-decoded artifact.")
+def _l3_state_assertions(ctx: AssertionContext) -> Iterable[AssertionResult]:
+    sas = list(ctx.case.expected.state_assertions)
+    if not sas:
+        yield AssertionResult(
+            assertion_id="L3-state-assertions", layer="", severity="",
+            status="skip",
+            message="case declares no state_assertions",
+        )
+        return
+    for sa in sas:
+        path = _resolve_artifact_path(
+            ctx.workspace_root, sa.artifact, ctx.case.expected.artifacts,
+        )
+        if path is None or not os.path.isfile(path):
+            yield AssertionResult(
+                assertion_id="L3-state-assertions", layer="", severity="",
+                status="fail",
+                message=(
+                    f"artifact {sa.artifact!r}: no file in workspace matched "
+                    f"the declared path_pattern"
+                ),
+                evidence=[{"kind": "missing_artifact", "artifact": sa.artifact}],
+            )
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            yield AssertionResult(
+                assertion_id="L3-state-assertions", layer="", severity="",
+                status="fail",
+                message=f"artifact {sa.artifact!r}: not valid JSON: {exc}",
+            )
+            continue
+        violations: list[dict[str, Any]] = []
+        for k, expected in sa.equals.items():
+            actual = _dotted_get(data, k)
+            if actual is _MISSING or actual != expected:
+                violations.append({
+                    "kind": "equals_miss", "key": k,
+                    "expected": expected,
+                    "actual": None if actual is _MISSING else actual,
+                    "missing": actual is _MISSING,
+                })
+        for k, pat in sa.matches.items():
+            actual = _dotted_get(data, k)
+            if actual is _MISSING:
+                violations.append({"kind": "matches_missing", "key": k,
+                                   "pattern": pat})
+                continue
+            try:
+                if not re.search(pat, str(actual)):
+                    violations.append({"kind": "matches_miss", "key": k,
+                                       "pattern": pat, "actual": actual})
+            except re.error as exc:
+                violations.append({"kind": "regex_error", "key": k,
+                                   "pattern": pat, "error": str(exc)})
+        for k in sa.exists:
+            if _dotted_get(data, k) is _MISSING:
+                violations.append({"kind": "exists_missing", "key": k})
+        for k, threshold in sa.gt.items():
+            actual = _dotted_get(data, k)
+            if not isinstance(actual, (int, float)) or isinstance(actual, bool) \
+                    or not (actual > threshold):
+                violations.append({"kind": "gt_miss", "key": k,
+                                   "threshold": threshold,
+                                   "actual": None if actual is _MISSING else actual})
+        for k, threshold in sa.lt.items():
+            actual = _dotted_get(data, k)
+            if not isinstance(actual, (int, float)) or isinstance(actual, bool) \
+                    or not (actual < threshold):
+                violations.append({"kind": "lt_miss", "key": k,
+                                   "threshold": threshold,
+                                   "actual": None if actual is _MISSING else actual})
+        total_matchers = (
+            len(sa.equals) + len(sa.matches) + len(sa.exists)
+            + len(sa.gt) + len(sa.lt)
+        )
+        if violations:
+            yield AssertionResult(
+                assertion_id="L3-state-assertions", layer="", severity="",
+                status="fail",
+                message=(
+                    f"artifact {sa.artifact!r}: "
+                    f"{len(violations)}/{total_matchers} state matcher(s) failed"
+                ),
+                evidence=violations,
+            )
+        else:
+            yield AssertionResult(
+                assertion_id="L3-state-assertions", layer="", severity="",
+                status="pass",
+                message=(
+                    f"artifact {sa.artifact!r}: all {total_matchers} state "
+                    f"matcher(s) satisfied"
+                ),
+            )
+
+
+ASSERTIONS = ASSERTIONS + [_l3_artifact_content, _l3_state_assertions]

@@ -160,6 +160,16 @@ def load_case(path: str | os.PathLike[str]) -> models.CaseSpec:
         invocations=inv_overrides,
         allowed_agent_types=exp_raw.get("allowed_agent_types"),
         rubric_targets={k: v for k, v in (exp_raw.get("rubric_targets", {}) or {}).items()},
+        artifact_content_assertions=_load_artifact_content_assertions(
+            exp_raw.get("artifact_content_assertions", []) or [],
+            artifacts=artifacts,
+            where=f"{where}#expected.artifact_content_assertions",
+        ),
+        state_assertions=_load_state_assertions(
+            exp_raw.get("state_assertions", []) or [],
+            artifacts=artifacts,
+            where=f"{where}#expected.state_assertions",
+        ),
     )
     return models.CaseSpec(
         id=_require(raw, "id", where),
@@ -174,7 +184,161 @@ def load_case(path: str | os.PathLike[str]) -> models.CaseSpec:
         teardown=td,
         expected=expected,
         case_dir=case_dir,
+        scripted_user=_load_scripted_user(
+            raw.get("scripted_user", []) or [],
+            case_dir=case_dir,
+            where=f"{where}#scripted_user",
+        ),
     )
+
+
+# ---------- Case helpers: scripted_user ----------------------------------
+
+
+_SCRIPTED_USER_KEYS = {"on_phase", "reply", "reply_file"}
+
+
+def _load_scripted_user(
+    raw_list: Any,
+    *,
+    case_dir: str,
+    where: str,
+) -> list[models.ScriptedUserStep]:
+    """Parse and validate a case's ``scripted_user:`` block.
+
+    Each entry must be a mapping with ``on_phase`` (string) and
+    exactly one of ``reply`` (string) or ``reply_file`` (path string,
+    resolved relative to the case directory). Unknown keys are
+    rejected so typos surface immediately.
+    """
+    if not raw_list:
+        return []
+    if not isinstance(raw_list, list):
+        raise ConfigError(f"{where}: must be a list")
+    out: list[models.ScriptedUserStep] = []
+    for i, s in enumerate(raw_list):
+        item_where = f"{where}[{i}]"
+        if not isinstance(s, dict):
+            raise ConfigError(f"{item_where}: must be a mapping")
+        unknown = set(s.keys()) - _SCRIPTED_USER_KEYS
+        if unknown:
+            raise ConfigError(f"{item_where}: unknown keys {sorted(unknown)}")
+        on_phase = _require(s, "on_phase", item_where)
+        if not isinstance(on_phase, str) or not on_phase:
+            raise ConfigError(f"{item_where}.on_phase: must be a non-empty string")
+        reply = s.get("reply")
+        reply_file = s.get("reply_file")
+        if (reply is None) == (reply_file is None):
+            raise ConfigError(
+                f"{item_where}: exactly one of 'reply' or 'reply_file' must be set"
+            )
+        if reply is not None and not isinstance(reply, str):
+            raise ConfigError(f"{item_where}.reply: must be a string")
+        if reply_file is not None:
+            if not isinstance(reply_file, str) or not reply_file:
+                raise ConfigError(f"{item_where}.reply_file: must be a non-empty string")
+            resolved = Path(case_dir) / reply_file
+            if not resolved.exists():
+                raise ConfigError(
+                    f"{item_where}.reply_file: file not found at {resolved}"
+                )
+        out.append(
+            models.ScriptedUserStep(
+                on_phase=str(on_phase),
+                reply=str(reply) if reply is not None else None,
+                reply_file=str(reply_file) if reply_file is not None else None,
+            )
+        )
+    return out
+
+
+# ---------- Case helpers: content + state assertions ---------------------
+
+
+_ARTIFACT_CONTENT_KEYS = {"artifact", "must_match", "must_contain_any", "must_not_match"}
+_STATE_ASSERTION_KEYS = {"artifact", "equals", "matches", "exists", "gt", "lt"}
+
+
+def _check_artifact_id(
+    aid: str, artifacts: list[models.ExpectedArtifact], *, where: str
+) -> None:
+    if not any(a.id == aid for a in artifacts):
+        known = sorted(a.id for a in artifacts)
+        raise ConfigError(
+            f"{where}: artifact id {aid!r} does not resolve in expected.artifacts "
+            f"(known ids: {known})"
+        )
+
+
+def _load_artifact_content_assertions(
+    raw_list: list[dict[str, Any]],
+    *,
+    artifacts: list[models.ExpectedArtifact],
+    where: str,
+) -> list[models.ArtifactContentAssertion]:
+    out: list[models.ArtifactContentAssertion] = []
+    for i, c in enumerate(raw_list):
+        item_where = f"{where}[{i}]"
+        if not isinstance(c, dict):
+            raise ConfigError(f"{item_where}: must be a mapping")
+        unknown = set(c.keys()) - _ARTIFACT_CONTENT_KEYS
+        if unknown:
+            raise ConfigError(f"{item_where}: unknown keys {sorted(unknown)}")
+        aid = _require(c, "artifact", item_where)
+        _check_artifact_id(aid, artifacts, where=item_where)
+        out.append(
+            models.ArtifactContentAssertion(
+                artifact=str(aid),
+                must_match=[str(p) for p in (c.get("must_match", []) or [])],
+                must_contain_any=[str(p) for p in (c.get("must_contain_any", []) or [])],
+                must_not_match=[str(p) for p in (c.get("must_not_match", []) or [])],
+            )
+        )
+    return out
+
+
+def _load_state_assertions(
+    raw_list: list[dict[str, Any]],
+    *,
+    artifacts: list[models.ExpectedArtifact],
+    where: str,
+) -> list[models.StateAssertion]:
+    out: list[models.StateAssertion] = []
+    for i, s in enumerate(raw_list):
+        item_where = f"{where}[{i}]"
+        if not isinstance(s, dict):
+            raise ConfigError(f"{item_where}: must be a mapping")
+        unknown = set(s.keys()) - _STATE_ASSERTION_KEYS
+        if unknown:
+            raise ConfigError(f"{item_where}: unknown keys {sorted(unknown)}")
+        aid = _require(s, "artifact", item_where)
+        _check_artifact_id(aid, artifacts, where=item_where)
+        equals = s.get("equals", {}) or {}
+        matches = s.get("matches", {}) or {}
+        exists = s.get("exists", []) or []
+        gt = s.get("gt", {}) or {}
+        lt = s.get("lt", {}) or {}
+        if not isinstance(equals, dict):
+            raise ConfigError(f"{item_where}.equals: must be a mapping")
+        if not isinstance(matches, dict):
+            raise ConfigError(f"{item_where}.matches: must be a mapping")
+        if not isinstance(exists, list):
+            raise ConfigError(f"{item_where}.exists: must be a list")
+        if not isinstance(gt, dict):
+            raise ConfigError(f"{item_where}.gt: must be a mapping")
+        if not isinstance(lt, dict):
+            raise ConfigError(f"{item_where}.lt: must be a mapping")
+        out.append(
+            models.StateAssertion(
+                artifact=str(aid),
+                equals=dict(equals),
+                matches={str(k): str(v) for k, v in matches.items()},
+                exists=[str(x) for x in exists],
+                gt={str(k): float(v) for k, v in gt.items()},
+                lt={str(k): float(v) for k, v in lt.items()},
+            )
+        )
+    return out
 
 
 # ---------- Rubric -------------------------------------------------------

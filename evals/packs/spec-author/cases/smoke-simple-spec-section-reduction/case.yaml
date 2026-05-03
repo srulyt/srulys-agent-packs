@@ -1,0 +1,73 @@
+id: smoke-simple-spec-section-reduction
+pack: spec-author
+description: "Validates Q2 adaptive sectioning. Low-complexity input — a single small UI tweak with no security surface, no data-model change, no rollout risk, no public API, no cross-team scope. The drafter must correctly OMIT most complexity-gated sections and the critic must reward the omission via D2 (gated-appropriateness). Asserts: - section-decisions-json shows omissions for NFRs, Security & Compliance, Data Model, Telemetry & Analytics, API Contract, Rollout Plan, Rollback Strategy, NFR↔FR Traceability; - each omission has a recorded rationale; - the drafter runs exactly once (no revise loop on a clean trim); - critic D2 is escalated to error."
+
+prompt_file: prompt.md
+
+mode_kind: creation
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: discovery
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/discovery\\.json$"
+      required: true
+    - id: context-pack
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
+      required: true
+    - id: specification
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 0 }
+    prd-drafter:       { min: 1, max: 1 }
+    prd-critic:        { min: 1, max: 1 }
+  section_decisions_assertions:
+    - section: "Non-Functional Requirements"
+      status: gated-omitted
+    - section: "Security & Compliance"
+      status: gated-omitted
+    - section: "Data Model"
+      status: gated-omitted
+    - section: "Telemetry & Analytics"
+      status: gated-omitted
+    - section: "API Contract"
+      status: gated-omitted
+    - section: "Rollout Plan"
+      status: gated-omitted
+    - section: "Rollback Strategy"
+      status: gated-omitted
+    - section: "Appendix: NFR↔FR Traceability"
+      status: gated-omitted
+  rubric_targets:
+    "artifact:specification": "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+  rubric_overrides:
+    gated-appropriateness: { severity: error }
+    mandatory-coverage:    { severity: error }
+    naming-consistency:    { severity: warn }

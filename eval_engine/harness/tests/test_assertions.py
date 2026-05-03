@@ -253,5 +253,238 @@ class AssertionTests(unittest.TestCase):
         self.assertEqual(len(bg), 1)
 
 
+class ArtifactContentAndStateAssertionTests(unittest.TestCase):
+    """Exercise L3-artifact-content + L3-state-assertions end-to-end.
+
+    Each test stages a temp workspace, drops a synthetic ``state.json`` and
+    a synthetic ``specification.md`` matching the case's expected-artifact
+    path patterns, builds a CaseSpec via the public loader, runs the two
+    new assertions through the registry, and pins their verdicts.
+    """
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.ws = Path(self._tmp.name)
+        # Stage a session-shaped subtree so the path_pattern regexes match.
+        sess = self.ws / ".session" / "sessions" / "2026-05-01-deadbeef"
+        (sess / "artifacts").mkdir(parents=True)
+        self._state_path = sess / "state.json"
+        self._spec_path = sess / "artifacts" / "specification.md"
+
+    def _write_good(self):
+        import json
+        self._state_path.write_text(
+            json.dumps({
+                "phase": "complete",
+                "stop_a_disambiguation_attempts": 2,
+                "interview_retries": 1,
+                "interview_complete": True,
+                "structure_approved": True,
+                "counters": {"warnings": 3},
+            }, indent=2),
+            encoding="utf-8",
+        )
+        self._spec_path.write_text(
+            "# Specification\n\n## Open Questions\n\n"
+            "[TBD - interview question Q3 unanswered]\n",
+            encoding="utf-8",
+        )
+
+    def _write_tampered_state(self):
+        import json
+        self._state_path.write_text(
+            json.dumps({
+                "phase": "in-progress",            # wrong
+                "stop_a_disambiguation_attempts": 0,  # wrong
+                "interview_retries": 1,
+                "interview_complete": False,        # wrong
+                # structure_approved missing -> equals miss
+                "counters": {"warnings": 3},
+            }, indent=2),
+            encoding="utf-8",
+        )
+        # Spec content unchanged so we isolate state-assertion failures.
+        self._spec_path.write_text(
+            "# Specification\n\n## Open Questions\n\n"
+            "[TBD - interview question Q3 unanswered]\n",
+            encoding="utf-8",
+        )
+
+    def _write_tampered_content(self):
+        import json
+        # State stays valid so we isolate content failures.
+        self._state_path.write_text(
+            json.dumps({
+                "phase": "complete",
+                "stop_a_disambiguation_attempts": 2,
+                "interview_retries": 1,
+                "interview_complete": True,
+                "structure_approved": True,
+                "counters": {"warnings": 3},
+            }),
+            encoding="utf-8",
+        )
+        # Drop the [TBD] placeholder AND the Open Questions section.
+        self._spec_path.write_text(
+            "# Specification\n\n(no placeholders, no open questions)\n",
+            encoding="utf-8",
+        )
+
+    def _make_case_yaml(self) -> str:
+        # Use the same shape as a real case file so the public loader
+        # exercises the wiring we just added in load_case().
+        return """
+id: synthetic-content-state-case
+pack: synth
+description: "synthetic"
+prompt_file: prompt.md
+workspace:
+  isolation: empty
+  steps: []
+expected:
+  artifacts:
+    - id: state
+      path_pattern: "^\\\\.session/sessions/[^/]+/state\\\\.json$"
+    - id: specification
+      path_pattern: "^\\\\.session/sessions/[^/]+/artifacts/specification\\\\.md$"
+  artifact_content_assertions:
+    - artifact: specification
+      must_match:
+        - "\\\\[TBD\\\\s*[-—]\\\\s*interview question\\\\s+\\\\S+\\\\s+unanswered\\\\]"
+        - "(?i)open questions"
+      must_not_match:
+        - "(?i)\\b(some-internal-brand|legacy-codename)\\b"
+  state_assertions:
+    - artifact: state
+      equals:
+        stop_a_disambiguation_attempts: 2
+        interview_retries: 1
+        interview_complete: true
+        structure_approved: true
+      matches:
+        phase: "^complete(-with-warnings)?$"
+      exists:
+        - counters.warnings
+      gt:
+        stop_a_disambiguation_attempts: 1
+"""
+
+    def _build_ctx(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from eval_engine.harness import loaders
+        fd, path_str = tempfile.mkstemp(suffix=".yaml")
+        os.close(fd)
+        case_yaml = Path(path_str)
+        case_yaml.write_text(self._make_case_yaml(), encoding="utf-8")
+        self.addCleanup(lambda: case_yaml.unlink(missing_ok=True))
+        case = loaders.load_case(str(case_yaml))
+        spec = F.make_spec()  # spec doesn't matter for these two assertions
+        fixture = F.make_fixture(invocations=[
+            F.make_invocation("copilot-factory", invocation_id="orch-1"),
+        ])
+        return AssertionContext(spec=spec, case=case, fixture=fixture,
+                                workspace_root=str(self.ws))
+
+    def _run_new_assertions(self, ctx):
+        from eval_engine.harness.assertions import l3
+        results = []
+        for a in l3.ASSERTIONS:
+            if a.id in ("L3-artifact-content", "L3-state-assertions"):
+                results.extend(a.run(ctx))
+        return results
+
+    def test_clean_workspace_passes(self):
+        self._write_good()
+        ctx = self._build_ctx()
+        results = self._run_new_assertions(ctx)
+        ids = {r.assertion_id for r in results}
+        self.assertEqual(ids, {"L3-artifact-content", "L3-state-assertions"})
+        for r in results:
+            self.assertEqual(r.status, "pass",
+                             msg=f"{r.assertion_id}: {r.message}; ev={r.evidence}")
+
+    def test_tampered_state_fails_only_state_assertion(self):
+        self._write_tampered_state()
+        ctx = self._build_ctx()
+        results = self._run_new_assertions(ctx)
+        by_id = {r.assertion_id: r for r in results}
+        self.assertEqual(by_id["L3-artifact-content"].status, "pass")
+        self.assertEqual(by_id["L3-state-assertions"].status, "fail")
+        evidence_kinds = {ev["kind"] for ev in by_id["L3-state-assertions"].evidence}
+        self.assertIn("equals_miss", evidence_kinds)
+        self.assertIn("matches_miss", evidence_kinds)
+
+    def test_tampered_content_fails_only_content_assertion(self):
+        self._write_tampered_content()
+        ctx = self._build_ctx()
+        results = self._run_new_assertions(ctx)
+        by_id = {r.assertion_id: r for r in results}
+        self.assertEqual(by_id["L3-state-assertions"].status, "pass")
+        self.assertEqual(by_id["L3-artifact-content"].status, "fail")
+        kinds = {ev["kind"] for ev in by_id["L3-artifact-content"].evidence}
+        self.assertIn("must_match_miss", kinds)
+
+    def test_loader_rejects_unknown_artifact_id(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from eval_engine.harness import loaders
+        bad = """
+id: synth
+pack: synth
+prompt_file: prompt.md
+workspace:
+  isolation: empty
+  steps: []
+expected:
+  artifacts:
+    - id: state
+      path_pattern: "^state\\\\.json$"
+  state_assertions:
+    - artifact: nonexistent
+      equals: { phase: "complete" }
+"""
+        fd, path_str = tempfile.mkstemp(suffix=".yaml")
+        os.close(fd)
+        p = Path(path_str)
+        p.write_text(bad, encoding="utf-8")
+        self.addCleanup(lambda: p.unlink(missing_ok=True))
+        with self.assertRaises(loaders.ConfigError):
+            loaders.load_case(str(p))
+
+    def test_loader_rejects_unknown_subkey(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from eval_engine.harness import loaders
+        bad = """
+id: synth
+pack: synth
+prompt_file: prompt.md
+workspace:
+  isolation: empty
+  steps: []
+expected:
+  artifacts:
+    - id: state
+      path_pattern: "^state\\\\.json$"
+  state_assertions:
+    - artifact: state
+      bogus_key: 1
+"""
+        fd, path_str = tempfile.mkstemp(suffix=".yaml")
+        os.close(fd)
+        p = Path(path_str)
+        p.write_text(bad, encoding="utf-8")
+        self.addCleanup(lambda: p.unlink(missing_ok=True))
+        with self.assertRaises(loaders.ConfigError):
+            loaders.load_case(str(p))
+
+
 if __name__ == "__main__":
     unittest.main()

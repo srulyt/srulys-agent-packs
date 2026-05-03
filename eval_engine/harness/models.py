@@ -102,11 +102,79 @@ class ExpectedArtifact:
 
 
 @dataclass
+class ArtifactContentAssertion:
+    """Regex content checks against a named artifact's text payload.
+
+    ``artifact`` references an ``ExpectedArtifact.id`` declared in the same
+    case's ``expected.artifacts`` list.
+
+    * ``must_match`` — every pattern must match (``re.search``) at least once.
+    * ``must_contain_any`` — at least ONE pattern must match (disjunction).
+    * ``must_not_match`` — no pattern may match anywhere.
+
+    Patterns are consumed verbatim — no anchor-injection.
+    """
+
+    artifact: str
+    must_match: list[str] = field(default_factory=list)
+    must_contain_any: list[str] = field(default_factory=list)
+    must_not_match: list[str] = field(default_factory=list)
+
+
+@dataclass
+class StateAssertion:
+    """Typed JSON-state checks against an artifact whose file is JSON.
+
+    ``artifact`` references an ``ExpectedArtifact.id``. Each matcher is a
+    mapping from a dotted JSON key-path (e.g. ``phase`` or
+    ``counters.retries``) to an expected value:
+
+    * ``equals``  — Python ``==`` against the JSON-decoded value.
+    * ``matches`` — ``re.search`` of the (string-coerced) value.
+    * ``exists``  — list of key-paths that must resolve.
+    * ``gt`` / ``lt`` — numeric comparisons.
+
+    A missing key counts as a failure for every matcher that references it
+    (except ``exists`` itself, which expresses the missingness check).
+    """
+
+    artifact: str
+    equals: dict[str, Any] = field(default_factory=dict)
+    matches: dict[str, str] = field(default_factory=dict)
+    exists: list[str] = field(default_factory=list)
+    gt: dict[str, float] = field(default_factory=dict)
+    lt: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
 class CaseExpected:
     artifacts: list[ExpectedArtifact] = field(default_factory=list)
     invocations: dict[str, InvocationExpectation] = field(default_factory=dict)
     allowed_agent_types: list[str] | None = None  # None = use spec
     rubric_targets: dict[str, str] = field(default_factory=dict)
+    artifact_content_assertions: list[ArtifactContentAssertion] = field(default_factory=list)
+    state_assertions: list[StateAssertion] = field(default_factory=list)
+
+
+@dataclass
+class ScriptedUserStep:
+    """One scripted reply queued against the SUT orchestrator.
+
+    The harness's scripted_user driver iterates the case's
+    ``scripted_user:`` list in order. When it observes the SUT
+    transition into a phase whose name matches the next pending step's
+    ``on_phase``, it writes the resolved reply text to the SUT's stdin
+    and pops the step. Each step must specify exactly one of ``reply``
+    (literal string) or ``reply_file`` (a path resolved relative to
+    the case directory).
+    """
+
+    on_phase: str
+    reply: str | None = None
+    reply_file: str | None = None  # case-relative path
+
+    def has_inline_reply(self) -> bool:
+        return self.reply is not None
 
 
 @dataclass
@@ -123,6 +191,7 @@ class CaseSpec:
     teardown: TeardownPolicy
     expected: CaseExpected
     case_dir: str = ""  # absolute path to the corpus case dir; filled by loader
+    scripted_user: list[ScriptedUserStep] = field(default_factory=list)
 
 
 # ---------- Rubric -------------------------------------------------------

@@ -147,6 +147,74 @@ All steps run with the workspace as cwd unless noted.
 | `files_created_under` | list[regex] | yes | Used by L3-files together with the pack-spec `agents[*].file_scope_allow`. The case-level list is "files we *expect* to see"; the pack-level allow list is "files agents *may* touch". A run passes when every touched file matches at least one allow regex AND every `files_created_under` regex has at least one match (catches "agents skipped doing the work"). |
 | `rubrics` | list[string] | no | Subset of pack-spec rubric ids. If omitted, all rubrics declared in the pack spec apply. |
 | `golden` | list of `{rubric, ref}` | conditional | Required when any selected rubric has `inputs_required` containing `golden_ref`. `ref` is case-relative under `golden/`. |
+| `artifact_content_assertions` | list[object] | no | Regex content checks against named artifacts. Consumed by `L3-artifact-content`. See below. |
+| `state_assertions` | list[object] | no | Typed JSON-state checks against named artifacts whose file is JSON. Consumed by `L3-state-assertions`. See below. |
+
+#### `expected.artifact_content_assertions[]`
+
+Each entry resolves a workspace file via the matching `expected.artifacts[].path_pattern`, reads it as UTF-8 text, and runs the regex sets:
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `artifact` | string | yes | Must match an `expected.artifacts[].id`. |
+| `must_match` | list[regex] | no | Each pattern must match (`re.search`) at least once. |
+| `must_contain_any` | list[regex] | no | At least ONE pattern must match (disjunction). The full list is reported as a single violation when none hit. |
+| `must_not_match` | list[regex] | no | No pattern may match anywhere. |
+
+Example:
+
+```yaml
+expected:
+  artifact_content_assertions:
+    - artifact: specification
+      must_match:
+        - "\\[TBD\\s*[-—]\\s*interview question\\s+\\S+\\s+unanswered\\]"
+        - "(?i)open questions"
+      must_not_match:
+        - "(?i)\\b(some-internal-brand|legacy-codename)\\b"   # genericness guard
+```
+
+Failure modes (each yields a single `L3-artifact-content` failure verdict):
+unresolved artifact id (rejected at load time), no workspace file matches
+the artifact's `path_pattern`, file unreadable, any pattern miss/hit.
+Unknown sub-keys are rejected at load time.
+
+#### `expected.state_assertions[]`
+
+Each entry resolves the named artifact, `json.load`s it, and applies typed
+matchers against dotted JSON key-paths. Path segments traverse mappings
+only — list indexing is not supported in this iteration:
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `artifact` | string | yes | Must match an `expected.artifacts[].id`. The file MUST be valid JSON. |
+| `equals` | map[dotted-key, value] | no | Python `==` against the JSON-decoded value (numbers, strings, booleans, null). |
+| `matches` | map[dotted-key, regex] | no | `re.search` of the (string-coerced) value. |
+| `exists` | list[dotted-key] | no | Each key must resolve to a present value. |
+| `gt` | map[dotted-key, number] | no | Numeric strict greater-than. Booleans are NOT treated as numeric. |
+| `lt` | map[dotted-key, number] | no | Numeric strict less-than. Booleans are NOT treated as numeric. |
+
+Example (lifted from `evals/packs/spec-author/cases/smoke-stop-a-disambiguation/`):
+
+```yaml
+expected:
+  state_assertions:
+    - artifact: state
+      equals:
+        stop_a_disambiguation_attempts: 2
+        interview_retries: 1
+        interview_complete: true
+        structure_approved: true
+      matches:
+        phase: "^complete(-with-warnings)?$"
+```
+
+Failure modes (each yields a single `L3-state-assertions` failure verdict
+per artifact entry, with per-matcher evidence): unresolved artifact id
+(rejected at load time), no workspace file matches the artifact's
+`path_pattern`, file is not valid JSON, any matcher unsatisfied (missing
+key, wrong value, regex miss, threshold breach). Unknown sub-keys are
+rejected at load time.
 
 ## The reserved `_eval/` directory
 

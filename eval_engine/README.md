@@ -21,10 +21,14 @@ eval_engine/
 └── queries/       reusable session_store_sql templates
 ```
 
-The two custom Copilot CLI agents that participate in evaluations
-(`@eval-runner` and `@eval-judge`) ship as a regular agent pack under
+The custom Copilot CLI agent that participates in evaluations
+(`@eval-judge`) ships as a regular agent pack under
 [`../agent-packs/eval-framework/`](../agent-packs/eval-framework/).
 That directory is also part of "the engine" for installation purposes.
+Fixture capture is performed by the `capture-local` subcommand of
+`eval_engine/harness/run.py` (which lifts evidence out of the local
+Copilot CLI process log); earlier drafts described an `@eval-runner`
+agent that was never built.
 
 ## Installation in a new repo
 

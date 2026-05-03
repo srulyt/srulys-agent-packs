@@ -116,8 +116,21 @@ def cmd_plan(args: argparse.Namespace) -> int:
         f"of:\n     {instructions_file}"
     )
     print("  3. capture the session id (timestamp+suffix shown by the CLI)")
-    print("  4. run @eval-runner with that session id; save the fixture to:")
-    print(f"     evals/packs/{spec.pack}/fixtures/{case.id}/<session_id>.json")
+    print(
+        "  4. extract the fixture from the local CLI process log:\n"
+        f"     python -m eval_engine.harness.run capture-local "
+        f"--pack {spec.pack} --case {case.id} --run-id {run_id}"
+    )
+    print(
+        "     (Add --log <path> if auto-discovery in ~/.copilot/logs/ "
+        "fails.)"
+    )
+    print(
+        "     For cases that declare scripted_user replies, drive the SUT "
+        "hands-off via:\n"
+        f"     python -m eval_engine.harness.run drive "
+        f"--spec {args.spec} --case {args.case} --run-id {run_id}"
+    )
     print(
         "  5. then run: python -m eval_engine.harness.run judge-plan "
         f"--run-id {run_id} --spec {args.spec} --case {args.case} "
@@ -412,7 +425,85 @@ def cmd_capture_local(args: argparse.Namespace) -> int:
     return 0
 
 
-# ---------- argparse -----------------------------------------------------
+# ---------- drive --------------------------------------------------------
+
+
+def cmd_drive(args: argparse.Namespace) -> int:
+    """Drive a SUT Copilot CLI run hands-off using the case's scripted_user schedule.
+
+    This is the production entry point for the scripted-user driver.
+    The case under test must declare a non-empty ``scripted_user:``
+    list; the driver feeds those replies to the SUT at each
+    ``awaiting-*`` park. After the SUT exits cleanly, the operator
+    runs ``capture-local`` to lift the fixture out of the local CLI
+    process log.
+    """
+    from . import scripted_user as _scripted_user
+
+    eval_root = _eval_root(args)
+    spec = loaders.load_spec(args.spec)
+    case = loaders.load_case(args.case)
+    if not case.scripted_user:
+        print(
+            f"error: case {case.id} has no scripted_user schedule; "
+            "drive requires at least one entry.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.workspace:
+        workspace_path = Path(args.workspace).resolve()
+    else:
+        workspace_path = (
+            paths_layout.workspaces_dir(eval_root, spec.pack)
+            / case.id
+            / args.run_id
+        )
+    if not workspace_path.exists():
+        print(
+            f"error: workspace path does not exist: {workspace_path}\n"
+            "Run `python -m eval_engine.harness.run plan` first.",
+            file=sys.stderr,
+        )
+        return 2
+
+    prompt_path = Path(args.prompt_file) if args.prompt_file else (
+        workspace_path / "_runstate.prompt.md"
+    )
+    if not prompt_path.exists():
+        print(f"error: prompt file not found: {prompt_path}", file=sys.stderr)
+        return 2
+    initial_prompt = prompt_path.read_text(encoding="utf-8")
+
+    result, rc = _scripted_user.run_with_subprocess(
+        case=case,
+        workspace_root=workspace_path,
+        initial_prompt=initial_prompt,
+        copilot_bin=args.copilot_bin,
+        pack=spec.pack,
+        run_id=args.run_id,
+        state_glob=args.state_glob,
+        poll_interval=args.poll_interval,
+        deadline_seconds=args.deadline,
+        submit_sequence=args.submit_sequence,
+        use_pty=args.use_pty,
+    )
+    print(f"driver status: {result.status}")
+    print(f"served replies: {len(result.served)}")
+    for s in result.served:
+        print(f"  - {s.on_phase}: {s.reply_preview!r}")
+    if result.unserved:
+        print(f"unserved (still queued): {len(result.unserved)}")
+        for u in result.unserved:
+            print(f"  - {u.on_phase}")
+    if result.message:
+        print(f"note: {result.message}")
+    print(f"final phase: {result.final_phase}")
+    print(f"copilot exit: {rc}")
+    return 0 if result.status in {"terminal", "exhausted"} and rc == 0 else 1
+
+
+
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -494,6 +585,42 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--out", default=None,
                     help="Output fixture path (default: evals/packs/<pack>/fixtures/<case>/<session_id>.json)")
     cp.set_defaults(func=cmd_capture_local)
+
+    dr = sub.add_parser(
+        "drive", parents=[common],
+        help="Drive a SUT Copilot CLI run hands-off using a case's scripted_user schedule",
+    )
+    dr.add_argument("--spec", required=True)
+    dr.add_argument("--case", required=True)
+    dr.add_argument("--run-id", required=True, help="Run id (matches `copilot --name`)")
+    dr.add_argument("--workspace", default=None,
+                    help="Workspace path (default: <evals>/packs/<pack>/workspaces/<case>/<run-id>/)")
+    dr.add_argument("--prompt-file", default=None,
+                    help="Initial prompt path (default: <workspace>/_runstate.prompt.md)")
+    dr.add_argument("--copilot-bin", default="copilot",
+                    help="Copilot CLI executable (default: copilot)")
+    dr.add_argument("--state-glob", default=".spec-author/sessions/*/state.json",
+                    help="Glob pattern for the SUT's state.json under the workspace")
+    dr.add_argument("--poll-interval", type=float, default=0.5,
+                    help="Seconds between state polls (default: 0.5)")
+    dr.add_argument("--deadline", type=float, default=600.0,
+                    help="Hard upper bound on the run in seconds (default: 600)")
+    dr.add_argument("--submit-sequence", default="\n",
+                    help=(
+                        "Wire-protocol terminator written after each scripted "
+                        "reply to trigger the SUT's submit gesture. Defaults "
+                        "to a single newline; set to '\\n\\n' (or another "
+                        "sequence) once diagnostics establish the actual "
+                        "Copilot CLI gesture."
+                    ))
+    dr.add_argument("--use-pty", action="store_true",
+                    help=(
+                        "Allocate a real PTY for the SUT instead of piping "
+                        "stdin (Unix only; raises NotImplementedError on "
+                        "Windows). Use when isatty()-gated interactive REPL "
+                        "behaviour is suspected."
+                    ))
+    dr.set_defaults(func=cmd_drive)
 
     args = p.parse_args(argv)
     return args.func(args)

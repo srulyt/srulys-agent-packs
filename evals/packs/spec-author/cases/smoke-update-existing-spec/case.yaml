@@ -1,0 +1,81 @@
+id: smoke-update-existing-spec
+pack: spec-author
+description: "Validates Q1 end-to-end: update mode. The user supplies a path to an existing spec, asks the agent to add an FR for keyboard shortcuts and deprecate FR-07, and bump the version. Asserts: - drafter loads prd-evolution and emits both specification.md and CHANGELOG.md; - version-bump-json present in output contract; - revised spec contains the Updates: header, the [Deprecated] marker on FR-07, and a \"Changes since v1\" preamble; - CHANGELOG.md uses Keep-a-Changelog headings; - critic dimensions D5–D8 apply (mode_kind == update)."
+
+prompt_file: prompt.md
+
+mode_kind: update
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: discovery
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/discovery\\.json$"
+      required: true
+    - id: context-pack
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
+      required: true
+    - id: specification
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 1 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  agent_output_overrides:
+    prd-drafter:
+      must_contain_sections:
+        - draft-summary
+        - section-decisions-json
+        - spec-path
+        - changelog-path
+        - version-bump-json
+        - ready-for-review
+  artifact_content_assertions:
+    - artifact: specification
+      must_match:
+        - "Updates:\\s*v1\\.0"
+        - "FR-07.*\\[Deprecated"
+        - "Changes since v1"
+    - artifact: changelog
+      must_match:
+        - "###\\s*Added"
+        - "###\\s*Deprecated"
+  rubric_targets:
+    "artifact:specification": "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+    "artifact:changelog":     "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+  rubric_overrides:
+    mandatory-coverage:      { severity: error }
+    id-stability:            { severity: error }
+    versioning-correctness:  { severity: error }
+    changelog-completeness:  { severity: warn }
+    section-stability:       { severity: warn }

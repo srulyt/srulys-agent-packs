@@ -10,6 +10,25 @@
 pack: copilot-factory
 orchestrator: copilot-factory
 
+# models: per-role model pinning.
+#
+# Convention (list-as-matrix):
+#   - A scalar value pins that role to a single model (current behaviour
+#     and the only form the loader accepts today). Example:
+#         judge: claude-opus-4.7
+#   - A list value declares a matrix axis: the harness Cartesian-products
+#     all list-valued roles and emits one runs.jsonl line per combination,
+#     so cross-model agreement / pack robustness can be measured. Example
+#     (NOT YET LOADER-ENABLED):
+#         judge: [claude-opus-4.7, gpt-5.5]
+#
+# Status: matrix expansion is gated on infra work tracked separately
+# (loader + run.py changes). Until that lands, every value below MUST
+# remain a scalar — list values will be rejected by the loader. See
+# .copilot-factory/sessions/2026-05-03-e5f6a7b8/artifacts/infra-handoff.md
+# for the runbook to enable matrix expansion. The run-record's `models`
+# snapshot field (eval_engine/docs/03-rubric-and-results-schema.md) is
+# how matrix points are grouped post-hoc.
 models:
   copilot-factory: claude-sonnet-4.6
   factory-architect: claude-sonnet-4.6
