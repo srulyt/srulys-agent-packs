@@ -1,0 +1,25 @@
+{
+  "title": "OQ5 Render-Skipped-on-Styled Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_path": "output.pptx",
+  "slides": [
+    {"index": 1, "type": "title", "title": "OQ5 Regression",
+     "subtitle": "Styled deck + render skipped",
+     "notes": "Setup."},
+    {"index": 2, "type": "section-divider",
+     "style": "styled", "style_recipe": "hero_full_bleed",
+     "title": "Section One",
+     "notes": "F5 styled slide — makes styled-count > 0."},
+    {"index": 3, "type": "content", "title": "Why this matters",
+     "bullets": ["A styled deck cannot ship pass_unverified",
+                 "Render must be verified when style != simple"],
+     "notes": "Body."},
+    {"index": 4, "type": "key-message",
+     "title": "Render-unverified is BLOCKING here",
+     "notes": "The critic MUST flag this."},
+    {"index": 5, "type": "question",
+     "title": "Did the critic block?",
+     "notes": "Final."}
+  ]
+}

@@ -208,6 +208,31 @@ calls and wait for the completion notification before calling
   send a follow-up turn to an idle agent, and `read_agent` to retrieve
   cumulative or since-turn responses.
 
+  **Conditional availability**: `write_agent`, `read_agent`, and
+  `list_agents` are only registered in the orchestrator's runtime
+  function list when at least one sub-agent is in `status: idle` —
+  i.e., a `mode: "background"` task that has completed and is waiting
+  for a follow-up turn. Sync sub-agents complete and exit; they do
+  NOT enter `idle`. In a strictly sync pipeline (which the factory
+  uses for every gating phase) these tools will not be callable; the
+  orchestrator must rely exclusively on fresh `task` calls for
+  iteration.
+
+  **Iteration mechanism in sync mode**: re-launch via a fresh `task`
+  call. Use an iteration-suffixed `name` (e.g. `<original>-fix1`,
+  `<original>-fix2`) and reference the prior `agent_id` in the prompt
+  body for context (sub-agents are stateless launches and do not see
+  prior turns). This is the ONLY iteration mechanism available when
+  no background agent is idle.
+
+  **Misleading runtime footer**: sub-agent results may include a
+  trailing string like *"(agent_id: <slug> — use write_agent to send
+  follow-up messages)"* even for sync agents. This footer is appended
+  by the CLI runtime, not by the sub-agent prompt, and is misleading
+  when `write_agent` is not registered. The orchestrator must ignore
+  that footer and verify tool availability before attempting a
+  follow-up turn — when in doubt, re-launch via fresh `task`.
+
 **When to use background**:
 - Only when the orchestrator can do meaningful parallel work and
   a notification will drive its next action.

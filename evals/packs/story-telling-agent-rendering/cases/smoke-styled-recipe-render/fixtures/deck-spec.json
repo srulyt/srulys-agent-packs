@@ -1,0 +1,23 @@
+{
+  "title": "F5 Styled Recipe Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_path": "output.pptx",
+  "slides": [
+    {"index": 1, "type": "title", "title": "F5 Styled Recipe",
+     "subtitle": "Eval harness", "notes": "Default simple title."},
+    {"index": 2, "type": "metric-spotlight",
+     "style": "styled", "style_recipe": "metric_xxl",
+     "metric": "73%", "metric_label": "of users prefer the new flow",
+     "title": "73%",
+     "notes": "F5 regression target — must dispatch to _styled_metric_xxl."},
+    {"index": 3, "type": "content", "title": "Why it matters",
+     "bullets": ["Shorter task time", "Higher confidence", "Lower error rate"],
+     "notes": "Simple content slide."},
+    {"index": 4, "type": "question", "title": "Questions?",
+     "notes": "Closer."},
+    {"index": 5, "type": "section-divider", "title": "Thank you",
+     "style": "simple",
+     "notes": "Simple-only closer to keep mixed style coverage."}
+  ]
+}

@@ -36,8 +36,10 @@ If LibreOffice is unavailable, the script tries (in order)
 `libreoffice` (alias), `unoconv`, then a pure-Python fallback via
 `pdf2image` (which itself needs `poppler`). If none succeed, the
 script writes `manifest.json` with `"render_engine": null` and
-`"slides": []`; structural assertions still run, and the critic surfaces
-`render_skipped: true` as a non-blocking finding.
+`"slides": []`; structural assertions still run. Per OQ5,
+`render_skipped: true` is BLOCKING for any deck containing one or
+more `styled` slides; for simple-only decks the critic downgrades
+the verdict to `pass_unverified` rather than blocking.
 
 ## Files in This Skill
 
@@ -95,3 +97,21 @@ lives in [references/visual-rubric.md](references/visual-rubric.md).
 - [Render Pipeline](references/render-pipeline.md)
 - [Visual Rubric](references/visual-rubric.md)
 - [render_pptx.py](scripts/render_pptx.py)
+
+## Rendering Subsystem Rebuild (2026-05-04)
+
+scripts/render_pptx.py was rewritten in session
+2026-05-04-7d3f9a2b:
+
+- **Permitted render engines are LGPL/permissive only** (per OQ1, decisions.md): the engine list
+  is strictly OSS-permissive (LGPL): `soffice` →
+  `libreoffice` → `unoconv`.
+- **render_unverified flag** in manifest.json. Defaults to
+  `true`; flipped to `false` only when the full pipeline
+  succeeds. The `@deck-critic` consults this flag plus the
+  deck's `styled_count` to choose between the
+  `render_unverified` BLOCKING verdict (any styled slide) and
+  the `pass_unverified` shippable verdict (simple-only deck —
+  per OQ5).
+- **engines_attempted / engines_available** lists for
+  visibility into which engines the runner saw on PATH.

@@ -1,989 +1,799 @@
 #!/usr/bin/env python3
-"""
-generate_deck.py — Reference script for professional PowerPoint deck generation.
+"""generate_deck.py — Token-driven deck builder consumed by @deck-builder.
 
-This is a TEMPLATE script used by the deck-builder agent as a starting point.
-The agent customizes this script per deck — embedding the specific slide content,
-adjusting layouts, and adding charts/tables as needed.
-
-Design: Dark/light rhythm with accent shapes, large typography, blank layouts only.
+Pipeline (drives off `deck-spec.json`):
+  1. Load `deck-spec.json` (validate against schema is the agent's job).
+  2. Resolve the design system: prefer `deck-spec.design_system_tokens`
+     (F9 — token-driven constants); fall back to a sensible default
+     palette when the spec doesn't supply tokens.
+  3. Pre-render every `slide.visual_assets[]` entry by subprocess'ing
+     the matching `render-visual` script (chart / composite / diagram).
+     Failures of render-visual diagrams (graceful-degrade per OQ2)
+     produce `<out>.skipped.json` sentinels — we treat these as
+     "asset unavailable; build slide without it" and surface the
+     skip in the build log.
+  4. Dispatch each slide on `slide.style`:
+       - "simple" (default — C5 backwards-compat) → simple builder
+       - "styled" → styled builder selected by `slide.style_recipe`
+     Unknown / inconsistent style or recipe → reject with
+     `bad_spec.<reason>` and exit 2.
+  5. Write `output.pptx`. Print SUCCESS / ERROR.
 
 Usage:
-    python generate_deck.py [--template path/to/template.pptx] [--output path/to/output.pptx]
+  python generate_deck.py --spec deck-spec.json --out output.pptx
+                          [--template path/to/template.pptx]
+                          [--build-log build-log.txt]
 
-Dependencies:
-    pip install python-pptx
+Backwards-compat (C5):
+  - Slides without a `style` key are treated as `style: "simple"`.
+  - Decks without `design_system_tokens` use the fallback palette.
+  - Existing simple types (title, key-message, content, ...)
+    continue to work unchanged.
 """
 
-import sys
-import os
+from __future__ import annotations
+
 import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 # --- Dependency check ---
 try:
     from pptx import Presentation
     from pptx.util import Inches, Pt, Emu
     from pptx.dml.color import RGBColor
-    from pptx.enum.text import PP_ALIGN
+    from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
     from pptx.enum.shapes import MSO_SHAPE
 except ImportError:
     print("python-pptx not found. Installing...")
-    import subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "python-pptx"])
     from pptx import Presentation
     from pptx.util import Inches, Pt, Emu
     from pptx.dml.color import RGBColor
-    from pptx.enum.text import PP_ALIGN
+    from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
     from pptx.enum.shapes import MSO_SHAPE
 
 
-# --- Design Constants (Professional Dark/Light Theme) ---
+# --- 16:9 EMU constants (architecture §4.1) ---
+SLIDE_W_EMU = 12192000   # 13.333"
+SLIDE_H_EMU = 6858000    # 7.5"
+SLIDE_HALF_EMU = 6096000
 
-# Primary palette
-NAVY = RGBColor(0x0F, 0x1B, 0x2D)           # Deep navy — dark slide backgrounds
-ACCENT_BLUE = RGBColor(0x3B, 0x82, 0xF6)    # Vivid blue — accent bars, emphasis
-ACCENT_TEAL = RGBColor(0x06, 0xB6, 0xD4)    # Teal — secondary accent, subtitles
-WARM_GOLD = RGBColor(0xF5, 0x9E, 0x0B)      # Gold — key metrics, callout numbers
+# --- Default fallback palette (C5: when deck-spec lacks tokens) ---
+FALLBACK_TOKENS: dict = {
+    "name": "fallback",
+    "palette": {
+        "background_dark":   "#0F1B2D",
+        "background_light":  "#F4F5F7",
+        "background_accent": "#3B82F6",
+        "primary_accent":    "#3B82F6",
+        "secondary_accent":  "#06B6D4",
+        "highlight":         "#F59E0B",
+        "surface_elevated":  "#FFFFFF",
+        "text_on_dark":      "#FFFFFF",
+        "text_on_light":     "#1A1A2E",
+        "text_secondary":    "#6B7080",
+        "text_secondary_on_dark":  "#6B7080",
+        "text_secondary_on_light": "#6B7080",
+    },
+    "typography": {
+        "font_title": "Calibri Light",
+        "font_body":  "Calibri",
+        "size_hero":     54,
+        "size_section":  48,
+        "size_title":    40,
+        "size_subtitle": 24,
+        "size_body":     22,
+        "size_caption":  14,
+        "size_metric_xxl": 200,
+        "size_quote_glyph": 240,
+    },
+}
 
-# Neutral palette
-WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-OFF_WHITE = RGBColor(0xF4, 0xF5, 0xF7)      # Light background for content slides
-LIGHT_GRAY = RGBColor(0xE2, 0xE4, 0xE8)     # Borders, dividers, metric labels
-TEXT_DARK = RGBColor(0x1A, 0x1A, 0x2E)       # Body text on light backgrounds
-TEXT_MID = RGBColor(0x6B, 0x70, 0x80)        # Captions, secondary text
-TEXT_LIGHT = RGBColor(0xA0, 0xA4, 0xB0)      # Fine print on light backgrounds
-
-# Typography scale
-TITLE_SIZE_HERO = Pt(54)    # Title slide headline
-TITLE_SIZE_SECTION = Pt(48) # Section headers
-TITLE_SIZE = Pt(40)         # Content slide titles
-SUBTITLE_SIZE = Pt(24)      # Subtitles, taglines
-BODY_SIZE = Pt(22)          # Bullet points
-BODY_SMALL = Pt(18)         # Secondary body text
-CAPTION_SIZE = Pt(14)       # Source attributions, fine print
-
-# Fonts
-FONT_TITLE = "Calibri Light"  # Light weight for large display text
-FONT_BODY = "Calibri"         # Regular weight for readability
-
-# Layout
-MARGIN = Inches(0.75)
-SLIDE_WIDTH = Inches(13.333)
-SLIDE_HEIGHT = Inches(7.5)
-CONTENT_WIDTH = Inches(11.833)
-
-
-# --- Presentation Setup ---
-
-def create_presentation(template_path=None):
-    """Create a Presentation — from template or with default professional styling."""
-    if template_path and os.path.exists(template_path):
-        try:
-            prs = Presentation(template_path)
-            print(f"Loaded template: {template_path}")
-            return prs, True
-        except Exception as e:
-            print(f"Warning: Template failed to load ({e}). Using default mode.")
-
-    prs = Presentation()
-    prs.slide_width = SLIDE_WIDTH
-    prs.slide_height = SLIDE_HEIGHT
-    return prs, False
+# --- Canonical recipe sets (architecture §5) ---
+STYLED_RECIPES = {
+    "hero_full_bleed", "accent_block_left", "metric_xxl",
+    "quote_pullout", "split_image_right", "tinted_panel_right",
+    "progress_dots", "chart_callout",
+}
+SIMPLE_TYPES = {
+    "title", "key-message", "content", "metric-spotlight",
+    "comparison-columns", "quote", "data-callout",
+    "section-divider", "visual-hero", "question", "cta-steps",
+}
 
 
-# --- Helper Functions ---
+# ============================================================
+# Token resolution helpers
+# ============================================================
 
-def set_notes(slide, notes_text):
-    """Add speaker notes to a slide."""
-    if notes_text:
-        notes_slide = slide.notes_slide
-        tf = notes_slide.notes_text_frame
-        tf.text = notes_text
+def _hex(s: str) -> RGBColor:
+    s = (s or "#000000").lstrip("#")
+    if len(s) != 6:
+        s = "000000"
+    return RGBColor(int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
 
 
-def set_slide_bg(slide, color):
-    """Set a solid background color on a slide."""
-    background = slide.background
-    fill = background.fill
+class Tokens:
+    """Token-driven palette + typography accessor (F9)."""
+
+    def __init__(self, raw: dict):
+        self.raw = raw
+        p = raw.get("palette", {})
+        t = raw.get("typography", {})
+        # Palette colours (RGBColor)
+        self.bg_dark    = _hex(p.get("background_dark",   "#0F1B2D"))
+        self.bg_light   = _hex(p.get("background_light",  "#F4F5F7"))
+        self.bg_accent  = _hex(p.get("background_accent", "#3B82F6"))
+        self.primary    = _hex(p.get("primary_accent",    "#3B82F6"))
+        self.secondary  = _hex(p.get("secondary_accent",  "#06B6D4"))
+        self.highlight  = _hex(p.get("highlight",         "#F59E0B"))
+        self.surface    = _hex(p.get("surface_elevated",  "#FFFFFF"))
+        self.text_dark  = _hex(p.get("text_on_dark",      "#FFFFFF"))
+        self.text_light = _hex(p.get("text_on_light",     "#1A1A2E"))
+        # Secondary/muted text. Some systems (e.g. technical-slate) ship
+        # surface-scoped overrides because no single mid-gray clears AA
+        # against both their dark and light backgrounds. Prefer the
+        # override when present, else fall back to the legacy bare key.
+        _ts_default = p.get("text_secondary", "#6B7080")
+        self.text_2_dark  = _hex(p.get("text_secondary_on_dark",  _ts_default))
+        self.text_2_light = _hex(p.get("text_secondary_on_light", _ts_default))
+        # Backward-compat alias (dark surface dominates most decks).
+        self.text_2     = self.text_2_dark
+        # Typography
+        self.font_title = t.get("font_title", "Calibri Light")
+        self.font_body  = t.get("font_body",  "Calibri")
+        self.sz_hero     = Pt(t.get("size_hero", 54))
+        self.sz_section  = Pt(t.get("size_section", 48))
+        self.sz_title    = Pt(t.get("size_title", 40))
+        self.sz_subtitle = Pt(t.get("size_subtitle", 24))
+        self.sz_body     = Pt(t.get("size_body", 22))
+        self.sz_caption  = Pt(t.get("size_caption", 14))
+        self.sz_metric_xxl  = Pt(t.get("size_metric_xxl", 200))
+        self.sz_quote_glyph = Pt(t.get("size_quote_glyph", 240))
+
+
+# ============================================================
+# Low-level shape helpers
+# ============================================================
+
+def _set_bg(slide, color: RGBColor) -> None:
+    fill = slide.background.fill
     fill.solid()
     fill.fore_color.rgb = color
 
 
-def add_top_accent_bar(slide, color=None):
-    """Full-width colored bar at top of slide."""
-    bar = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE,
-        Inches(0), Inches(0), SLIDE_WIDTH, Inches(0.06)
-    )
-    bar.fill.solid()
-    bar.fill.fore_color.rgb = color or ACCENT_BLUE
-    bar.line.fill.background()
-    return bar
+def _set_notes(slide, notes: str) -> None:
+    if notes:
+        slide.notes_slide.notes_text_frame.text = notes
 
 
-def add_left_accent_stripe(slide, color=None, width=Inches(0.45)):
-    """Vertical color stripe on left edge — visual anchor."""
-    stripe = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE,
-        Inches(0), Inches(0), width, SLIDE_HEIGHT
-    )
-    stripe.fill.solid()
-    stripe.fill.fore_color.rgb = color or NAVY
-    stripe.line.fill.background()
-    return stripe
+def _add_rect(slide, x, y, w, h, color: RGBColor):
+    s = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, h)
+    s.fill.solid()
+    s.fill.fore_color.rgb = color
+    s.line.fill.background()
+    return s
 
 
-def add_title_underline(slide, left, top, width, color=None):
-    """Thin accent line below a title for separation."""
-    line = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE,
-        left, top, width, Inches(0.035)
-    )
-    line.fill.solid()
-    line.fill.fore_color.rgb = color or ACCENT_BLUE
-    line.line.fill.background()
-    return line
-
-
-# --- Slide Functions (all use blank layout for full control) ---
-
-def add_title_slide(prs, title, subtitle, notes=""):
-    """Hero title slide — dark navy background, large white text, accent bar."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, NAVY)
-
-    # Top accent bar
-    add_top_accent_bar(slide, ACCENT_BLUE)
-
-    # Title — large, white, light weight
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.2), Inches(2.2), Inches(10.9), Inches(1.8)
-    )
-    tf = tx_title.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE_HERO
-    p.font.bold = False
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-
-    # Subtitle
-    tx_sub = slide.shapes.add_textbox(
-        Inches(1.2), Inches(4.2), Inches(10.9), Inches(0.8)
-    )
-    tf_sub = tx_sub.text_frame
-    p_sub = tf_sub.paragraphs[0]
-    p_sub.text = subtitle
-    p_sub.font.size = SUBTITLE_SIZE
-    p_sub.font.name = FONT_BODY
-    p_sub.font.color.rgb = ACCENT_TEAL
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_section_header(prs, title, subtitle="", notes=""):
-    """Section divider — dark navy background, centered white text, accent line."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, NAVY)
-
-    # Centered accent line above title
-    add_title_underline(slide, Inches(5.5), Inches(2.5), Inches(2.3), ACCENT_TEAL)
-
-    # Section title
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.5), Inches(2.8), Inches(10.3), Inches(1.5)
-    )
-    tf = tx_title.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE_SECTION
-    p.font.bold = False
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-    p.alignment = PP_ALIGN.CENTER
-
-    if subtitle:
-        tx_sub = slide.shapes.add_textbox(
-            Inches(2.5), Inches(4.3), Inches(8.3), Inches(0.8)
-        )
-        p_sub = tx_sub.text_frame.paragraphs[0]
-        p_sub.text = subtitle
-        p_sub.font.size = SUBTITLE_SIZE
-        p_sub.font.name = FONT_BODY
-        p_sub.font.color.rgb = ACCENT_TEAL
-        p_sub.alignment = PP_ALIGN.CENTER
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_content_slide(prs, title, bullets, notes=""):
-    """Content slide — off-white bg, navy left stripe, clean title."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, OFF_WHITE)
-
-    # Left accent stripe
-    add_left_accent_stripe(slide, NAVY, Inches(0.45))
-
-    # Title
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.1), Inches(0.5), Inches(11.5), Inches(1.0)
-    )
-    tf = tx_title.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE
-    p.font.bold = True
-    p.font.name = FONT_BODY
-    p.font.color.rgb = NAVY
-
-    # Bullets — whitespace separates title from body, not accent lines
-    tx_body = slide.shapes.add_textbox(
-        Inches(1.1), Inches(1.8), Inches(11.0), Inches(5.0)
-    )
-    tf_body = tx_body.text_frame
-    tf_body.word_wrap = True
-
-    for i, bullet in enumerate(bullets):
-        p = tf_body.paragraphs[0] if i == 0 else tf_body.add_paragraph()
-        p.text = f"\u25b8  {bullet}"
-        p.font.size = BODY_SIZE
-        p.font.name = FONT_BODY
-        p.font.color.rgb = TEXT_DARK
-        p.space_after = Pt(16)
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_comparison_slide(prs, title, left_header, left_points, right_header, right_points, notes=""):
-    """Two-column comparison — off-white bg, navy stripe, colored column headers."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, OFF_WHITE)
-
-    # Left accent stripe
-    add_left_accent_stripe(slide, NAVY, Inches(0.45))
-    add_top_accent_bar(slide, ACCENT_BLUE)
-
-    # Title
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.1), Inches(0.5), Inches(11.5), Inches(0.8)
-    )
-    p = tx_title.text_frame.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE
-    p.font.bold = True
-    p.font.color.rgb = NAVY
-    p.font.name = FONT_BODY
-
-    col_width = Inches(5.3)
-    col_top = Inches(1.8)
-
-    for col_idx, (header, points) in enumerate(
-        [(left_header, left_points), (right_header, right_points)]
-    ):
-        col_left = Inches(1.1) if col_idx == 0 else Inches(7.0)
-
-        # Column header
-        tx_h = slide.shapes.add_textbox(col_left, col_top, col_width, Inches(0.5))
-        p_h = tx_h.text_frame.paragraphs[0]
-        p_h.text = header
-        p_h.font.size = Pt(24)
-        p_h.font.bold = True
-        p_h.font.color.rgb = ACCENT_BLUE if col_idx == 1 else NAVY
-        p_h.font.name = FONT_BODY
-
-        # Column body
-        tx_b = slide.shapes.add_textbox(col_left, Inches(2.5), col_width, Inches(4.5))
-        tf_b = tx_b.text_frame
-        tf_b.word_wrap = True
-        for i, point in enumerate(points):
-            p_b = tf_b.paragraphs[0] if i == 0 else tf_b.add_paragraph()
-            p_b.text = f"\u25b8  {point}"
-            p_b.font.size = Pt(20)
-            p_b.font.name = FONT_BODY
-            p_b.font.color.rgb = TEXT_DARK
-            p_b.space_after = Pt(12)
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_quote_slide(prs, quote_text, attribution, notes=""):
-    """Quote slide — dark bg, large italic quote, teal attribution."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, NAVY)
-
-    # Large decorative quotation mark
-    tx_mark = slide.shapes.add_textbox(
-        Inches(1.0), Inches(1.2), Inches(2.0), Inches(2.0)
-    )
-    p_mark = tx_mark.text_frame.paragraphs[0]
-    p_mark.text = "\u201C"
-    p_mark.font.size = Pt(120)
-    p_mark.font.name = FONT_TITLE
-    p_mark.font.color.rgb = ACCENT_BLUE
-
-    # Quote text
-    tx_quote = slide.shapes.add_textbox(
-        Inches(1.5), Inches(2.5), Inches(10.3), Inches(2.8)
-    )
-    tf = tx_quote.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = quote_text
-    p.font.size = Pt(32)
-    p.font.italic = True
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-    p.alignment = PP_ALIGN.LEFT
-
-    # Attribution
-    p2 = tf.add_paragraph()
-    p2.text = f"\u2014 {attribution}"
-    p2.font.size = Pt(18)
-    p2.font.name = FONT_BODY
-    p2.font.color.rgb = ACCENT_TEAL
-    p2.space_before = Pt(24)
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_metric_slide(prs, title, metrics, notes=""):
-    """Big-number metrics slide — dark bg, gold numbers, white labels.
-
-    metrics: list of tuples (value, label) — max 3
-    Example: [("40%", "Churn Reduction"), ("$2.3M", "Pipeline Growth")]
-    """
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, NAVY)
-    add_top_accent_bar(slide, ACCENT_BLUE)
-
-    # Title
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.2), Inches(0.5), Inches(10.9), Inches(1.0)
-    )
-    p = tx_title.text_frame.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE
-    p.font.bold = True
-    p.font.name = FONT_BODY
-    p.font.color.rgb = WHITE
-
-    # Metrics — evenly spaced columns
-    num_metrics = min(len(metrics), 3)
-    if num_metrics == 0:
-        set_notes(slide, notes)
-        return slide
-
-    col_width = Inches(10.9 / num_metrics)
-
-    for i, (value, label) in enumerate(metrics[:3]):
-        col_left = Inches(1.2) + col_width * i
-
-        # Big number
-        tx_val = slide.shapes.add_textbox(
-            col_left, Inches(2.8), col_width, Inches(1.8)
-        )
-        p_val = tx_val.text_frame.paragraphs[0]
-        p_val.text = value
-        p_val.font.size = Pt(72)
-        p_val.font.bold = True
-        p_val.font.name = FONT_TITLE
-        p_val.font.color.rgb = WARM_GOLD
-        p_val.alignment = PP_ALIGN.CENTER
-
-        # Label
-        tx_lbl = slide.shapes.add_textbox(
-            col_left, Inches(4.6), col_width, Inches(0.8)
-        )
-        p_lbl = tx_lbl.text_frame.paragraphs[0]
-        p_lbl.text = label
-        p_lbl.font.size = Pt(20)
-        p_lbl.font.name = FONT_BODY
-        p_lbl.font.color.rgb = LIGHT_GRAY
-        p_lbl.alignment = PP_ALIGN.CENTER
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_big_statement(prs, headline, subtitle="", notes="", bg_color=None):
-    """Big statement slide — headline only, maximum impact, no bullets or accents.
-
-    Use at narrative turning points, key insights, provocative claims.
-    """
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, bg_color or NAVY)
-    # No accent bars, no stripes — maximum restraint
-
-    tx = slide.shapes.add_textbox(
-        Inches(1.5), Inches(2.0), Inches(10.3), Inches(2.5)
-    )
+def _add_textbox(slide, x, y, w, h, text, *,
+                 font_name="Calibri", font_size=Pt(22),
+                 color: RGBColor = None, bold=False, align=None,
+                 anchor=None):
+    tx = slide.shapes.add_textbox(x, y, w, h)
     tf = tx.text_frame
     tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = headline
-    p.font.size = Pt(56)
-    p.font.bold = False
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-
-    if subtitle:
-        tx_sub = slide.shapes.add_textbox(
-            Inches(1.5), Inches(4.8), Inches(10.3), Inches(0.8)
-        )
-        p_sub = tx_sub.text_frame.paragraphs[0]
-        p_sub.text = subtitle
-        p_sub.font.size = BODY_SMALL
-        p_sub.font.name = FONT_BODY
-        p_sub.font.color.rgb = ACCENT_TEAL
-
-    set_notes(slide, notes)
-    return slide
+    if anchor is not None:
+        tf.vertical_anchor = anchor
+    if isinstance(text, str):
+        text = [text]
+    for i, line in enumerate(text):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = line
+        p.font.name = font_name
+        p.font.size = font_size
+        p.font.bold = bold
+        if color is not None:
+            p.font.color.rgb = color
+        if align is not None:
+            p.alignment = align
+    return tx
 
 
-def add_split_slide(prs, title, context, points, notes=""):
-    """Split layout — headline + context on left, supporting points on right.
+def _add_picture(slide, path, x, y, w, h):
+    if path and os.path.exists(path):
+        slide.shapes.add_picture(path, x, y, width=w, height=h)
 
-    Use for: context + evidence, claim + proof, headline + detail.
+
+def _new_blank_slide(prs):
+    return prs.slides.add_slide(prs.slide_layouts[6])  # blank
+
+
+# ============================================================
+# Pre-render visual_assets[]
+# ============================================================
+
+def _prerender_assets(spec_path: Path, deck_spec: dict, log) -> None:
+    """For each slide.visual_assets[], subprocess the appropriate
+    render-visual script. Mutate the slide dict in place — replace each
+    asset entry's `path` field with the produced PNG path.
+
+    Each asset entry shape (additive):
+      {"kind": "chart" | "composite" | "diagram",
+       "recipe": "bar_with_callouts" | "gradient_pattern" | ...,
+       "spec": {...},                  -- recipe-specific
+       "out": "path/to/asset.png",     -- where to write
+       "size": "1920x1080",            -- optional
+       "svg": false}                   -- optional
     """
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, OFF_WHITE)
-    add_left_accent_stripe(slide, NAVY, Inches(0.45))
+    here = Path(__file__).resolve().parent.parent.parent.parent  # .github/skills/
+    rv_dir = here / "render-visual" / "scripts"
+    script_for = {
+        "chart":     rv_dir / "render_chart.py",
+        "composite": rv_dir / "render_composite.py",
+        "diagram":   rv_dir / "render_diagram.py",
+    }
 
-    # Left column: headline + context
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.1), Inches(0.8), Inches(5.0), Inches(1.5)
-    )
-    tf = tx_title.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE
-    p.font.bold = True
-    p.font.name = FONT_BODY
-    p.font.color.rgb = NAVY
+    tokens_path = spec_path.parent / "_tokens.json"
+    tokens_path.write_text(json.dumps(
+        deck_spec.get("design_system_tokens") or FALLBACK_TOKENS, indent=2))
 
-    if context:
-        tx_ctx = slide.shapes.add_textbox(
-            Inches(1.1), Inches(2.5), Inches(5.0), Inches(3.5)
-        )
-        tf_ctx = tx_ctx.text_frame
-        tf_ctx.word_wrap = True
-        p_ctx = tf_ctx.paragraphs[0]
-        p_ctx.text = context
-        p_ctx.font.size = BODY_SIZE
-        p_ctx.font.name = FONT_BODY
-        p_ctx.font.color.rgb = TEXT_MID
-
-    # Right column: supporting points
-    tx_right = slide.shapes.add_textbox(
-        Inches(6.8), Inches(0.8), Inches(5.8), Inches(5.5)
-    )
-    tf_r = tx_right.text_frame
-    tf_r.word_wrap = True
-    for i, pt in enumerate(points[:4]):
-        p = tf_r.paragraphs[0] if i == 0 else tf_r.add_paragraph()
-        p.text = f"\u25b8  {pt}"
-        p.font.size = Pt(20)
-        p.font.name = FONT_BODY
-        p.font.color.rgb = TEXT_DARK
-        p.space_after = Pt(16)
-
-    set_notes(slide, notes)
-    return slide
-
-
-def add_question_slide(prs, question, notes=""):
-    """Question slide — centered provocative question, no accents.
-
-    Use before major evidence sections to create anticipation.
-    """
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, NAVY)
-    # No accent elements — clean and focused
-
-    tx = slide.shapes.add_textbox(
-        Inches(1.5), Inches(2.5), Inches(10.3), Inches(2.5)
-    )
-    tf = tx.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = question
-    p.font.size = Pt(50)
-    p.font.bold = False
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-    p.alignment = PP_ALIGN.CENTER
-
-    set_notes(slide, notes)
-    return slide
+    for slide in deck_spec.get("slides", []):
+        for asset in slide.get("visual_assets") or []:
+            kind = asset.get("kind")
+            recipe = asset.get("recipe")
+            out = asset.get("out")
+            if kind not in script_for or not recipe or not out:
+                log.write(f"[asset] skip (bad kind/recipe/out): {asset}\n")
+                continue
+            script = script_for[kind]
+            if not script.exists():
+                log.write(f"[asset] script missing: {script}\n")
+                continue
+            spec_file = spec_path.parent / f"_asset_{slide.get('index','?')}_{recipe}.json"
+            spec_file.write_text(json.dumps(asset.get("spec") or {}, indent=2))
+            cmd = [
+                sys.executable, str(script),
+                "--kind", recipe,
+                "--spec", str(spec_file),
+                "--tokens", str(tokens_path),
+                "--out", str(out),
+                "--size", asset.get("size", "1920x1080"),
+            ]
+            if asset.get("svg"):
+                cmd.append("--svg")
+            try:
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                log.write(f"[asset] {recipe} rc={r.returncode}\n")
+                if r.stdout:
+                    log.write(r.stdout + "\n")
+                if r.stderr:
+                    log.write(r.stderr + "\n")
+                # If the script produced a .skipped.json sentinel, mark it.
+                sentinel = Path(str(out) + ".skipped.json")
+                if sentinel.exists():
+                    asset["skipped"] = True
+                    log.write(f"[asset] {recipe} skipped (graceful-degrade)\n")
+                else:
+                    asset["path"] = out
+            except Exception as e:
+                log.write(f"[asset] {recipe} exception: {e}\n")
+                asset["skipped"] = True
 
 
-def add_cta_slide(prs, title, next_steps, contact="", notes=""):
-    """Closing slide — dark bg, teal step numbers, white text."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-    set_slide_bg(slide, NAVY)
-    add_top_accent_bar(slide, ACCENT_TEAL)
+# ============================================================
+# SIMPLE BUILDERS  (per slide.type when style == "simple")
+# ============================================================
 
-    # Title
-    tx_title = slide.shapes.add_textbox(
-        Inches(1.2), Inches(0.5), Inches(10.9), Inches(1.0)
-    )
-    p = tx_title.text_frame.paragraphs[0]
-    p.text = title
-    p.font.size = TITLE_SIZE
-    p.font.bold = True
-    p.font.name = FONT_BODY
-    p.font.color.rgb = WHITE
-
-    # Accent line
-    add_title_underline(slide, Inches(1.2), Inches(1.55), Inches(3.0), ACCENT_TEAL)
-
-    # Next steps
-    for i, (action, detail) in enumerate(next_steps):
-        y_offset = Inches(2.2 + i * 1.4)
-
-        # Step number (large, colored)
-        tx_num = slide.shapes.add_textbox(
-            Inches(1.2), y_offset, Inches(0.8), Inches(0.8)
-        )
-        p_num = tx_num.text_frame.paragraphs[0]
-        p_num.text = str(i + 1)
-        p_num.font.size = Pt(40)
-        p_num.font.bold = True
-        p_num.font.name = FONT_TITLE
-        p_num.font.color.rgb = ACCENT_TEAL
-
-        # Action text
-        tx_action = slide.shapes.add_textbox(
-            Inches(2.2), y_offset, Inches(7.0), Inches(0.5)
-        )
-        p_action = tx_action.text_frame.paragraphs[0]
-        p_action.text = action
-        p_action.font.size = BODY_SIZE
-        p_action.font.bold = True
-        p_action.font.name = FONT_BODY
-        p_action.font.color.rgb = WHITE
-
-        # Detail
-        tx_detail = slide.shapes.add_textbox(
-            Inches(2.2), y_offset + Inches(0.5), Inches(7.0), Inches(0.4)
-        )
-        p_detail = tx_detail.text_frame.paragraphs[0]
-        p_detail.text = f"\u2192 {detail}"
-        p_detail.font.size = BODY_SMALL
-        p_detail.font.name = FONT_BODY
-        p_detail.font.color.rgb = TEXT_MID
-
-    if contact:
-        tx_contact = slide.shapes.add_textbox(
-            Inches(1.2), Inches(6.5), CONTENT_WIDTH, Inches(0.5)
-        )
-        p_c = tx_contact.text_frame.paragraphs[0]
-        p_c.text = contact
-        p_c.font.size = CAPTION_SIZE
-        p_c.font.color.rgb = TEXT_LIGHT
-        p_c.font.name = FONT_BODY
-
-    set_notes(slide, notes)
-    return slide
+def _simple_title(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_rect(s, 0, 0, SLIDE_W_EMU, Emu(54864), t.primary)  # 0.06" top bar
+    _add_textbox(s, Inches(1.2), Inches(2.2), Inches(10.9), Inches(1.8),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_hero,
+                 color=t.text_dark)
+    if slide.get("subtitle"):
+        _add_textbox(s, Inches(1.2), Inches(4.2), Inches(10.9), Inches(0.8),
+                     slide["subtitle"],
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.secondary)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
 
-def add_data_callout(prs, title, big_number, label, supporting_text="", notes=""):
-    """Single-number-with-trend callout. Dark bg, gold number, minimal chrome."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, NAVY)
-
-    tx_title = slide.shapes.add_textbox(Inches(1.2), Inches(0.7), Inches(10.9), Inches(0.9))
-    p = tx_title.text_frame.paragraphs[0]
-    p.text = title
-    p.font.size = Pt(32)
-    p.font.bold = False
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-
-    tx_num = slide.shapes.add_textbox(Inches(1.2), Inches(2.2), Inches(10.9), Inches(2.6))
-    p_num = tx_num.text_frame.paragraphs[0]
-    p_num.text = big_number
-    p_num.font.size = Pt(120)
-    p_num.font.bold = True
-    p_num.font.name = FONT_TITLE
-    p_num.font.color.rgb = WARM_GOLD
-
-    tx_label = slide.shapes.add_textbox(Inches(1.2), Inches(5.0), Inches(10.9), Inches(0.7))
-    p_lab = tx_label.text_frame.paragraphs[0]
-    p_lab.text = label
-    p_lab.font.size = Pt(26)
-    p_lab.font.name = FONT_BODY
-    p_lab.font.color.rgb = ACCENT_TEAL
-
-    if supporting_text:
-        tx_sup = slide.shapes.add_textbox(Inches(1.2), Inches(5.9), Inches(10.9), Inches(1.0))
-        p_sup = tx_sup.text_frame.paragraphs[0]
-        p_sup.text = supporting_text
-        p_sup.font.size = BODY_SMALL
-        p_sup.font.name = FONT_BODY
-        p_sup.font.color.rgb = LIGHT_GRAY
-
-    set_notes(slide, notes)
-    return slide
+def _simple_section_divider(prs, slide, t: Tokens):
+    """C5 backwards-compat path. NOTE: per OQ4, the strategist defaults
+    section dividers to `style: styled / hero_full_bleed`; this simple
+    path runs only when the spec explicitly opts back to simple."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_rect(s, Inches(5.5), Inches(2.5), Inches(2.3), Emu(32004), t.secondary)
+    _add_textbox(s, Inches(1.5), Inches(2.8), Inches(10.3), Inches(1.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_section,
+                 color=t.text_dark, align=PP_ALIGN.CENTER)
+    if slide.get("subtitle"):
+        _add_textbox(s, Inches(1.5), Inches(4.5), Inches(10.3), Inches(0.6),
+                     slide["subtitle"],
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.text_2_dark, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
 
-def add_visual_hero(prs, title, caption="", image_path=None, notes=""):
-    """Image-driven hero slide. Falls back to a colored panel + caption when no image."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, OFF_WHITE)
-    add_left_accent_stripe(slide, NAVY, Inches(0.45))
-
-    if image_path and os.path.exists(image_path):
-        try:
-            slide.shapes.add_picture(image_path, Inches(0.9), Inches(0.9), width=Inches(8.0))
-        except Exception:
-            # fallback panel
-            panel = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(0.9), Inches(8.0), Inches(5.5))
-            panel.fill.solid()
-            panel.fill.fore_color.rgb = ACCENT_BLUE
-            panel.line.fill.background()
-    else:
-        panel = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(0.9), Inches(8.0), Inches(5.5))
-        panel.fill.solid()
-        panel.fill.fore_color.rgb = ACCENT_BLUE
-        panel.line.fill.background()
-
-    tx_title = slide.shapes.add_textbox(Inches(9.2), Inches(1.2), Inches(3.6), Inches(2.5))
-    tf = tx_title.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = Pt(30)
-    p.font.bold = True
-    p.font.name = FONT_BODY
-    p.font.color.rgb = NAVY
-
-    if caption:
-        tx_cap = slide.shapes.add_textbox(Inches(9.2), Inches(4.0), Inches(3.6), Inches(2.5))
-        tf2 = tx_cap.text_frame
-        tf2.word_wrap = True
-        p2 = tf2.paragraphs[0]
-        p2.text = caption
-        p2.font.size = BODY_SMALL
-        p2.font.name = FONT_BODY
-        p2.font.color.rgb = TEXT_MID
-
-    set_notes(slide, notes)
-    return slide
+def _simple_key_message(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(1.2), Inches(2.5), Inches(10.9), Inches(2.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_hero,
+                 color=t.text_light, bold=False)
+    if slide.get("subtitle"):
+        _add_textbox(s, Inches(1.2), Inches(5.0), Inches(10.9), Inches(0.6),
+                     slide["subtitle"],
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.text_2_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
 
-def add_section_divider(prs, section_title, section_subtitle="", section_color=None, notes=""):
-    """Full-body section divider — colored panel, large numbered/named heading. Distinct from add_section_header."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, NAVY)
-    color = section_color or ACCENT_BLUE
-
-    # Vertical color band on left third
-    band = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(4.5), Inches(7.5))
-    band.fill.solid()
-    band.fill.fore_color.rgb = color
-    band.line.fill.background()
-
-    tx_title = slide.shapes.add_textbox(Inches(5.0), Inches(2.5), Inches(7.5), Inches(2.0))
-    tf = tx_title.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = section_title
-    p.font.size = TITLE_SIZE_SECTION
-    p.font.name = FONT_TITLE
-    p.font.color.rgb = WHITE
-
-    if section_subtitle:
-        tx_sub = slide.shapes.add_textbox(Inches(5.0), Inches(4.7), Inches(7.5), Inches(1.0))
-        p_sub = tx_sub.text_frame.paragraphs[0]
-        p_sub.text = section_subtitle
-        p_sub.font.size = SUBTITLE_SIZE
-        p_sub.font.name = FONT_BODY
-        p_sub.font.color.rgb = ACCENT_TEAL
-
-    set_notes(slide, notes)
-    return slide
+def _simple_content(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(0.75), Inches(0.6), Inches(11.83), Inches(1.0),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    bullets = slide.get("bullets") or []
+    body_lines = [f"•  {b}" for b in bullets]
+    _add_textbox(s, Inches(0.75), Inches(1.9), Inches(11.83), Inches(5.0),
+                 body_lines,
+                 font_name=t.font_body, font_size=t.sz_body,
+                 color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
 
-# Aliases matching presentation-design vocabulary (deck-builder uses these names)
-add_metric_spotlight = add_metric_slide
-add_comparison_columns = add_comparison_slide
-add_cta_steps = add_cta_slide
+def _simple_metric_spotlight(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(0.75), Inches(0.6), Inches(11.83), Inches(0.9),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    metric = str(slide.get("metric", ""))
+    label  = slide.get("metric_label", "")
+    _add_textbox(s, Inches(0.75), Inches(1.8), Inches(11.83), Inches(3.5),
+                 metric,
+                 font_name=t.font_title, font_size=Pt(150),
+                 color=t.primary, align=PP_ALIGN.CENTER, bold=True)
+    if label:
+        _add_textbox(s, Inches(0.75), Inches(5.4), Inches(11.83), Inches(0.7),
+                     label,
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.text_2_light, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
 
-# ===========================================================================
-# DECK CONTENT — The deck-builder agent replaces this section per deck
-# ===========================================================================
+def _simple_comparison_columns(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(0.75), Inches(0.6), Inches(11.83), Inches(0.9),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    cols = slide.get("columns") or []
+    col_w = Inches(11.0 / max(1, len(cols)))
+    for i, col in enumerate(cols):
+        x = Inches(0.75) + col_w * i
+        _add_rect(s, x, Inches(1.8), Emu(32004), Inches(4.5), t.primary)
+        _add_textbox(s, x + Inches(0.2), Inches(1.8), col_w - Inches(0.3),
+                     Inches(0.7), col.get("heading", ""),
+                     font_name=t.font_title, font_size=Pt(28),
+                     color=t.text_light, bold=True)
+        items = col.get("items") or []
+        _add_textbox(s, x + Inches(0.2), Inches(2.6), col_w - Inches(0.3),
+                     Inches(4.0), [f"•  {it}" for it in items],
+                     font_name=t.font_body, font_size=t.sz_body,
+                     color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
-DECK_CONTENT = {
-    "title": "Presentation Title",
-    "subtitle": "Audience \u2014 Date",
-    "slides": [
-        {
-            "type": "title",
-            "title": "Presentation Title",
-            "subtitle": "Audience \u2014 Date",
-            "notes": "Welcome the audience. Set the tone for the presentation."
-        },
-        {
-            "type": "big_statement",
-            "headline": "One bold insight that changes everything",
-            "subtitle": "The hook that makes the audience lean in",
-            "notes": "Pause. Let the statement land. This is the opening hook."
-        },
-        {
-            "type": "content",
-            "title": "Action-Oriented Headline Goes Here",
-            "bullets": [
-                "First supporting point with specific evidence",
-                "Second supporting point with data",
-                "Third supporting point with outcome",
-            ],
-            "notes": "Expand on each point verbally. Transition: move to the next section."
-        },
-        {
-            "type": "section_divider",
-            "section_title": "Part 2: The Evidence",
-            "section_subtitle": "Three numbers that prove the case",
-            "notes": "Pause for transition. The next slides deliver proof."
-        },
-        {
-            "type": "data_callout",
-            "title": "We left $2.3M on the table last quarter",
-            "big_number": "$2.3M",
-            "label": "Revenue at risk \u2014 unaddressed pipeline",
-            "supporting_text": "Source: Q3 board pack, Sept 2025. 14 enterprise deals stalled at procurement.",
-            "notes": "Let the number land. This is the cost-of-inaction slide."
-        },
-        {
-            "type": "comparison",
-            "title": "Two paths forward \u2014 only one keeps us competitive",
-            "left_header": "Status quo",
-            "left_points": [
-                "12-week procurement cycles",
-                "Manual deal desk review",
-                "$340K/month opportunity cost",
-            ],
-            "right_header": "Proposed",
-            "right_points": [
-                "3-week self-serve flow",
-                "Automated risk gating",
-                "Recover $2.3M annually",
-            ],
-            "notes": "Walk left, then right. End on the gain."
-        },
-        {
-            "type": "quote",
-            "quote": "We chose this platform because it gave us back two weeks per deal.",
-            "attribution": "VP Revenue Operations, Acme Corp",
-            "notes": "Let the quote breathe. Customer voice is the most credible voice."
-        },
-        {
-            "type": "split",
-            "title": "The plan that gets us there",
-            "context": "Three phases over six months. Each phase ships independently.",
-            "points": [
-                "Phase 1: Self-serve pricing (Apr)",
-                "Phase 2: Risk automation (May-Jun)",
-                "Phase 3: Procurement integration (Jul-Sep)",
-            ],
-            "notes": "Left frames the timeline; right delivers the milestones."
-        },
-        {
-            "type": "metric",
-            "title": "Three numbers that close the case",
-            "metrics": [
-                ("40%", "Cycle time reduction"),
-                ("$2.3M", "Annual revenue recovered"),
-                ("3x", "Deals processed per AE"),
-            ],
-            "notes": "Read each metric. Pause. The numbers compound the argument."
-        },
-        {
-            "type": "cta",
-            "title": "Three decisions \u2014 by Friday",
-            "next_steps": [
-                ("Approve $200K Phase 1 budget", "VP Eng \u2014 Friday"),
-                ("Assign deal-desk lead to project", "VP RevOps \u2014 next week"),
-                ("Schedule Q1 progress review", "All stakeholders \u2014 Apr 15"),
-            ],
-            "contact": "Questions? \u2014 platform-team@company.com",
-            "notes": "Be explicit about every ask. Make saying yes easy."
-        },
-    ],
+
+def _simple_quote(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_textbox(s, Inches(1.5), Inches(2.0), Inches(10.3), Inches(3.5),
+                 f"\u201C{slide.get('quote', '')}\u201D",
+                 font_name=t.font_title, font_size=Pt(36),
+                 color=t.text_dark, align=PP_ALIGN.CENTER)
+    if slide.get("attribution"):
+        _add_textbox(s, Inches(1.5), Inches(5.5), Inches(10.3), Inches(0.7),
+                     f"— {slide['attribution']}",
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.secondary, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _simple_data_callout(prs, slide, t: Tokens):
+    return _simple_metric_spotlight(prs, slide, t)
+
+
+def _simple_visual_hero(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    img = slide.get("image_path")
+    if img:
+        _add_picture(s, img, 0, 0, SLIDE_W_EMU, SLIDE_H_EMU)
+    _add_textbox(s, Inches(0.75), Inches(5.5), Inches(11.83), Inches(1.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_section,
+                 color=t.text_dark)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _simple_question(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_textbox(s, Inches(1.0), Inches(2.5), Inches(11.3), Inches(2.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_hero,
+                 color=t.text_dark, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _simple_cta_steps(prs, slide, t: Tokens):
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(0.75), Inches(0.6), Inches(11.83), Inches(0.9),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    steps = slide.get("steps") or []
+    _add_textbox(s, Inches(0.75), Inches(1.9), Inches(11.83), Inches(5.0),
+                 [f"{i+1}.  {step}" for i, step in enumerate(steps)],
+                 font_name=t.font_body, font_size=t.sz_body,
+                 color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+SIMPLE_BUILDERS = {
+    "title":              _simple_title,
+    "section-divider":    _simple_section_divider,
+    "key-message":        _simple_key_message,
+    "content":            _simple_content,
+    "metric-spotlight":   _simple_metric_spotlight,
+    "comparison-columns": _simple_comparison_columns,
+    "quote":              _simple_quote,
+    "data-callout":       _simple_data_callout,
+    "visual-hero":        _simple_visual_hero,
+    "question":           _simple_question,
+    "cta-steps":          _simple_cta_steps,
 }
 
 
-def build_deck(content, template_path=None, output_path="output.pptx"):
-    """Build the complete deck from content specification."""
-    prs, is_template = create_presentation(template_path)
+# ============================================================
+# STYLED BUILDERS  (architecture §4.1 EMU coords; F5)
+# ============================================================
 
-    for slide_spec in content["slides"]:
-        slide_type = slide_spec["type"]
-        notes = slide_spec.get("notes", "")
-
-        if slide_type == "title":
-            add_title_slide(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("subtitle", ""),
-                notes,
-            )
-
-        elif slide_type == "section":
-            add_section_header(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("subtitle", ""),
-                notes,
-            )
-
-        elif slide_type == "content":
-            add_content_slide(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("bullets", []),
-                notes,
-            )
-
-        elif slide_type == "comparison":
-            add_comparison_slide(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("left_header", "Before"),
-                slide_spec.get("left_points", []),
-                slide_spec.get("right_header", "After"),
-                slide_spec.get("right_points", []),
-                notes,
-            )
-
-        elif slide_type == "quote":
-            add_quote_slide(
-                prs,
-                slide_spec["quote"],
-                slide_spec.get("attribution", ""),
-                notes,
-            )
-
-        elif slide_type == "metric":
-            add_metric_slide(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("metrics", []),
-                notes,
-            )
-
-        elif slide_type == "big_statement":
-            add_big_statement(
-                prs,
-                slide_spec.get("headline", slide_spec.get("title", "")),
-                slide_spec.get("subtitle", ""),
-                notes,
-                slide_spec.get("bg_color", None),
-            )
-
-        elif slide_type == "split":
-            add_split_slide(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("context", ""),
-                slide_spec.get("points", slide_spec.get("bullets", [])),
-                notes,
-            )
-
-        elif slide_type == "question":
-            add_question_slide(
-                prs,
-                slide_spec.get("question", slide_spec.get("title", "")),
-                notes,
-            )
-
-        elif slide_type == "cta":
-            add_cta_slide(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("next_steps", []),
-                slide_spec.get("contact", ""),
-                notes,
-            )
-
-        elif slide_type == "data_callout":
-            add_data_callout(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("big_number", ""),
-                slide_spec.get("label", ""),
-                slide_spec.get("supporting_text", ""),
-                notes,
-            )
-
-        elif slide_type == "visual_hero":
-            add_visual_hero(
-                prs,
-                slide_spec["title"],
-                slide_spec.get("caption", ""),
-                slide_spec.get("image_path", None),
-                notes,
-            )
-
-        elif slide_type == "section_divider":
-            add_section_divider(
-                prs,
-                slide_spec.get("section_title", slide_spec.get("title", "Section")),
-                slide_spec.get("section_subtitle", ""),
-                None,
-                notes,
-            )
-
-        else:
-            # Fallback: treat unknown types as content slides
-            add_content_slide(
-                prs,
-                slide_spec.get("title", "Untitled"),
-                slide_spec.get("bullets", []),
-                notes,
-            )
-
-    # Save
-    output_dir = os.path.dirname(output_path)
-    if output_dir and not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
-
-    prs.save(output_path)
-    slide_count = len(prs.slides)
-    print(f"SUCCESS: Generated '{output_path}' with {slide_count} slides")
-    return output_path
+def _styled_hero_full_bleed(prs, slide, t: Tokens):
+    """Full-bleed picture from `gradient_pattern` (or supplied image)
+    + title centred lower-third + subtitle.
+    EMU: picture covers (0,0,12192000,6858000)."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    asset = _first_asset(slide, recipe="gradient_pattern")
+    img_path = (asset and asset.get("path")) or slide.get("image_path")
+    if img_path and os.path.exists(img_path):
+        _add_picture(s, img_path, 0, 0, SLIDE_W_EMU, SLIDE_H_EMU)
+    _add_textbox(s, Inches(1.0), Inches(4.2), Inches(11.3), Inches(1.6),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_hero,
+                 color=t.text_dark, align=PP_ALIGN.CENTER, bold=False)
+    if slide.get("subtitle"):
+        _add_textbox(s, Inches(1.0), Inches(5.9), Inches(11.3), Inches(0.6),
+                     slide["subtitle"],
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.text_dark, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate a PowerPoint deck")
-    parser.add_argument(
-        "--template", type=str, default=None,
-        help="Path to a .pptx template file for design inheritance"
-    )
-    parser.add_argument(
-        "--output", type=str, default="output.pptx",
-        help="Output file path (default: output.pptx)"
-    )
-    args = parser.parse_args()
+def _styled_accent_block_left(prs, slide, t: Tokens):
+    """Left 4023360-EMU (4.4") accent panel + right body. §4.1."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_rect(s, 0, 0, Emu(4023360), SLIDE_H_EMU, t.primary)
+    _add_textbox(s, Inches(0.5), Inches(2.5), Inches(3.7), Inches(2.5),
+                 slide.get("eyebrow", "") or slide.get("kicker", ""),
+                 font_name=t.font_body, font_size=t.sz_subtitle,
+                 color=t.text_dark)
+    _add_textbox(s, Emu(4023360) + Inches(0.6), Inches(2.0),
+                 Inches(8.0), Inches(3.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_section,
+                 color=t.text_light, anchor=MSO_ANCHOR.MIDDLE)
+    _set_notes(s, slide.get("notes", ""))
+    return s
 
+
+def _styled_metric_xxl(prs, slide, t: Tokens):
+    """200pt centred number on bg_dark. §4.1."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_textbox(s, Inches(0.75), Inches(1.5), Inches(11.83), Inches(4.0),
+                 str(slide.get("metric", "")),
+                 font_name=t.font_title, font_size=t.sz_metric_xxl,
+                 color=t.text_dark, align=PP_ALIGN.CENTER, bold=True,
+                 anchor=MSO_ANCHOR.MIDDLE)
+    if slide.get("metric_label"):
+        _add_textbox(s, Inches(0.75), Inches(5.6), Inches(11.83), Inches(0.8),
+                     slide["metric_label"],
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.secondary, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_quote_pullout(prs, slide, t: Tokens):
+    """240pt opaque-10% quote glyph background + quote + attribution. §4.1."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    asset = _first_asset(slide, recipe="oversized_glyph_bg")
+    if asset and asset.get("path") and os.path.exists(asset["path"]):
+        _add_picture(s, asset["path"], 0, 0, SLIDE_W_EMU, SLIDE_H_EMU)
+    _add_textbox(s, Inches(1.5), Inches(2.0), Inches(10.3), Inches(3.5),
+                 slide.get("quote", ""),
+                 font_name=t.font_title, font_size=Pt(36),
+                 color=t.text_dark, align=PP_ALIGN.CENTER)
+    if slide.get("attribution"):
+        _add_textbox(s, Inches(1.5), Inches(5.7), Inches(10.3), Inches(0.7),
+                     f"— {slide['attribution']}",
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.secondary, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_split_image_right(prs, slide, t: Tokens):
+    """Left half (0..6096000) text; right half (6096000..12192000) image.
+    `anchor: right_half`. §4.1."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    img = slide.get("image_path")
+    if img and os.path.exists(img):
+        _add_picture(s, img, Emu(SLIDE_HALF_EMU), 0,
+                     Emu(SLIDE_HALF_EMU), SLIDE_H_EMU)
+    _add_textbox(s, Inches(0.75), Inches(2.0), Inches(5.6), Inches(1.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    if slide.get("body"):
+        _add_textbox(s, Inches(0.75), Inches(3.7), Inches(5.6), Inches(2.5),
+                     slide["body"],
+                     font_name=t.font_body, font_size=t.sz_body,
+                     color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_tinted_panel_right(prs, slide, t: Tokens):
+    """Aside / supporting fact: surface_elevated panel on the right.
+    Right half tinted with `surface_elevated` (10% lighter)."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_rect(s, Emu(SLIDE_HALF_EMU), 0, Emu(SLIDE_HALF_EMU), SLIDE_H_EMU,
+              t.surface)
+    _add_textbox(s, Inches(0.75), Inches(2.0), Inches(5.6), Inches(3.5),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    aside = slide.get("aside") or slide.get("body") or ""
+    _add_textbox(s, Inches(7.2), Inches(2.0), Inches(5.4), Inches(4.0),
+                 aside,
+                 font_name=t.font_body, font_size=t.sz_body,
+                 color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_progress_dots(prs, slide, t: Tokens):
+    """5-step progress strip. The matplotlib `progress_strip` recipe
+    produces the line+dots; we overlay step labels."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(0.75), Inches(0.6), Inches(11.83), Inches(0.9),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    asset = _first_asset(slide, recipe="progress_strip")
+    if asset and asset.get("path") and os.path.exists(asset["path"]):
+        _add_picture(s, asset["path"], Inches(0.75), Inches(2.5),
+                     Inches(11.83), Inches(3.5))
+    else:
+        # Fallback: simple text steps
+        steps = slide.get("steps") or []
+        _add_textbox(s, Inches(0.75), Inches(2.5), Inches(11.83), Inches(3.5),
+                     " → ".join(s.get("label", "?") if isinstance(s, dict) else s
+                                for s in steps),
+                     font_name=t.font_body, font_size=t.sz_body,
+                     color=t.text_light, align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_chart_callout(prs, slide, t: Tokens):
+    """Left half chart (matplotlib) + 2 right-side annotation textboxes."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_textbox(s, Inches(0.75), Inches(0.4), Inches(11.83), Inches(0.8),
+                 slide.get("title", ""),
+                 font_name=t.font_title, font_size=t.sz_title,
+                 color=t.text_light)
+    asset = _first_asset(slide, kind="chart")
+    if asset and asset.get("path") and os.path.exists(asset["path"]):
+        _add_picture(s, asset["path"], 0, Inches(1.4),
+                     Emu(SLIDE_HALF_EMU), Inches(5.6))
+    callouts = slide.get("callouts") or []
+    if len(callouts) >= 1:
+        _add_textbox(s, Inches(7.0), Inches(2.0), Inches(5.6), Inches(1.8),
+                     callouts[0], font_name=t.font_title, font_size=Pt(28),
+                     color=t.primary, bold=True)
+    if len(callouts) >= 2:
+        _add_textbox(s, Inches(7.0), Inches(4.2), Inches(5.6), Inches(1.8),
+                     callouts[1], font_name=t.font_body, font_size=t.sz_body,
+                     color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+STYLED_BUILDERS = {
+    "hero_full_bleed":     _styled_hero_full_bleed,
+    "accent_block_left":   _styled_accent_block_left,
+    "metric_xxl":          _styled_metric_xxl,
+    "quote_pullout":       _styled_quote_pullout,
+    "split_image_right":   _styled_split_image_right,
+    "tinted_panel_right":  _styled_tinted_panel_right,
+    "progress_dots":       _styled_progress_dots,
+    "chart_callout":       _styled_chart_callout,
+}
+
+
+def _first_asset(slide, *, kind: str = None, recipe: str = None) -> dict | None:
+    for a in (slide.get("visual_assets") or []):
+        if a.get("skipped"):
+            continue
+        if kind and a.get("kind") != kind:
+            continue
+        if recipe and a.get("recipe") != recipe:
+            continue
+        return a
+    return None
+
+
+# ============================================================
+# Spec validation + dispatch (F5, C5)
+# ============================================================
+
+class SpecError(Exception):
+    """bad_spec.<reason>"""
+
+
+def _validate_slide(slide: dict) -> tuple[str, str | None]:
+    """Return (style, style_recipe). Apply C5 backwards-compat:
+    missing `style` → "simple"; only reject when present-and-invalid
+    or pairing-inconsistent."""
+    style = slide.get("style", "simple")  # C5 default
+    recipe = slide.get("style_recipe")
+    stype = slide.get("type")
+
+    if style not in ("simple", "styled"):
+        raise SpecError(f"bad_spec.invalid_style: slide {slide.get('index')} "
+                        f"has style={style!r}; must be 'simple' or 'styled'")
+
+    if style == "styled":
+        if not recipe:
+            raise SpecError(f"bad_spec.styled_without_recipe: slide "
+                            f"{slide.get('index')} has style=styled but no style_recipe")
+        if recipe not in STYLED_RECIPES:
+            raise SpecError(f"bad_spec.unknown_recipe: slide "
+                            f"{slide.get('index')} style_recipe={recipe!r} "
+                            f"not in {sorted(STYLED_RECIPES)}")
+    else:  # simple
+        if recipe is not None:
+            raise SpecError(f"bad_spec.simple_with_recipe: slide "
+                            f"{slide.get('index')} has style=simple but "
+                            f"style_recipe={recipe!r} (inconsistent)")
+        if stype and stype not in SIMPLE_TYPES:
+            # Don't reject — backwards-compat: unknown simple types
+            # fall back to `content`. Log at the call site.
+            pass
+    return style, recipe
+
+
+def _build_slide(prs, slide: dict, t: Tokens, log) -> None:
+    style, recipe = _validate_slide(slide)
+    if style == "styled":
+        builder = STYLED_BUILDERS[recipe]
+        log.write(f"[slide {slide.get('index')}] styled/{recipe}\n")
+        builder(prs, slide, t)
+    else:
+        stype = slide.get("type", "content")
+        builder = SIMPLE_BUILDERS.get(stype, _simple_content)
+        log.write(f"[slide {slide.get('index')}] simple/{stype}\n")
+        builder(prs, slide, t)
+
+
+# ============================================================
+# Main
+# ============================================================
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--spec", required=True, type=Path,
+                    help="Path to deck-spec.json")
+    ap.add_argument("--out", type=Path, default=Path("output.pptx"))
+    ap.add_argument("--template", type=Path, default=None)
+    ap.add_argument("--build-log", type=Path, default=None)
+    args = ap.parse_args()
+
+    log_path = args.build_log or args.out.with_suffix(".log")
+    log = log_path.open("w", encoding="utf-8")
     try:
-        build_deck(DECK_CONTENT, template_path=args.template, output_path=args.output)
-    except Exception as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+        try:
+            deck_spec = json.loads(args.spec.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"ERROR: cannot read deck-spec: {e}", file=sys.stderr)
+            return 2
+
+        # Tokens (F9)
+        t = Tokens(deck_spec.get("design_system_tokens") or FALLBACK_TOKENS)
+        log.write(f"[tokens] {(deck_spec.get('design_system_tokens') or FALLBACK_TOKENS).get('name','?')}\n")
+
+        # Pre-render visual_assets
+        _prerender_assets(args.spec, deck_spec, log)
+
+        # Presentation init
+        if args.template and args.template.exists():
+            try:
+                prs = Presentation(str(args.template))
+                log.write(f"[template] loaded {args.template}\n")
+            except Exception as e:
+                log.write(f"[template] failed ({e}); using default 16:9\n")
+                prs = Presentation()
+                prs.slide_width = Emu(SLIDE_W_EMU)
+                prs.slide_height = Emu(SLIDE_H_EMU)
+        else:
+            prs = Presentation()
+            prs.slide_width = Emu(SLIDE_W_EMU)
+            prs.slide_height = Emu(SLIDE_H_EMU)
+
+        # Dispatch
+        try:
+            for slide in deck_spec.get("slides", []):
+                _build_slide(prs, slide, t, log)
+        except SpecError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            log.write(f"[reject] {e}\n")
+            return 2
+
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        prs.save(str(args.out))
+        print(f"SUCCESS: deck written to {args.out}")
+        log.write(f"[done] {args.out}\n")
+        return 0
+    finally:
+        log.close()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

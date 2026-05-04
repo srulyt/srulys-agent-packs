@@ -153,6 +153,19 @@ schema, embeddable in `deck-spec.json` under `design_system_tokens`:
 }
 ```
 
+### Optional surface-aware override: `text_secondary_on_*`
+
+A system MAY ship `text_secondary_on_light` and / or
+`text_secondary_on_dark` *in addition to (or instead of)* the bare
+`text_secondary` key. When present, `check_palettes.py` (G1) and
+the rendering scripts resolve the secondary-text colour against
+the override that matches the slide's surface, falling back to the
+bare key only when the override is absent. This exists for systems
+whose dark and light backgrounds are too close in luminance for
+any single mid-gray to clear AA against both — see
+`references/systems/technical-slate.md` (F4 note) and
+`references/wcag-thresholds.md` for the math.
+
 ## References
 
 - [Design Canon](references/design-canon.md) — Expanded notes on the canon listed above
@@ -162,3 +175,23 @@ schema, embeddable in `deck-spec.json` under `design_system_tokens`:
 - [Investor Gold](references/systems/investor-gold.md)
 - [Editorial Mono](references/systems/editorial-mono.md)
 - [Boardroom Conservative](references/systems/boardroom-conservative.md)
+
+## Rendering Subsystem Rebuild (2026-05-04)
+
+Three additions in session 2026-05-04-7d3f9a2b:
+
+- **scripts/check_palettes.py** — the **G1 preflight gate**.
+  Extracts the JSON token block from each system `.md` file,
+  runs WCAG contrast pair checks, exits 2 on any failing pair.
+  Run by `@deck-builder` first, re-run by `@deck-critic`
+  as a cross-check (per critic concern C1).
+- **eferences/wcag-thresholds.md** — canonical thresholds
+  (4.5:1 normal text; 3:1 large text 18pt+ regular or 14pt+
+  bold; 3:1 graphical components).
+- **eferences/canon.md** — the rebuild canon (F11 body word
+  limit 30, section_divider styled-by-default per OQ4, style
+  taxonomy `simple` vs `styled`, the 8 styled recipes).
+
+Token tables in the three rebuilt systems
+(`technical-slate`, `customer-coral`, `editorial-mono`)
+were patched with WCAG-passing palette values (F3).

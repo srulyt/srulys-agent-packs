@@ -1,0 +1,99 @@
+id: smoke-palette-preflight-rollback
+pack: story-telling-agent-rendering
+description: |
+  F3 regression smoke test (added in iteration 2, session
+  2026-05-04-7d3f9a2b, in response to critic blocker B3): asserts
+  that `check_palettes.py` (the G1 preflight gate) catches a
+  rollback of the customer-coral.md design system to its
+  pre-fix state with `background_accent: #F87171` (3.0:1 vs
+  white) and `secondary_accent: #FB923C` (2.4:1 vs white) —
+  both AA failures.
+
+  The test copies a rollback fixture file over the real
+  customer-coral.md inside the isolated workspace, has the
+  critic run G1 preflight, and asserts:
+
+    - check_palettes.py exits non-zero (exit code 2)
+    - the palette-preflight output contract block lists
+      customer-coral as a failing system
+    - failing_pairs references the literal token `#F87171`
+      and / or `#FB923C`
+    - the critic's overall status is NOT pass / pass_unverified
+
+  This case is complementary to smoke-low-contrast-fixture
+  (which exercises F4 runtime contrast on a synthetic deck
+  spec) — F3 is about token-level AA, F4 is about
+  per-text-run runtime contrast. Both are kept.
+
+prompt_file: prompt.md
+
+prompt_template_vars:
+  fixture_name: "palette-preflight-rollback"
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.story-telling-stm
+      dest: .story-telling-stm
+    # Render the rollback fixture (pre-F3-fix tokens) over the
+    # real customer-coral.md inside the isolated workspace.
+    # check_palettes.py will then see the failing palette and
+    # exit 2. The fixture file contains no `{{var}}` template
+    # placeholders, so file_template renders it verbatim.
+    - kind: file_template
+      src: fixtures/customer-coral.rollback.md
+      dest: .github/skills/slide-design-systems/references/systems/customer-coral.md
+      vars: {}
+
+teardown:
+  # The workspace is isolated (copy-tree), so no real-file
+  # restore is needed — the rollback only ever lived in the
+  # isolated copy. We still delete on pass to keep the eval
+  # output dir tidy.
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: critic-verdict
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+      required: true
+  invocations:
+    deck-builder: { min: 0, max: 1 }
+    deck-critic:  { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:critic-verdict": "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+    "artifact:palette-preflight": "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+  expectations:
+    # The palette-preflight fenced block MUST report the
+    # failing pair, including a token reference that the F3
+    # rollback re-introduced.
+    - kind: contract-fence
+      output_contract: palette-preflight
+      must_match: "failing_pairs"
+    - kind: contract-fence
+      output_contract: palette-preflight
+      must_match: "customer-coral"
+    - kind: contract-fence
+      output_contract: palette-preflight
+      must_match: "#F87171"
+    # Status must NOT be pass / pass_unverified — palette
+    # preflight failure is a BLOCKING gate (G1).
+    - kind: must-not-match
+      output_contract: status
+      pattern: "^pass$"
+    - kind: must-not-match
+      output_contract: status
+      pattern: "^pass_unverified$"

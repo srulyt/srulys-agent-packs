@@ -490,3 +490,33 @@ For detailed code patterns:
 - [PPTX API Patterns](references/pptx-api-patterns.md) — Tables, charts, images, master slides, advanced formatting
 - [generate_deck.py](scripts/generate_deck.py) — Reference Python script. Includes builder functions for: `add_title_slide`, `add_section_header`, `add_section_divider`, `add_content_slide`, `add_big_statement`, `add_split_slide`, `add_question_slide`, `add_quote_slide`, `add_metric_slide` (alias `add_metric_spotlight`), `add_comparison_slide` (alias `add_comparison_columns`), `add_data_callout`, `add_visual_hero`, `add_cta_slide` (alias `add_cta_steps`). The default `DECK_CONTENT` produces a 10-slide deck covering 9 distinct layouts with dark/light balance — copy-paste this and substitute content per `deck-spec.json`.
 - [slide-design-systems](../slide-design-systems/SKILL.md) — Six concrete design systems (palette + type scale + grid + slide-type defaults) usable directly in `deck-spec.json.design_system`. The default constants in `generate_deck.py` correspond to `executive-navy`.
+
+## Rendering Subsystem Rebuild (2026-05-04)
+
+This skill was extended for the rendering rebuild (session
+2026-05-04-7d3f9a2b). Notable additions in scripts/generate_deck.py:
+
+- **Token-driven constants (F9)**. The script no longer ships
+  hard-coded NAVY / ACCENT_BLUE constants. All colours and
+  typography are resolved from `deck-spec.design_system_tokens`
+  via the `Tokens` class. When the spec omits tokens, the
+  `FALLBACK_TOKENS` palette is used (C5 backwards-compat).
+- **Builder duality (F5)**. Each slide is dispatched on
+  `slide.style ∈ {"simple", "styled"}` (default `"simple"` —
+  C5 backwards-compat). `"styled"` slides require a
+  `style_recipe` from the canonical 8-recipe set; missing or
+  unknown recipes are rejected with `bad_spec.<reason>`.
+- **8 styled builders** matching architecture §4.1 EMU coords:
+  `hero_full_bleed`, `accent_block_left`, `metric_xxl`,
+  `quote_pullout`, `split_image_right`, `tinted_panel_right`,
+  `progress_dots`, `chart_callout`. See
+  [references/styled-recipes.md](references/styled-recipes.md).
+- **Visual asset pre-render**. Before assembling slides, the
+  script subprocesses the matching `render-visual` script
+  (chart / composite / diagram) for each
+  `slide.visual_assets[]` entry. Diagram graceful-degrade
+  per OQ2 produces a `<out>.skipped.json` sentinel that the
+  builder treats as "asset unavailable; build slide without it".
+
+See eferences/styled-recipes.md for per-recipe EMU-coordinate
+implementations.

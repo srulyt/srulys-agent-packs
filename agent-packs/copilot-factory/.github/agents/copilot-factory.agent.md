@@ -69,8 +69,10 @@ this prompt are **user-facing shorthand**, not chat handles. You do not
 
 For the canonical reference on `task` tool semantics — required vs.
 optional parameters, sync vs. background invocation, `read_agent` /
-`write_agent` / `list_agents`, agent statuses, and information-flow
-rules — see the `agent-builder` skill's
+`write_agent` / `list_agents` (conditional availability — registered
+only when a background-mode sub-agent is in `status: idle`; not
+present in a strictly sync pipeline), agent statuses, and
+information-flow rules — see the `agent-builder` skill's
 [task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md).
 Do not duplicate that content here; consult it.
 
@@ -218,8 +220,14 @@ The orchestrator is forbidden from:
   requires updating that spec first.
 - Inlining a sub-agent prompt's content. Pass file paths and section
   references; sub-agents read on demand.
-- Launching a fresh sub-agent when an idle one for the same scope exists
-  (use `write_agent` to continue the existing conversation).
+- Launching a fresh **background-mode** sub-agent for a scope when an
+  existing background sub-agent for that scope is in `status: idle`
+  per `list_agents` (use `write_agent` to continue that idle
+  conversation). This applies ONLY to genuinely-idle background
+  agents; sync sub-agents that have returned their final message are
+  NOT idle, and re-launching them via a fresh `task` call (with an
+  iteration-suffixed `name`, e.g. `<original>-fix1`) is the correct
+  iteration mechanism — expected, not forbidden.
 - Read, `grep`, `glob`, `view`, or otherwise inspect any path under
   `agent-packs/` or `evals/packs/<target>/`. Target-pack investigation
   is owned by `@factory-critic` (improvement-analysis or
@@ -298,8 +306,12 @@ The orchestrator is forbidden from:
    output contract: `architecture-summary`, `agents-json`,
    `eval-plan-json`, `open-questions`, `ready-for-review`.
 3. If any block is missing or `ready-for-review` is `false`, increment
-   the design-iteration counter and re-delegate ONCE with a corrective
-   `write_agent` message naming the missing block. After 2 corrective
+   the design-iteration counter and re-delegate ONCE via a fresh
+   `task` call: use an iteration-suffixed `name` (e.g. `design-fix1`),
+   reference the prior `agent_id` in the prompt body, and enumerate
+   the missing/malformed blocks explicitly. Do NOT use `write_agent`
+   — sync sub-agents are never in `status: idle`, so that tool is
+   not registered in your runtime function list. After 2 corrective
    re-requests, escalate to user per Iteration Caps.
 4. Verify `artifacts/architecture.md` exists.
 5. Persist parsed `agents-json` into `state.json.architecture_summary`
@@ -321,8 +333,12 @@ The orchestrator is forbidden from:
    `blocking-issues-json` / `concerns-json` blocks per the critic
    output contract.
 3. If `status: BLOCKING`: increment the `review-arch` counter and
-   return to `design`. If counter >= 2 AND status is still BLOCKING,
-   escalate to user per Iteration Caps; do NOT loop further.
+   return to `design`. Re-entry into Phase 3 launches the architect
+   via a fresh `task` call (iteration-suffixed `name`, prior
+   `agent_id` in prompt body) — do NOT use `write_agent` (sync
+   sub-agents are never `idle`). If counter >= 2 AND status is
+   still BLOCKING, escalate to user per Iteration Caps; do NOT loop
+   further.
 4. If `status: PASS`: proceed to `approval`.
 
 **Review Checklist**:
@@ -381,9 +397,13 @@ The orchestrator is forbidden from:
 1. Delegate implementation review to `@factory-critic` (sync).
 2. Parse the critic's `verdict` block and `blocking-issues-json`.
 3. If `status: BLOCKING`: increment the `review-prompts` counter
-   and return to `build` with the blocking issues. If the counter
-   is >= 2 AND status is still BLOCKING, escalate to user per
-   Iteration Caps; do NOT loop further.
+   and return to `build` with the blocking issues. Re-entry into
+   Phase 6 launches the engineer via a fresh `task` call
+   (iteration-suffixed `name` like `build-fix1`, prior `agent_id`
+   referenced in prompt body) — do NOT use `write_agent` (sync
+   sub-agents are never `idle`, so the tool is not registered). If
+   the counter is >= 2 AND status is still BLOCKING, escalate to
+   user per Iteration Caps; do NOT loop further.
 4. If `status: PASS`: proceed to `eval-execute`.
 
 **State Update**: `phase: "eval-execute"`, `deliverables: {file_list}`

@@ -1,0 +1,57 @@
+id: smoke-styled-recipe-render
+pack: story-telling-agent-rendering
+description: |
+  F5 happy-path smoke test: a deck-spec with one styled slide
+  (style=styled, style_recipe=metric_xxl) that should be dispatched
+  to the new `_styled_metric_xxl` builder. Asserts the deck builds
+  successfully (output.pptx exists) and the builder-summary fence
+  shows `styled-count: 1` with `metric_xxl` in `styled-recipes-used`.
+
+prompt_file: prompt.md
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.story-telling-stm
+      dest: .story-telling-stm
+    - kind: copy_tree
+      src: fixtures/
+      dest: .story-telling-stm/runs/smoke-styled/agents/deck-builder/
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: deck
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/output\\.pptx$"
+      required: true
+    - id: deck-spec
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+      required: true
+  invocations:
+    deck-builder: { min: 1, max: 2 }
+    deck-critic:  { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:builder-summary": "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/build-log\\.txt$"
+    "artifact:deck-spec": "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+  expectations:
+    - kind: contract-fence
+      output_contract: builder-summary
+      must_match: "metric_xxl"
+    - kind: contract-fence
+      output_contract: builder-summary
+      must_match: "styled-count: 1"

@@ -309,3 +309,26 @@ Before considering any deck complete, verify every slide passes:
 
 For detailed layout specifications and visual patterns:
 - [Slide Patterns](references/slide-patterns.md) — Concrete layouts, dimensions, color palettes, typography pairings, chart selection
+
+## Rendering Subsystem Rebuild (2026-05-04)
+
+**Rendering-relevant canon updates** in session
+2026-05-04-7d3f9a2b (narrative content unchanged):
+
+- **F11 ody_word_max 30** (was 70). A "body" is the body
+  text on one slide. Anything denser fails the design quality
+  checklist and triggers `body_density_violations` in
+  `check_pptx.py`.
+- **OQ4 section_divider defaults to styled** —
+  `style: "styled" / style_recipe: "hero_full_bleed"`.
+  Title slides default to `style: "simple"`. See the new
+  eferences/style-gating.md for the full Duarte/Reynolds
+  gating heuristic.
+- **Material 3 type scale** is documented in
+  eferences/typography.md for downstream selection of
+  `size_metric_xxl`, `size_quote_glyph`, etc.
+
+These canon shifts only affect the rendering subsystem (the
+slide-builder dispatch and the structural asserts). The
+narrative arc / story strategy guidance in this skill is
+unchanged.

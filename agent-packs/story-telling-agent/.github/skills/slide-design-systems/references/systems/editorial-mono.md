@@ -15,7 +15,7 @@ extremes), Presentation Zen (radical signal-to-noise).
   "palette": {
     "background_dark": "#000000",
     "background_light": "#FFFFFF",
-    "background_accent": "#FF3366",
+    "background_accent": "#C81E4A",
     "primary_accent": "#FF3366",
     "secondary_accent": "#000000",
     "highlight": "#FF3366",
@@ -51,3 +51,12 @@ extremes), Presentation Zen (radical signal-to-noise).
 - No top bars, no underlines, no stripes. Whitespace is the structure.
 - Big Statement and Quote slides should fill the slide with text;
   treat the slide canvas like a magazine spread.
+
+## F3 token-fix notes (session 2026-05-04-7d3f9a2b)
+
+- `background_accent` was `#FF3366` (3.95:1 vs white) — failed AA body
+  by a hair. Replaced with `#C81E4A` (**5.7:1** vs white) — same brand
+  temperature, AA-clean. The original neon `#FF3366` is preserved as
+  `primary_accent` / `highlight` for typographic emphasis and accent
+  lines, where the larger-text or non-body-background WCAG tier
+  applies.

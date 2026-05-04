@@ -107,3 +107,36 @@ decorative shapes). Structural QA catches "is wrong" issues
 - Structural-only misses purely visual antipatterns (5, 6).
 
 `@deck-critic` runs both passes and combines findings.
+
+## Rendering Subsystem Rebuild (2026-05-04)
+
+scripts/check_pptx.py was rewritten in session
+2026-05-04-7d3f9a2b. New / changed report fields:
+
+- **overflow_violations** (F1) — now uses real Pillow text
+  metrics per shape, with no slack tolerance, honouring
+  `margin_left/right/top/bottom`, `space_before/after`, and
+  paragraph `level` indentation. The font is resolved via the
+  canonical `render-visual/assets/font_locator.find_dejavu_sans()`
+  helper (C3).
+- **contrast_violations** + **contrast_unresolved** (F4) —
+  contrast pairs are now theme-resolved (background fill walks
+  shape ↔ slide-background ↔ theme; text resolves through
+  `a:solidFill` then theme `schemeClr`). Pairs that cannot
+  resolve to a concrete RGB land in `contrast_unresolved`
+  (separate from `contrast_violations`). The deck-critic
+  treats `contrast_unresolved >= 5` as a BLOCKING revise.
+- **g_label_threshold** (F7) — saturation-aware. Hard-coded
+  thresholds: `sat > 0.45` → accent regardless of luminance;
+  `lum < 0.18` → dark; `lum > 0.72` → light; else accent
+  (C4). The previous luminance-only heuristic mis-classified
+  saturated brand backgrounds as `light` / `dark`.
+- **dark_light_run** (F8) — thresholds: `>= 3` warn;
+  `>= 7` BLOCKING; `>= 5 with no accent break` BLOCKING.
+- **ody_word_max** (F11) — canonical limit lowered from
+  70 to **30** words per body. Flagged in
+  `body_density_violations`.
+- **ont_fallback** — when the canonical DejaVu Sans bundle
+  is unavailable and PIL bitmap-default is used as a last
+  resort, this field surfaces so the critic can warn that
+  overflow metrics are approximate.

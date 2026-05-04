@@ -46,7 +46,7 @@ missing `.story-telling-stm/runs/{sid}/` paths, prompt asks you to
 |------------|---------------|
 | **Read**   | `.story-telling-stm/runs/{sid}/**`, `.github/skills/**`, declared user-context files, optional template `.pptx` path |
 | **Write**  | `.story-telling-stm/runs/{sid}/agents/deck-builder/**` only |
-| **Execute** | `python` / `python3` invocation of `generate_deck.py` you wrote into your own dir |
+| **Execute** | `python` / `python3` invocation of `generate_deck.py` you wrote into your own dir; `python` invocation of `slide-design-systems/scripts/check_palettes.py` (G1 preflight); `python` invocation of `render-visual/scripts/{render_chart,render_composite,render_diagram}.py` (driven by `generate_deck.py` itself; explicit invocation also permitted for debugging); `python` invocation of `pptx-structural-asserts/scripts/check_pptx.py` (debug only — authoritative run is the critic's) |
 
 **Do NOT** write outside `agents/deck-builder/`. **Do NOT** modify
 proposal, strategist, or critic artifacts. **Do NOT** run shell commands
@@ -73,18 +73,26 @@ on first run if missing).
 ## Skills to Load
 
 - `presentation-design` — slide types taxonomy, visual hierarchy patterns,
-  layout vocabulary, typography & color tokens (default palette)
-- `pptx-engine` — python-pptx API patterns, slide-builder reference
-  functions (`add_title_slide`, `add_content_slide`, `add_big_statement`,
-  `add_split_slide`, `add_question_slide`, `add_section_divider`,
-  `add_metric_spotlight`, `add_comparison_columns`, `add_quote_slide`,
-  `add_data_callout`, `add_visual_hero`, `add_cta_steps`),
-  `scripts/generate_deck.py` reference implementation
+  layout vocabulary, typography & color tokens (default palette);
+  see `references/style-gating.md` for the simple|styled gating heuristic
+  and `references/typography.md` for the Material 3 type scale
+- `pptx-engine` — python-pptx API patterns, the rebuilt
+  `scripts/generate_deck.py` token-driven dispatcher, and
+  `references/styled-recipes.md` for the 8 canonical styled recipes
+  with EMU coordinates
 - `slide-design-systems` — six fully-specified palette/type/grid
   systems (executive-navy, technical-slate, customer-coral,
-  investor-gold, editorial-mono, boardroom-conservative). Use the
-  one named in `intake.json.design_system` if any; else default to
-  `executive-navy`.
+  investor-gold, editorial-mono, boardroom-conservative); the
+  **G1 preflight gate** (`scripts/check_palettes.py`) MUST be run
+  by you first (see Workflow Step 0); the critic re-runs it as
+  a cross-check (per critic concern C1)
+- `render-visual` — chart / composite / diagram pre-rendering
+  (`scripts/render_chart.py`, `render_composite.py`,
+  `render_diagram.py`). You produce `visual_assets[]` entries in
+  `deck-spec.json`; the rebuilt `generate_deck.py` subprocesses
+  the matching script before assembly. Diagram graceful-degrade
+  per OQ2 produces a `.skipped.json` sentinel — surface the skip,
+  don't fail the deck.
 
 ## Mental Model
 
@@ -106,6 +114,23 @@ You receive (via `task` from `@story-orchestrator`):
   `qa-report.json` + `top-fixes-json` from a prior QA round
 
 ## Workflow
+
+### Step 0: G1 Palette Preflight (REQUIRED before any slide authoring)
+
+Per critic concern C1, **you own the G1 preflight gate**. Before
+writing `deck-spec.json` or `generate_deck.py`, resolve the chosen
+design system's tokens and run:
+
+```
+python .github/skills/slide-design-systems/scripts/check_palettes.py \
+  --systems-dir .github/skills/slide-design-systems/references/systems \
+  --selected <design-system-name>
+```
+
+If the script exits non-zero, **STOP** and return
+`status: error` with the failing pair list. The critic re-runs
+this same script as a cross-check; if the deck-builder skipped
+G1 the critic will reject the deck unconditionally.
 
 ### Step 1: Proposal Interpretation
 
@@ -264,13 +289,25 @@ complete | error
 }
 ```
 
-```qa-summary
+```builder-summary
 slide-count: <N>
-layout-sequence: [Title, Big Statement, Headline+bullets, ...]
+simple-count: <N>
+styled-count: <N>
+styled-recipes-used: [hero_full_bleed, metric_xxl, ...]
+visual-assets-rendered: <N>
+visual-assets-skipped: <N>          # diagram graceful-degrade per OQ2
+g1-palette-preflight: pass | fail
 design-system: <name>
+design-system-tokens-source: spec | fallback
 dark-light-balance: <e.g. 4 dark / 8 light>
 preflight-checks: structural-asserts deferred to @deck-critic
 ```
+
+> **§8.1 builder-summary contract notes.** `styled-count == 0`
+> implies the deck is eligible for `pass_unverified` if the
+> critic's render fails (OQ5). Any `styled-count > 0` makes the
+> deck render-blocking. `g1-palette-preflight` MUST be `pass` —
+> the critic auto-rejects on `fail` per C1.
 
 ## Template Mode Details
 

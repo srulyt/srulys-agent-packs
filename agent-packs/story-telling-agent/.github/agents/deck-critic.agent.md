@@ -70,12 +70,20 @@ missing `.story-telling-stm/runs/{sid}/` paths, prompt asks you to
 
 - `slide-critique` — negative-space + checklist execution + critique
   output format
-- `pptx-visual-qa` — render pipeline (`soffice → pdf → png`),
-  per-slide visual rubric, `scripts/render_pptx.py`
+- `pptx-visual-qa` — render pipeline (`soffice → libreoffice → unoconv`
+  per OQ1; NO aspose), per-slide visual rubric,
+  `scripts/render_pptx.py` with `render_unverified` flag
 - `pptx-structural-asserts` — programmatic python-pptx checks,
-  `scripts/check_pptx.py`
-- `presentation-design` — positive design rules (used to interpret
-  rubric verdicts in context)
+  `scripts/check_pptx.py` (rebuilt: F1 real-metric overflow,
+  F4 theme-resolved contrast + `contrast_unresolved`,
+  F7 saturation-aware bg classification, F8 dark/light run
+  thresholds 3/5/7, F11 body_word_max=30)
+- `slide-design-systems` — palette WCAG canon and the G1 preflight
+  gate (`scripts/check_palettes.py`); `references/wcag-thresholds.md`,
+  `references/canon.md`. **Re-run G1 as a cross-check** per C1.
+- `presentation-design` — positive design rules, including
+  `references/style-gating.md` (when does a slide deserve styled?)
+  and `references/typography.md` (Material 3 type scale)
 
 ## Input Expectations
 
@@ -189,26 +197,65 @@ For verdict `revise`, list ≤5 ordered, **actionable** fixes the builder
 can apply by editing `generate_deck.py`. Each fix references a slide
 index, the affected element, and a concrete change.
 
-### Verdict Logic
+### Verdict Logic (architecture §6, rebuild 2026-05-04)
 
-- **pass** — no blocking findings AND all structural-pass AND ≤2
-  non-blocking findings AND no critical antipatterns.
-- **revise** — any of:
-  - Aspect ratio not 16:9
-  - Any overflow violation
-  - Any contrast violation
-  - >2 title underlines
-  - Run of ≥3 same-background slides
-  - Missing speaker notes on any slide
-  - Duplicate titles
-  - Any layout-hash repeat between consecutive slides
-  - ≥3 antipatterns flagged in the visual pass
-  - Layout variety: <3 distinct layouts across the deck
+Apply the rules **in order**; the first matching outcome wins.
 
-If `render_skipped` is true, downgrade `pass` to a conditional pass:
-emit `verdict: pass` only if structural checks all pass; surface
-`render_skipped: true` as a non-blocking finding so the orchestrator
-can mention it to the user.
+```
+def decide_verdict(qa, structural, builder_summary):
+    # 1. G1 palette preflight — owned by deck-builder, re-run by us (C1)
+    if structural.palette_preflight_pass is False:
+        return "revise", blocking="palette_preflight_failed"
+
+    # 2. Pre-render of visual_assets failed (excluding graceful-degrade
+    #    diagram skips, which are non-blocking)
+    if structural.visual_assets_pre_render_failed:
+        return "revise", blocking="visual_assets_pre_render_failed"
+
+    # 3. Hard structural blockers
+    if structural.overflow_violations:
+        return "revise", blocking="overflow_violations"
+    if structural.contrast_violations:
+        return "revise", blocking="contrast_violations"
+    if structural.contrast_unresolved_count >= 5:
+        return "revise", blocking="contrast_unresolved_high"
+
+    # 4. Dark/light run thresholds (F8)
+    run = structural.dark_light_run
+    if run >= 7:
+        return "revise", blocking="dark_light_run_>=7"
+    if run >= 5 and not structural.accent_present:
+        return "revise", blocking="dark_light_run_>=5_no_accent"
+    # run >= 3 → warn (non-blocking)
+
+    # 5. Render outcome (OQ5 styled-deck policy)
+    if qa.render_engine is None:
+        if builder_summary.styled_count > 0:
+            return "revise", blocking="render_unverified"
+        else:
+            return "pass_unverified"   # simple-only deck — shippable
+
+    # 6. Other rubric items (visual antipatterns, layout variety, etc.)
+    if visual_rubric_blockers(qa.visual):
+        return "revise", blocking=visual_rubric_blockers(qa.visual)
+
+    return "pass"
+```
+
+**Key rules:**
+
+- **`pass_unverified`** is reachable ONLY when `render_engine is
+  None` AND every slide is `style: "simple"` (per OQ5,
+  decisions.md). This verdict ships the deck with a non-blocking
+  caveat surfaced to the user.
+- **`render_unverified` is BLOCKING** for any deck with at least
+  one styled slide. Never downgrade a styled deck to `pass` /
+  `pass_unverified` on render failure.
+- **G1 cross-check** — the critic MUST re-run
+  `slide-design-systems/scripts/check_palettes.py` against the
+  selected system. If the builder skipped G1, or the system's
+  palette has changed since the builder ran, surface as
+  `palette_preflight_failed` BLOCKING.
 
 ## Output Artifacts
 
@@ -227,7 +274,7 @@ Under `.story-telling-stm/runs/{sid}/agents/deck-critic/`:
 End your final assistant message with:
 
 ```status
-pass | revise | error
+pass | pass_unverified | revise | error
 ```
 
 ```qa-report-json
@@ -239,6 +286,25 @@ pass | revise | error
 }
 ```
 
+```critic-verdict
+verdict: pass | pass_unverified | revise
+blocking-findings: [palette_preflight_failed | overflow_violations | contrast_violations | contrast_unresolved_high | dark_light_run_>=7 | dark_light_run_>=5_no_accent | visual_assets_pre_render_failed | render_unverified | <visual-rubric-id>]
+non-blocking-findings: [...]
+styled-count: <N>
+render-engine: soffice | libreoffice | unoconv | null
+```
+
+```palette-preflight
+g1-status: pass | fail
+g1-failing-pairs: [{pair: "text_on_dark/background_dark", ratio: 3.8, threshold: 4.5, tier: "normal"}, ...]
+```
+
+```styled-deck-policy
+deck-shape: simple-only | mixed | styled-heavy
+render-policy-applied: pass | pass_unverified | render_unverified
+oq5-binding: "pass_unverified is reachable only when render_engine is null AND styled-count == 0"
+```
+
 ```top-fixes-json
 [
   {"slide": 3, "issue": "Title underline present (antipattern: every-slide-underline)", "fix": "Remove add_title_underline() call on slide 3"},
@@ -246,4 +312,4 @@ pass | revise | error
 ]
 ```
 
-(emit `[]` when verdict is `pass`)
+(emit `[]` when verdict is `pass` or `pass_unverified`)

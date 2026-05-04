@@ -1,0 +1,74 @@
+id: smoke-render-skipped-on-styled
+pack: story-telling-agent-rendering
+description: |
+  KEY OQ5 REGRESSION TEST. A deck-spec with a styled slide
+  (style_recipe=hero_full_bleed) is built, but the render pipeline
+  is forced to skip (PATH stripped of soffice/libreoffice/unoconv,
+  so render_pptx.py emits manifest with render_engine=null +
+  render_unverified=true). The @deck-critic MUST emit
+  verdict=revise with blocking finding `render_unverified` —
+  it MUST NOT issue `pass` or `pass_unverified`.
+
+  This case asserts the OQ5 styled-deck render-blocking policy:
+    - styled-count > 0  + render_engine null → revise BLOCKING
+    - styled-count == 0 + render_engine null → pass_unverified OK
+
+prompt_file: prompt.md
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.story-telling-stm
+      dest: .story-telling-stm
+    - kind: copy_tree
+      src: fixtures/
+      dest: .story-telling-stm/runs/smoke-render-skipped/agents/deck-builder/
+
+# Render-engine sandbox: the case prompt instructs the critic to
+# invoke render_pptx.py with PATH overridden to a directory
+# containing none of soffice/libreoffice/unoconv. This forces the
+# render_engine=null path deterministically.
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: qa-report
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+      required: true
+  invocations:
+    deck-builder: { min: 1, max: 2 }
+    deck-critic:  { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:critic-verdict": "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+
+  expectations:
+    # KEY ASSERTIONS — verdict MUST NOT be pass or pass_unverified.
+    - kind: must-not-match
+      output_contract: status
+      pattern: "^pass$"
+    - kind: must-not-match
+      output_contract: status
+      pattern: "^pass_unverified$"
+    # AND the critic MUST surface render_unverified as a blocking finding.
+    - kind: contract-fence
+      output_contract: critic-verdict
+      must_match: "render_unverified"
+    # AND styled-deck-policy must show render_unverified policy.
+    - kind: contract-fence
+      output_contract: styled-deck-policy
+      must_match: "render_unverified"

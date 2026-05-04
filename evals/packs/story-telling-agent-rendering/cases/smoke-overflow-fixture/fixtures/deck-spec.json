@@ -1,0 +1,52 @@
+{
+  "title": "F1 Overflow Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_path": "output.pptx",
+  "slides": [
+    {
+      "index": 1,
+      "type": "title",
+      "title": "F1 Overflow Smoke",
+      "subtitle": "Eval harness — synthetic",
+      "notes": "Synthetic title for the F1 overflow regression test."
+    },
+    {
+      "index": 2,
+      "type": "key-message",
+      "title": "Overflow detection now uses real Pillow metrics",
+      "notes": "Setup slide — content fits."
+    },
+    {
+      "index": 3,
+      "type": "content",
+      "title": "This body deliberately overflows",
+      "bullets": [
+        "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit",
+        "A second long bullet to ensure the textbox cannot fit at 22pt body size in a 4-inch wide column with default margins, exercising the F1 real-metric pipeline against measurable overflow.",
+        "Third long bullet repeating substantially the same density of text so that wrapped-line height accumulates well past the available 5.0in default body height in the simple content builder.",
+        "Fourth long bullet of comparable length, pushing total wrapped-line count toward and past the geometric overflow threshold for the default body box.",
+        "Fifth long bullet maintaining wrap density and ensuring at 22pt body / 28pt line-height (~0.39in/line) the cumulative height clearly exceeds five inches.",
+        "Sixth long bullet — by this point the textbox should be unambiguously over capacity and check_pptx _shape_overflow must report a violation.",
+        "Seventh long bullet adding more wrapped lines so margin between actual content height and box height is large and unambiguous.",
+        "Eighth long bullet ensuring overflow is geometric and not dependent on specific font-metrics estimation; even with conservative line-height the content cannot fit.",
+        "Ninth long bullet — defensive padding so that even font_fallback approximations of glyph width still wrap to multi-line height per bullet.",
+        "Tenth long bullet finalising the overflow surplus; total wrapped lines now well above the ~12.8-line capacity of the default 5.0in body box at 22pt."
+      ],
+      "notes": "This slide is the F1 regression target — check_pptx.py MUST flag it as overflow_violations. Iteration 2 (session 2026-05-04-7d3f9a2b) duplicates the long-bullet payload to ten bullets so wrapped-line height geometrically exceeds the default 5.0in body box even under conservative font-metric estimation. Body-box-resize alternative (`body_box` schema field) was deferred — see build-manifest.json review_iterations[1].b2_choice."
+    },
+    {
+      "index": 4,
+      "type": "section-divider",
+      "title": "End",
+      "style": "simple",
+      "notes": "Closing divider — simple style to keep the deck simple-only."
+    },
+    {
+      "index": 5,
+      "type": "question",
+      "title": "Did the critic catch the overflow?",
+      "notes": "Final smoke slide."
+    }
+  ]
+}

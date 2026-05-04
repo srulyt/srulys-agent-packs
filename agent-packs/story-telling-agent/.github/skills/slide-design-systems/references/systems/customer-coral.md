@@ -14,9 +14,9 @@ case studies. **Vibe**: Warm, human, narrative.
   "palette": {
     "background_dark": "#0F1B2D",
     "background_light": "#FFF7F2",
-    "background_accent": "#F87171",
+    "background_accent": "#B91C1C",
     "primary_accent": "#F87171",
-    "secondary_accent": "#FB923C",
+    "secondary_accent": "#9A3412",
     "highlight": "#06B6D4",
     "text_on_dark": "#FFFFFF",
     "text_on_light": "#1A1A2E",
@@ -51,3 +51,15 @@ case studies. **Vibe**: Warm, human, narrative.
 - Quotes get the coral background — emotional anchor.
 - Use sparkline emotional contour: peaks on Big Statement / Quote
   slides, valleys on data slides.
+
+## F3 token-fix notes (session 2026-05-04-7d3f9a2b)
+
+- `background_accent` was `#F87171` (3.0:1 vs white) — failed AA body.
+  Replaced with `#B91C1C` (red-700) for **7.4:1** vs white. The old
+  `#F87171` is preserved as `primary_accent` for icons and accent
+  lines (not body backgrounds).
+- `secondary_accent` was `#FB923C` (2.4:1 vs white) — failed AA body
+  AND large-text. Replaced with `#9A3412` (orange-800) for **8.2:1**
+  vs white.
+- Quote backgrounds, CTA backgrounds, and Big Statement backgrounds
+  on this system now satisfy WCAG AA body for 22pt text.

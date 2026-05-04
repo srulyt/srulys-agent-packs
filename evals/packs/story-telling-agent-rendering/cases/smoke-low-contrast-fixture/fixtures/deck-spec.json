@@ -1,0 +1,45 @@
+{
+  "title": "F4 Low-Contrast Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "custom",
+  "output_path": "output.pptx",
+  "design_system_tokens": {
+    "name": "f4-broken-contrast",
+    "palette": {
+      "background_dark":   "#0F1B2D",
+      "background_light":  "#F5F6FA",
+      "background_accent": "#3B82F6",
+      "primary_accent":    "#3B82F6",
+      "secondary_accent":  "#06B6D4",
+      "highlight":         "#F59E0B",
+      "surface_elevated":  "#FFFFFF",
+      "text_on_dark":      "#FFFFFF",
+      "text_on_light":     "#BBBBBB",
+      "text_secondary":    "#CCCCCC"
+    },
+    "typography": {
+      "font_title": "Calibri Light",
+      "font_body":  "Calibri",
+      "size_hero":     54,
+      "size_section":  48,
+      "size_title":    40,
+      "size_subtitle": 24,
+      "size_body":     22,
+      "size_caption":  14
+    }
+  },
+  "slides": [
+    {"index": 1, "type": "title", "title": "F4 Low-Contrast Smoke",
+     "subtitle": "Eval harness", "notes": "Title slide."},
+    {"index": 2, "type": "content", "title": "Body text is illegible",
+     "bullets": ["This bullet is light grey #BBBBBB on light background #F5F6FA",
+                 "Contrast ratio < 2:1 — well below the 4.5:1 WCAG threshold"],
+     "notes": "F4 regression target — check_pptx.py MUST flag contrast_violations."},
+    {"index": 3, "type": "key-message", "title": "End",
+     "notes": "Closer."},
+    {"index": 4, "type": "question", "title": "Was the contrast caught?",
+     "notes": "Final."},
+    {"index": 5, "type": "section-divider", "title": "Done",
+     "style": "simple", "notes": "Simple-only deck."}
+  ]
+}

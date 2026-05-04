@@ -19,9 +19,12 @@ task(
 ```
 
 See [`task-tool-mechanics.md`](task-tool-mechanics.md) for the
-canonical template, rules, and full `task` semantics. Never invoke
-a sub-agent by writing prose — the only invocation channel is the
-`task` tool.
+canonical template, rules, and full `task` semantics — including
+the conditional availability of `read_agent` / `write_agent` /
+`list_agents` (registered only when a background-mode sub-agent is
+in `status: idle`; not callable in a strictly sync pipeline). Never
+invoke a sub-agent by writing prose — the only invocation channel is
+the `task` tool.
 
 ## Architect Delegation
 
