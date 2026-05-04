@@ -75,6 +75,30 @@ def _resolve_font_locator():
 _FIND_FALLBACK_FONT = _resolve_font_locator()
 
 
+# ---------- archetype checks (sibling module in this same skill) ----------
+
+def _resolve_archetype_runner():
+    """Locate `check_archetypes.run` next to this script.
+
+    Wired in session 2026-05-04-c8d3b2a1 (review-prompts iteration 1,
+    Option A): the production QA pipeline invokes check_pptx.py as its
+    single entry point, and check_archetypes.py was previously orphaned.
+    Importing it here merges its findings into the same JSON report and
+    the same blocking/warning verdict logic.
+    """
+    here = Path(__file__).resolve().parent
+    if str(here) not in sys.path:
+        sys.path.insert(0, str(here))
+    try:
+        import check_archetypes  # type: ignore
+        return check_archetypes.run
+    except Exception:
+        return None
+
+
+_RUN_ARCHETYPE_CHECKS = _resolve_archetype_runner()
+
+
 # ---------- units / colour helpers ----------
 
 EMU_PER_INCH = 914400
@@ -623,6 +647,35 @@ def main() -> int:
 
     duplicate_titles = [{"title": t, "slides": ids} for t, ids in titles.items() if len(ids) > 1]
 
+    # ---------- archetype-level (spec-only) checks ----------
+    # check_archetypes.py runs cheap deck-spec invariants for the 7
+    # styled-recipe archetypes added in session 2026-05-04-c8d3b2a1.
+    # Findings are merged into the same report under
+    # `archetype_violations`, and fail/warn statuses surface in the
+    # same blocking/warning verdict buckets used by the other 10
+    # checks. (Wired in fix iteration 1 of the same session.)
+    archetype_violations: list[dict] = []
+    archetype_fail_ids: set[str] = set()
+    archetype_warn_ids: set[str] = set()
+    if args.spec and args.spec.exists() and _RUN_ARCHETYPE_CHECKS is not None:
+        try:
+            arch_report = _RUN_ARCHETYPE_CHECKS(args.spec)
+            for c in arch_report.get("checks", []):
+                if c.get("status") in ("fail", "warn"):
+                    archetype_violations.append(c)
+                    if c["status"] == "fail":
+                        archetype_fail_ids.add(c["id"])
+                    else:
+                        archetype_warn_ids.add(c["id"])
+        except Exception as e:
+            archetype_violations.append({
+                "id": "archetype_runner_error",
+                "slide_index": None,
+                "status": "warn",
+                "message": f"check_archetypes.run failed: {e}",
+            })
+            archetype_warn_ids.add("archetype_runner_error")
+
     blocking: list[str] = []
     warnings: list[str] = []
 
@@ -659,6 +712,16 @@ def main() -> int:
     if contrast_unresolved and "contrast_unresolved" not in blocking:
         warnings.append("contrast_unresolved")
 
+    # Archetype-level fails are blocking; warns are warnings. Each
+    # check id (e.g. "archetype.waterfall.zero_baseline") surfaces
+    # at most once in the verdict bucket regardless of slide count.
+    for cid in sorted(archetype_fail_ids):
+        blocking.append(f"archetype.{cid}" if not cid.startswith("archetype.") else cid)
+    for cid in sorted(archetype_warn_ids):
+        tag = f"archetype.{cid}" if not cid.startswith("archetype.") else cid
+        if tag not in blocking:
+            warnings.append(tag)
+
     report = {
         "session_id": None,
         "pptx_path": str(args.pptx),
@@ -680,6 +743,8 @@ def main() -> int:
         "duplicate_titles": duplicate_titles,
         "body_word_max_violations": body_word_violations,
         "font_fallback": font_fallback_flag[0],
+        "archetype_violations": archetype_violations,
+        "archetype_runner_available": _RUN_ARCHETYPE_CHECKS is not None,
         "blocking_findings": blocking,
         "warning_findings": warnings,
     }

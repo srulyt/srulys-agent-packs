@@ -1,13 +1,27 @@
 ---
 name: pptx-structural-asserts
-description: "Programmatic python-pptx structural assertions for deck QA. Detects text-frame overflow, contrast violations (luminance ratio), alignment-grid drift, repeated-layout-hash, title-underline spam, dark/light run length, missing speaker notes, and duplicate titles. Emits a JSON report consumed by @deck-critic. Keywords: structural QA, contrast, overflow, alignment grid, layout hash, python-pptx assertions."
+description: "Programmatic python-pptx structural assertions for deck QA. Runs thirteen checks: text-frame overflow, contrast violations (luminance ratio), alignment-grid drift, repeated-layout-hash, title-underline spam, dark/light run length, missing speaker notes, duplicate titles, body-word density, plus three archetype-spec checks (waterfall zero-baseline algebra, decision_options column-width sum, risk_heatmap WCAG-AA contrast). Single entry point: check_pptx.py emits a merged JSON report consumed by @deck-critic. Keywords: structural QA, contrast, overflow, alignment grid, layout hash, archetype asserts, python-pptx assertions."
 ---
 
 # PPTX Structural Asserts
 
 Deterministic, fast, no-render-required structural QA. Loads the deck
-via python-pptx and runs ten checks against shape geometry, text frames,
-runs, and notes. Output is a JSON report consumed by `@deck-critic`.
+via python-pptx and runs thirteen checks against shape geometry, text
+frames, runs, notes, and (when a `--spec` is supplied) deck-spec
+archetype invariants. Output is a single JSON report consumed by
+`@deck-critic`.
+
+## Pipeline / How to Invoke
+
+`check_pptx.py` is the **only entry point** the production QA
+pipeline (`@deck-critic` Step 2) calls. When invoked with `--spec`
+it imports `check_archetypes.run()` from this same skill and merges
+the archetype findings into the same report under
+`archetype_violations`. Archetype `fail` statuses surface as
+blocking findings (tagged `archetype.<check-id>`); `warn` statuses
+surface as warning findings. Calling `check_archetypes.py` directly
+is still supported for local debugging but is NOT part of the
+production pipeline (no separate report file).
 
 ## When to Use This Skill
 
@@ -25,6 +39,7 @@ Load this skill when you are `@deck-critic` and need:
 |------|---------|
 | [SKILL.md](SKILL.md) | This file |
 | [scripts/check_pptx.py](scripts/check_pptx.py) | The check runner — loads pptx + deck-spec, emits JSON report |
+| [scripts/check_archetypes.py](scripts/check_archetypes.py) | Cheap spec-level invariants for the 7 archetype recipes added in session 2026-05-04-c8d3b2a1 (waterfall zero-baseline algebra, decision_options column-width sum, risk_heatmap WCAG-AA contrast). Operates on `deck-spec.json` only — no .pptx parsing required. **Imported and run by `check_pptx.py` when `--spec` is supplied** (wired in fix iteration 1 of the same session). |
 
 ## Quick Use
 
@@ -52,6 +67,9 @@ Exit codes: `0` on script success (regardless of pass/fail of checks);
 | `speaker_notes_missing` | blocking | Slides with empty `notes_text_frame.text` |
 | `duplicate_titles` | blocking | Slides whose first text-frame matches another's |
 | `body_word_max_violations` | warn | Slides with body text >70 words total |
+| `archetype.waterfall.zero_baseline` | blocking | Spec-level: waterfall start + Σdeltas == end (±0.5%). Requires `--spec`. |
+| `archetype.decision_options.columns_sum_to_slide_width` | warn | Spec-level: derived option-column widths sum to slide-content width within 0.05". Requires `--spec`. |
+| `archetype.risk_heatmap.contrast_aa` | blocking | Spec-level: WHITE labels on green/amber/red heatmap cells clear WCAG AA normal-text 4.5:1. Requires `--spec`. |
 
 ## Report Schema
 
@@ -76,7 +94,13 @@ Exit codes: `0` on script success (regardless of pass/fail of checks);
   "speaker_notes_missing": [],
   "duplicate_titles": [],
   "body_word_max_violations": [],
-  "blocking_findings": [],
+  "archetype_violations": [
+    {"id": "waterfall.zero_baseline", "slide_index": 5,
+     "status": "fail",
+     "message": "waterfall algebra broken: start(100) + Σdeltas(+8) = 108, but end=120 (tol=0.6)..."}
+  ],
+  "archetype_runner_available": true,
+  "blocking_findings": ["archetype.waterfall.zero_baseline"],
   "warning_findings": []
 }
 ```

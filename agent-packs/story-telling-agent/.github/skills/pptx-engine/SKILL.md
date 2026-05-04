@@ -488,6 +488,7 @@ if __name__ == "__main__":
 
 For detailed code patterns:
 - [PPTX API Patterns](references/pptx-api-patterns.md) — Tables, charts, images, master slides, advanced formatting
+- [Chart Selection](references/chart-selection.md) — Relationship→chart-type matrix (trend / comparison / composition / distribution / correlation / flow / ranking / geospatial), hard rules (no 3D, no pie except trivial, bars zero-baseline, direct labels over legends), chart-title-vs-slide-title discipline, source/unit/annotation requirements, and which existing `render-visual` recipes implement which relationship.
 - [generate_deck.py](scripts/generate_deck.py) — Reference Python script. Includes builder functions for: `add_title_slide`, `add_section_header`, `add_section_divider`, `add_content_slide`, `add_big_statement`, `add_split_slide`, `add_question_slide`, `add_quote_slide`, `add_metric_slide` (alias `add_metric_spotlight`), `add_comparison_slide` (alias `add_comparison_columns`), `add_data_callout`, `add_visual_hero`, `add_cta_slide` (alias `add_cta_steps`). The default `DECK_CONTENT` produces a 10-slide deck covering 9 distinct layouts with dark/light balance — copy-paste this and substitute content per `deck-spec.json`.
 - [slide-design-systems](../slide-design-systems/SKILL.md) — Six concrete design systems (palette + type scale + grid + slide-type defaults) usable directly in `deck-spec.json.design_system`. The default constants in `generate_deck.py` correspond to `executive-navy`.
 
@@ -520,3 +521,31 @@ This skill was extended for the rendering rebuild (session
 
 See eferences/styled-recipes.md for per-recipe EMU-coordinate
 implementations.
+
+
+## Archetype Builders Extension (session 2026-05-04-c8d3b2a1)
+
+The renderer was extended with **7 archetype semantic builders** plus
+**1 partial overlay** to realise the previously ⏳ Spec-only entries
+in `presentation-design/references/layout-archetypes.md`:
+
+| Recipe | Function | Spec key(s) |
+|---|---|---|
+| `risk_heatmap` | `_styled_risk_heatmap` | `risks[]`, `axes` |
+| `priority_matrix` | `_styled_priority_matrix` | `matrix_items[]`, `axes`, `quadrant_labels[4]` |
+| `waterfall` | `_styled_waterfall` | `waterfall.{start,steps[],end,units}` |
+| `flywheel` | `_styled_flywheel` | `flywheel_stages[]` (3–6), `center_label` |
+| `funnel` | `_styled_funnel` | `funnel_stages[]` (3–6, optional `rate`) |
+| `decision_options` | `_styled_decision_options` | `options[]`, `criteria[]`, `recommendation` (>3 options OK) |
+| `appendix_dense` | `_styled_appendix_dense` | `panels[]` (2–4); pair with `appendix: true` |
+| `footer_source` | `_apply_footer_source` (partial) | `slide.footer.{source,page,page_total,confidentiality}` |
+
+`footer_source` is **not** a primary recipe — it is applied AFTER the
+primary builder runs, on any slide whose spec carries a `footer`
+block, regardless of `style` / `type` / `style_recipe`.
+
+Cheap spec-level structural assertions live in
+`pptx-structural-asserts/scripts/check_archetypes.py`
+(waterfall zero-baseline algebra; decision_options column-width sum;
+risk_heatmap WCAG-AA contrast). Extending the full per-shape
+`check_pptx.py` runner is a TODO.

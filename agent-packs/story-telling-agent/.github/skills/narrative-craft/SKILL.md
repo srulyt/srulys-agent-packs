@@ -221,6 +221,128 @@ Headlines and body text should create momentum, not report facts. The difference
 - ❌ "User engagement metrics showed improvement" → ✅ "Users went from 2 visits/month to daily — in 6 weeks"
 - ❌ "We recommend investing in the platform" → ✅ "Invest $200K now or lose $2M next year"
 
+## Throughline
+
+> *Source: research §A lines 44–45; ported in session
+> `2026-05-04-5707a9ef`. Promotes what was previously implicit in the
+> design checklist into a first-class strategist deliverable.*
+
+A **throughline** is a single declarative sentence that the entire
+deck is arguing. Every slide either states the throughline, supports
+it, or sets up the next thing that will support it. If a slide does
+none of those, the slide is on a different deck.
+
+The throughline is **not** the title. The title is the brand label for
+the talk. The throughline is the argument the audience walks out
+having heard.
+
+**Examples:**
+
+| Title (brand label) | Throughline (argument) |
+|---|---|
+| *"Q3 Platform Update"* | "Our infrastructure can't reach Q4 targets without a $200K platform investment, and the cost of waiting until Q4 is a $2M revenue cap." |
+| *"Customer Onboarding Story"* | "Acme moved from a 14-day to a 3-day onboarding by replacing manual provisioning with our self-serve flow — and they're now expanding to a second BU." |
+| *"Architecture Review"* | "Migrating to event-sourced storage halves p99 latency while opening three downstream product moves; the alternative (sharding the monolith) costs more and unlocks none of them." |
+
+**Throughline rules:**
+
+1. One sentence. Two if the audience demands a setup-then-claim
+   structure, never more.
+2. Names the audience's current state AND the desired state OR action.
+   "X is true" is not a throughline; "X is true, therefore the
+   audience should do Y" is.
+3. Survives translation to a verbal one-liner. If you can't say it out
+   loud in eight seconds, simplify.
+4. Lives at the top of the proposal under `## Throughline` (see
+   `proposal.schema.md`).
+
+### The Slide-Sorter Test (deck-level QA)
+
+A deck's slide titles, read in order, should be a **coherent executive
+summary** of the throughline. This is the simplest deck-level test
+that exists, and it's deterministic.
+
+**The test:**
+
+1. Extract every slide title in deck order.
+2. Read them aloud as a paragraph (skipping section dividers).
+3. Ask: *"Without seeing any slide bodies, would a busy executive who
+   only read this paragraph follow the argument from current state →
+   tension → resolution → action?"*
+4. If yes → the slide-sorter test passes.
+5. If no → at least one title is a topic label (rewrite per Punch Test)
+   or the slide ordering is wrong.
+
+This is the **deterministic** complement to the AEI triad below. AEI
+guarantees each slide carries an argument; the slide-sorter test
+guarantees the arguments compose into the throughline.
+
+The critic runs this test as part of `slide-critique/SKILL.md`'s
+verdict logic — see "Slide-Sorter Test (Deck-Level)" there.
+
+## Per-Slide AEI Structure
+
+> *Source: research §C lines 67–73; ported in session
+> `2026-05-04-5707a9ef`. Closes the gap that one-message-per-slide
+> tells you to pick **one thing** but doesn't tell you what **parts**
+> the one thing must contain.*
+
+Every non-title, non-section-divider slide must carry three things:
+
+| Part | What it is | Where it lives |
+|---|---|---|
+| **Assertion** | The slide's claim, as a declarative sentence | Slide title (action title, not topic label) |
+| **Evidence** | The proof — chart, number, quote, diagram, example, image, process, comparison, or table | Slide body — visual evidence preferred over text |
+| **Implication** | Why this matters for *this* audience | Subtitle / callout / explicit "Implication:" line — or, when space is tight, the speaker notes |
+
+The strategist names the AEI triad in the per-slide outline of
+`proposal.md`. The deck-builder records it in `deck-spec.json` under
+the optional `core_assertion` / `evidence` / `implication` fields
+(v2.1.0). The critic checks that every non-title slide has a
+non-empty assertion that survives the Punch Test, that the evidence
+type matches the assertion's claim shape (see
+`pptx-engine/references/chart-selection.md` for chart-type-by-relationship),
+and that the implication answers "so what?" for the audience.
+
+### AEI Examples
+
+❌ **Topic-driven (no AEI):**
+
+> Title: *"Q3 Customer Feedback"*
+> Body: 5 bullets describing what customers said.
+> *(Assertion: missing. Evidence: a list. Implication: missing.)*
+
+✅ **AEI-shaped:**
+
+> **Assertion (title):** *"Customers trust the product but onboarding
+> friction is delaying expansion"* — research lines 51–52.
+> **Evidence (body):** Two quotes (one frustration, one praise) +
+> retention curve showing the onboarding-week dropout.
+> **Implication (callout):** *"Closing the onboarding gap unlocks
+> ~$1.4M in pre-existing pipeline."*
+
+### Evidence Type Selection
+
+Choose evidence type from the allowed set in `deck-spec.schema.json`'s
+slide `evidence.type` enum (`chart` | `metric` | `quote` | `table` |
+`diagram` | `image` | `example` | `comparison` | `process`). The
+intake's `proof_required` field (when present) names what the
+audience considers credible — match evidence type to that signal
+when possible.
+
+When evidence is `chart`, the chart relationship dictates the chart
+*type* — see `pptx-engine/references/chart-selection.md`.
+
+### AEI Anti-Patterns
+
+- **Topic-supported-by-bullets** — title is a label, body is a
+  list. Convert the list to an annotated visual.
+- **Triple-implication slide** — three "so what" lines and no
+  evidence. Pick one implication; demote the others.
+- **Implication = restated assertion** — the "so what" must add
+  something the assertion doesn't already carry (a consequence, a
+  required action, a cost of inaction).
+
 ## Anti-Patterns: Stories That Kill Decks
 
 ### "Information Vomit"

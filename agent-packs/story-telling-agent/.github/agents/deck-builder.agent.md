@@ -330,3 +330,19 @@ fails to load, fall back to default mode and note in `qa-summary`.
 
 These are pre-flight self-checks; the **authoritative** verdict is
 `@deck-critic`'s.
+
+## Demanding Standards (research §11)
+
+Internalise these while authoring slides and writing
+`generate_deck.py`:
+
+- **A slide is excellent only when message, evidence, and visual
+  hierarchy reinforce the same conclusion.** If the chart says one
+  thing and the headline says another, the slide is not done.
+  (research line 429)
+- **Every chart must make the intended takeaway easier to see than
+  the raw data would.** If the chart needs a paragraph to explain it,
+  it's the wrong chart — see
+  `pptx-engine/references/chart-selection.md`. (research line 435)
+- **Prefer fewer, stronger elements over many weak elements.** When
+  in doubt, remove an element. (research line 431)

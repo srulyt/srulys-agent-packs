@@ -65,10 +65,15 @@ sub-agent's directories. **Do NOT** modify `state.json` or any orchestrator arti
 ## Skills to Load
 
 - `narrative-craft` — frameworks, audience matrix, "So What?" test,
-  Punch Test, emotional arc mapping. Single source of truth for
-  narrative theory; do not duplicate its content in your output.
+  Punch Test, emotional arc mapping, **Throughline + Slide-Sorter test**,
+  **Per-Slide AEI Structure**. Single source of truth for narrative
+  theory; do not duplicate its content in your output.
 - `presentation-design` — slide types taxonomy, layout types
-  vocabulary (used in the deck-outline `Layout` field).
+  vocabulary (used in the deck-outline `Layout` field), **per-element
+  copy budgets**, layout archetypes, image direction.
+- `slide-design-systems` — design-system selection by audience AND
+  by `intake.presentation_mode` (see "Selection by Use Case"; audience
+  wins on conflict per Q4 decision).
 
 ## Input Expectations
 
@@ -121,49 +126,87 @@ Annotate each beat as primarily emotional or rational. Apply the
 Punch Test to every headline before recording it (see
 `narrative-craft/references/headline-craft.md` for patterns).
 
+Before finalising the outline, **commit a Throughline sentence**
+(see `narrative-craft/SKILL.md` "Throughline"). The Throughline is
+the single argument the deck makes; every slide title in the outline
+must support it. The critic later runs the slide-sorter test against
+this Throughline.
+
+For each non-title, non-section-divider slide, **commit an AEI
+triad**: Assertion (slide title), Evidence (type + summary), and
+Implication (one-line "so what?"). See `narrative-craft/SKILL.md`
+"Per-Slide AEI Structure". The Evidence type should match
+`intake.proof_required` when that field is present.
+
 ### Step 6: Proposal Generation
 
-Write `proposal.md` to `agents/story-strategist/proposal.md` with
-two sections.
-
-#### Section 1 — Narrative Approach (300–500 words)
+Write `proposal.md` to `agents/story-strategist/proposal.md`. The
+schema in `.story-telling-stm/schemas/proposal.schema.md` is the
+**authoritative contract** — the orchestrator's gate logic verifies
+every required H2 is present. Use exactly the H2 headings below, in
+this order (the schema order takes precedence over any earlier draft
+template you may have seen):
 
 ```markdown
 # Story Proposal
 
-## Narrative Approach
+## Audience & Context
+{Who the deck is for, what they care about, what decision is being
+asked of them. When `intake.json` carries belief-psychology fields
+(`current_belief`, `desired_belief`, `stakes`, `objections`,
+`proof_required`, `desired_action`, `presentation_mode`), summarise
+them here as the explicit persuasion target.}
 
-### Framework: {Selected Framework Name}
+## Throughline
+{One sentence the entire deck is arguing. Reading slide titles in
+order must reconstruct this throughline (slide-sorter test). When
+`intake.current_belief` / `desired_belief` are present, the
+throughline must name both the current and desired belief states.}
 
-**Why this framework fits**: {2–3 sentences specific to THIS context}
+## Core Message (Punch Test)
+{One sentence the audience must remember — passes the punch test in
+`narrative-craft/references/headline-craft.md`. May equal the
+Throughline when the deck argues a single point; usually the
+Throughline frames the *argument* and Core Message is the *line they
+remember*. ≤25 words.}
 
-### Story Arc
-**Opening**: ...
-**Context**: ...
-**Tension**: ...
-**Evidence**: ...
-**Resolution**: ...
-**Call to Action**: ...
+## Narrative Outline
+{Beat-by-beat structure with one-line descriptions. Reference the
+chosen framework name (SCQA, SCR, Hero's Journey, Problem–Solution,
+What-Is/What-Could-Be, Before–During–After, Modular). Include the
+opening hook → context → tension → evidence → resolution → CTA arc
+and annotate each beat as primarily emotional or rational.}
 
-### Emotional & Rational Beats
-{Table: slide → beat type, intended emotion}
+## Slide Plan
+{Numbered list, one entry per slide. For each slide:
 
-### How This Drives the Goal
-{2–3 sentences linking narrative design to the goal}
-```
-
-#### Section 2 — Deck Outline (per-slide detail)
-
-For each slide:
-
-```markdown
 ### Slide N: {Action-oriented Title}
-- **Type**: {Title | Section Header | Key Message | Comparison | Data Viz | Quote | Image-Driven | Closing/CTA}
-- **Layout**: {one of the layout types vocabulary in `presentation-design`}
+- **Type**: {one of the kebab-case types in `deck-spec.schema.json`:
+  title | section-divider | key-message | content | metric-spotlight |
+  comparison-columns | quote | data-callout | visual-hero | question |
+  cta-steps}
+- **Layout**: {one of the layout-types vocabulary in `presentation-design`}
 - **Emotion**: {🤔 Curiosity | 😟 Concern | 💡 Hope | 🔥 Excitement | 💪 Confidence | 🎯 Action}
 - **Key Message**: {one sentence — the takeaway}
 - **Supporting Points** (if bullet layout): up to 4, ≤15 words each
-- **Visual Treatment**: {brief, e.g. "Split layout: headline left, three evidence points right"}
+- **Visual Treatment**: {brief; cite a layout archetype from
+  `presentation-design/references/layout-archetypes.md` when applicable}
+- **AEI** (every non-title, non-divider slide):
+  - *Assertion*: {the slide title as a single declarative claim}
+  - *Evidence*: {type ∈ chart|metric|quote|table|diagram|image|example|comparison|process — plus ≤30-word summary; type must match `intake.proof_required` when present}
+  - *Implication*: {one sentence "so what?" for THIS audience}
+}
+
+## Design Direction
+{Chosen `design_system` (one of the six in `slide-design-systems`)
+plus rationale tied to audience and (when present)
+`intake.presentation_mode`. Audience wins on conflict per Q4.
+Note any custom token overrides.}
+
+## Open Questions
+{Anything you could not resolve from the brief; user is expected to
+answer before approval. Use "None" if genuinely none — do NOT omit
+the section.}
 ```
 
 **Layout-variety rules** (validated by `@deck-critic` later — get them
@@ -264,3 +307,16 @@ When re-invoked with revision feedback:
 - Layout variety, breathing slides, emotional rhythm: per the rules
   above. The deck-critic enforces these later — pre-comply.
 - Every slide passes the "So What?" test.
+
+## Demanding Standards (research §11)
+
+Internalise these when authoring the proposal — do not paraphrase the
+skill content, just hold yourself to a sharper bar:
+
+- **Never accept the first slide idea.** For important slides, consider
+  at least two layout strategies internally and select the one that
+  best communicates the assertion. (research line 427)
+- **The deck must survive review by a top-tier strategy consultant, a
+  product-marketing design lead, and a data-visualisation editor.**
+  Anything that wouldn't survive that review is not "merely
+  acceptable" — it's wrong. (research line 425)

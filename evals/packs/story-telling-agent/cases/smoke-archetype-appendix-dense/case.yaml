@@ -1,0 +1,53 @@
+id: smoke-archetype-appendix-dense
+pack: story-telling-agent
+description: "Exercises the `appendix_dense` styled recipe (session 2026-05-04-c8d3b2a1). The deck must include an appendix slide carrying 2-4 dense panels (table/chart/text mix), `appendix: true` (which exempts it from the body_word_max=30 density check), and an 'APPENDIX' tag."
+
+prompt_file: prompt.md
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+limits:
+  web_invocations_max: 1
+
+expected:
+  artifacts:
+    - id: deck-spec
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+      required: true
+    - id: deck-pptx
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/output\\.pptx$"
+      required: true
+    - id: qa-report
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+      required: true
+  invocations:
+    story-strategist: { min: 1, max: 2 }
+    deck-builder: { min: 1, max: 2 }
+    deck-critic: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:deck-spec": "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+
+# Archetype-specific structural expectation (informational — surfaces
+# the intent for `check_archetypes.py` to enforce in a later iteration;
+# rubrics stay at info severity for this first archetype-coverage pass).
+archetype_check:
+  recipe: appendix_dense
+  builder: "_styled_appendix_dense"
+  expectation: "Deck includes one slide with `style_recipe: appendix_dense`, `appendix: true`, and `panels[]` length in [2,4]."

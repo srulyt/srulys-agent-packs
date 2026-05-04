@@ -113,6 +113,34 @@ Affects: all systems (pack typography baseline).
 | Investor | `investor-gold` | `customer-coral` | `investor-gold` | `editorial-mono` |
 | Board / Regulated | `boardroom-conservative` | `executive-navy` | `boardroom-conservative` | `executive-navy` |
 
+## Selection by Use Case (`presentation_mode`)
+
+> *Source: research §E lines 94–103, ported in session
+> `2026-05-04-5707a9ef`. Adds an orthogonal selection axis using the
+> optional `intake.presentation_mode` field (see
+> `intake.schema.json`).*
+>
+> **Precedence (per Q4 decision)**: when audience-driven selection and
+> presentation-mode-driven selection disagree, **audience wins**.
+> `presentation_mode` is a *complementary* signal, not an override.
+> Document the choice and the conflict, if any, in the proposal's
+> `## Design Direction` section.
+
+| `presentation_mode` | Suggested system | Why |
+|---|---|---|
+| `live` | `editorial-mono` *(or `technical-slate` if dark-first preferred)* | Bold typography + sparse copy + dramatic section breaks; designed to be presented, not read |
+| `read-ahead` | `boardroom-conservative` | Decks that must stand alone; needs density tolerance + footnoted sources; conservative palette signals seriousness |
+| `board` | `boardroom-conservative` | Regulated / fiduciary context; familiarity beats novelty |
+| `sales` | `customer-coral` | Customer-pain → urgency → proof → solution → impact → CTA arc; warm palette supports narrative emotion |
+| `investor` | `investor-gold` | Premium restraint; traction metrics + clear ask; gold-on-dark signals confidence |
+| `workshop` | `customer-coral` *(or `editorial-mono` for keynote workshops)* | Interactive / read-during-discussion; warm + scannable wins over polished-but-distant |
+
+When `intake.presentation_mode` is absent, ignore this table and use
+audience selection alone. When both axes resolve to the same system,
+note both in the rationale. When they conflict, pick the
+audience-driven choice and explain the override reason in
+`## Design Direction`.
+
 ## Token Schema (deck-spec compatibility)
 
 Every system file under `references/systems/` provides this JSON

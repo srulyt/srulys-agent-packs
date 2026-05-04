@@ -1,0 +1,53 @@
+id: smoke-archetype-priority-matrix
+pack: story-telling-agent
+description: "Exercises the `priority_matrix` styled recipe (session 2026-05-04-c8d3b2a1). The deck must include a 2x2 effort x value matrix with 4 quadrant labels and >=3 plotted items, with the recommended quadrant emphasised."
+
+prompt_file: prompt.md
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+limits:
+  web_invocations_max: 1
+
+expected:
+  artifacts:
+    - id: deck-spec
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+      required: true
+    - id: deck-pptx
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/output\\.pptx$"
+      required: true
+    - id: qa-report
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+      required: true
+  invocations:
+    story-strategist: { min: 1, max: 2 }
+    deck-builder: { min: 1, max: 2 }
+    deck-critic: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:deck-spec": "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+
+# Archetype-specific structural expectation (informational — surfaces
+# the intent for `check_archetypes.py` to enforce in a later iteration;
+# rubrics stay at info severity for this first archetype-coverage pass).
+archetype_check:
+  recipe: priority_matrix
+  builder: "_styled_priority_matrix"
+  expectation: "Deck includes one slide whose `style_recipe` is `priority_matrix` with `quadrant_labels` length 4, `axes.x_label` and `axes.y_label` set, and >=3 entries in `matrix_items[]` exactly one of which has `recommended: true`."

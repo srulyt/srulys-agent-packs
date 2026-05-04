@@ -172,6 +172,25 @@ Parse the user's request to extract:
 3. **Target audience** — Who will see it
 4. **Template** (optional) — Path to a `.pptx` template
 5. **Design system** (optional) — Name from `slide-design-systems` (e.g. `executive-navy`)
+6. **Audience-belief fields** (optional but strongly recommended; see
+   `.story-telling-stm/schemas/intake.schema.json` v2.1.0):
+   - `current_belief` — what the audience believes today
+   - `desired_belief` — what they should believe after
+   - `stakes` — what is gained / lost depending on the decision
+   - `objections` — list of likely pushback points
+   - `proof_required` — what evidence the audience finds credible
+     (drives AEI evidence-type selection — see `narrative-craft/SKILL.md`)
+   - `desired_action` — the specific commitment being asked for
+   - `presentation_mode` — `live` | `read-ahead` | `board` | `sales` |
+     `investor` | `workshop` (complementary to audience for design-system
+     selection — see `slide-design-systems/SKILL.md` 'Selection by Use Case')
+
+**Asking for belief fields**: if the user's request omits these, ask
+for `current_belief`, `desired_belief`, and `desired_action` at
+minimum — these are the persuasion target. The other four
+(`stakes`, `objections`, `proof_required`, `presentation_mode`) are
+nice-to-have; do NOT block intake on them. Proceed with whatever
+the user provides.
 
 If goal or audience is missing, ask the user — do NOT guess.
 
@@ -209,7 +228,13 @@ If goal or audience is missing, ask the user — do NOT guess.
 }
 ```
 
-4. Write `intake.json` to `agents/story-orchestrator/`.
+4. Write `intake.json` to `agents/story-orchestrator/` conforming to
+   `.story-telling-stm/schemas/intake.schema.json` (v2.1.0). Required
+   fields: `context_files`, `goal`, `audience`. Optional belief fields
+   (`current_belief`, `desired_belief`, `stakes`, `objections`,
+   `proof_required`, `desired_action`, `presentation_mode`) are
+   included when the user provided them; omit cleanly otherwise (do
+   NOT fabricate).
 5. Update `.story-telling-stm/current-session.json`.
 6. Transition `phase = "research"`.
 

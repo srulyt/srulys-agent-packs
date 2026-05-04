@@ -47,7 +47,19 @@ through a render-and-critique pipeline so the deck *looks* as good as it
 @story-orchestrator Create a stakeholder buy-in deck from the feature
 briefs in docs/briefs/. Goal: get Q3 funding approved.
 Audience: VP Engineering + VP Product.
+Current belief: platform investment is premature.
+Desired belief: deferring is more expensive than investing now.
+Desired action: approve the $200K Q3 budget line.
 ```
+
+> **Optional belief-psychology fields** (recommended; new in v2.1.0).
+> Stating `current_belief` / `desired_belief` / `desired_action` up
+> front turns the deck into a *persuasion target* the strategist
+> and critic can both measure against. Other optional fields:
+> `stakes`, `objections`, `proof_required`, `presentation_mode`
+> (`live` | `read-ahead` | `board` | `sales` | `investor` |
+> `workshop`). See
+> [`.story-telling-stm/schemas/intake.schema.json`](./.story-telling-stm/schemas/intake.schema.json).
 
 ---
 
@@ -184,18 +196,27 @@ home:
 | Topic | Canonical home |
 |-------|----------------|
 | Storytelling frameworks (SCQA, Hero's Journey, Pyramid) | `narrative-craft/SKILL.md` |
+| Throughline + slide-sorter test | `narrative-craft/SKILL.md` (deterministic check in `slide-critique/SKILL.md`) |
+| Per-slide AEI (Assertion–Evidence–Implication) triad | `narrative-craft/SKILL.md` |
 | Audience-framework matrix | `narrative-craft/references/audience-framework-matrix.md` |
 | Punch test | `narrative-craft/references/punch-test.md` |
 | Headline craft | `narrative-craft/references/headline-craft.md` |
 | Approval-gate rationale | `narrative-craft/references/approval-gate-rationale.md` |
 | Slide-type catalog + positive design rules | `presentation-design/SKILL.md` |
+| Per-element copy budgets (title / subtitle / bullets / callout / footnote) | `presentation-design/SKILL.md` |
+| Layout archetype library (11 business-consulting forms) | `presentation-design/references/layout-archetypes.md` |
+| Image-prompt template + reject-list | `presentation-design/references/image-direction.md` |
 | Six design systems (palette / type / grid tokens) | `slide-design-systems/SKILL.md` |
+| `presentation_mode` → design-system selection | `slide-design-systems/SKILL.md` ("Selection by Use Case") |
+| Chart-type-by-relationship matrix | `pptx-engine/references/chart-selection.md` |
 | AI-antipattern catalog (the "what NOT to do" list) | `slide-critique/SKILL.md` |
+| Numeric quality score (0–100, prioritization-only) | `slide-critique/SKILL.md` |
 | Render pipeline + manifest schema | `pptx-visual-qa/SKILL.md` |
 | Structural check inventory | `pptx-structural-asserts/SKILL.md` |
 | Builder functions + slide-type code patterns | `pptx-engine/SKILL.md` |
 | Workflow + delegation + Stop-B gate | `story-orchestrator.agent.md` |
-| STM schemas (state, deck-spec, qa-report, proposal) | `.story-telling-stm/schemas/` |
+| Audience-belief intake fields | `.story-telling-stm/schemas/intake.schema.json` (v2.1.0) |
+| STM schemas (state, intake, deck-spec, qa-report, proposal) | `.story-telling-stm/schemas/` |
 
 If a fact appears in multiple files, the canonical home above wins;
 the others should reference it.

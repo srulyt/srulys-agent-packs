@@ -227,12 +227,101 @@ The legacy markdown form is deprecated; only the JSON form is consumed.
 - ≤2 non-blocking findings.
 - No critical antipatterns (1, 2, 7, 8, 9, 10).
 - ≥3 distinct layouts present.
-- Headline sequence reads as a coherent story.
+- Headline sequence reads as a coherent story (see Slide-Sorter Test below).
 - At least one fix-and-verify cycle has occurred this session OR the
   first-pass deck cleanly cleared every check.
 
 Any failure → `revise` with ordered `top-fixes`. The orchestrator
 applies retry policy (max `qa_iteration = 2` before user surfacing).
+
+> **Numeric score does NOT auto-flip the verdict.** Per Q3 decision
+> in session `2026-05-04-5707a9ef`, the boolean `pass` / `revise` /
+> `error` remains the canonical gate. The 0–100 weighted score (next
+> section) is a prioritization signal only.
+
+## Slide-Sorter Test (Deck-Level)
+
+> *Source: research §A lines 44–45 + `narrative-craft/SKILL.md`
+> "Throughline" section. Promoted to a deterministic critic check in
+> session `2026-05-04-5707a9ef`.*
+
+The slide-sorter test reads slide titles in deck order, ignoring
+section dividers, and asks one question: *"Does this parse as a
+coherent executive summary of the proposal's throughline?"*
+
+**Procedure** (deterministic):
+
+1. Load `proposal.md`; extract `## Throughline` (one sentence).
+2. Load `deck-spec.json`; extract `slides[].title` in order, skipping
+   slides whose `type ∈ {section-divider, title}`.
+3. Concatenate the titles into a paragraph.
+4. Apply the Punch Test (`narrative-craft/references/headline-craft.md`)
+   per title: every title that is a topic label (not a claim /
+   question / stat) is a finding.
+5. Apply the throughline test: does the paragraph's argument map
+   onto the throughline's
+   *current-state → tension → resolution → action*
+   structure? If a beat is missing or out-of-order, that's a finding.
+6. Record findings as antipattern `slide_sorter_failure` (per-title
+   failure → `severity: warn`; whole-deck failure → `severity: fail`).
+
+A whole-deck slide-sorter failure is a `revise` trigger. Per-title
+failures rank in `top_fixes` ordered by their per-slide score (see
+next section).
+
+## Numeric Quality Score (0–100, prioritization-only)
+
+> *Source: research §8 lines 367–376; ported in session
+> `2026-05-04-5707a9ef`. Per Q3 decision the score is a
+> **prioritization signal**, never a gate. Boolean `verdict` still
+> wins.*
+
+For each slide and for the deck as a whole, the critic emits a
+weighted 0–100 score. Use it to:
+
+- **Rank `top_fixes`** — the orchestrator surfaces fixes for the
+  lowest-scoring non-appendix slides first, capped at 5.
+- **Track convergence** — across `qa_iteration`s, deck-level score
+  should rise. A flat or falling score across two iterations means
+  the retries aren't converging; surface to the user.
+
+### The Weighted Rubric
+
+| Dimension | Max points | What it measures |
+|---|---:|---|
+| **Narrative clarity** | 20 | Slide carries one assertion that fits the throughline; AEI triad complete |
+| **Assertion title quality** | 15 | Punch Test pass; ≤14 words; specific + quantified when possible |
+| **Evidence strength** | 15 | Evidence type matches assertion's relationship; sourced; visual over textual |
+| **Layout & hierarchy** | 20 | One focal point; visual hierarchy clear in 3s; layout doesn't repeat the prior slide |
+| **Visual polish & brand consistency** | 15 | Design-system tokens applied consistently; no decorative-only shapes; whitespace ≥30% |
+| **Chart / image quality** | 10 | Chart relationship → chart type per `pptx-engine/references/chart-selection.md`; image earned its place per `presentation-design/references/image-direction.md` |
+| **Accessibility & technical correctness** | 5 | Contrast ≥4.5:1; alt text on meaningful images; speaker notes present; no overflow |
+| **Total** | **100** | |
+
+Deck-level `score` = average of non-appendix `per_slide_scores[].total`.
+
+### Reference Targets (Diagnostic, Not Gates)
+
+- **Deck score ≥90**: deck is healthy; surface as positive.
+- **Deck score 80–89**: ship-able; recommend a follow-up polish pass.
+- **Deck score <80**: investigate even if `verdict == pass` — likely
+  one or two outlier slides dragging the average.
+- **Per-slide score <85** *for non-appendix slides*: the slide is
+  weakest in the deck and goes into `top_fixes` first.
+
+These are **diagnostic targets**, not auto-revise triggers. A deck
+with `verdict: pass` and `score: 78` ships if structural + visual
+checks pass; the score is reported to the user in `qa-summary` so
+they can decide whether to ask for another iteration.
+
+### Recording the Score
+
+The critic records the score under the `score` and `per_slide_scores`
+fields of `qa-report.json` (schema v2.1.0, see
+`.story-telling-stm/schemas/qa-report.schema.json`). When the score
+is omitted (e.g. on `error` verdict or when the critic has not
+implemented the rubric), absence is allowed and the orchestrator
+falls back to verdict-only behaviour.
 
 ## References
 

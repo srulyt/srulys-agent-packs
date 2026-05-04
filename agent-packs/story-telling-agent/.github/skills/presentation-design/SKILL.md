@@ -81,6 +81,12 @@ Every slide in a professional deck should use one of these types. Choosing the r
 
 This is the single most important design principle. Every slide communicates exactly ONE key message.
 
+> **Per-slide internal structure**: see `narrative-craft/SKILL.md`
+> 'Per-Slide AEI Structure'. One-message tells you to pick one thing;
+> the AEI triad (Assertion / Evidence / Implication) tells you what
+> *parts* the one thing must contain. Do not duplicate the AEI
+> definition here — link.
+
 ### Why It Matters
 - Humans process one idea at a time
 - Multiple messages compete for attention and none wins
@@ -141,6 +147,43 @@ Accent elements create visual anchoring — but overuse creates monotony. Apply 
 - **Section-color shapes**: Use shapes that carry meaning — section identity, progress indication, or data emphasis.
 
 **The test**: Can you remove the accent element without losing information? If yes, it's decorative. Consider removing it.
+
+## Per-Element Copy Budgets
+
+> *Source: research §B lines 57–63; ported in session
+> `2026-05-04-5707a9ef`. Complements the existing global
+> `body_word_max=30` check (which lives in `pptx-structural-asserts`)
+> with per-element word caps so overlong subtitles and callouts
+> stop slipping through.*
+
+Every text element has a word budget. Exceed it and the slide stops
+being scannable.
+
+| Element | Budget | Notes |
+|---|---:|---|
+| Title (assertion) | ≤14 words | Unless the insight genuinely requires more — rare |
+| Subtitle / kicker | ≤18 words | One supporting sentence, not a paragraph |
+| Body bullet | ≤12 words | Max 3 bullets per slide; if you need more bullets, split the slide |
+| Callout / implication | ≤20 words | One "so what?" line — see `narrative-craft/SKILL.md` AEI |
+| Footnote / source | ≤12 words | Citation + assumption note, 9–10pt, light gray |
+| Speaker notes | ≤120 words | 2–3 sentences with concrete data + transition cue |
+
+**Appendix exception**: slides flagged `appendix: true` in
+`deck-spec.json` are explicitly exempted from these caps —
+read-along reference / board pre-reads are *meant* to stand alone
+densely. See
+[`references/layout-archetypes.md`](references/layout-archetypes.md)
+"Appendix Dense".
+
+> **TODO — per-element structural checks**: the existing
+> `pptx-structural-asserts/scripts/check_pptx.py` enforces only the
+> global `body_word_max=30`. Per-element caps (title, subtitle,
+> callout, footnote) are documented here and in proposal review but
+> are not yet checked deterministically. Extending `check_pptx.py`
+> with per-element caps is left to a future incremental session — it
+> requires plumbing element-role classification through the script
+> and was scoped out per session `2026-05-04-5707a9ef`'s
+> "no-restructuring" rule.
 
 ## Layout Composition — Slides as Visual Forms
 
@@ -309,6 +352,9 @@ Before considering any deck complete, verify every slide passes:
 
 For detailed layout specifications and visual patterns:
 - [Slide Patterns](references/slide-patterns.md) — Concrete layouts, dimensions, color palettes, typography pairings, chart selection
+- [Layout Archetypes](references/layout-archetypes.md) — 11 business-consulting slide forms (Risk Heatmap, 2×2/Priority Matrix, Waterfall, Flywheel, Funnel, Decision Options Table, Org/Operating Model, Customer Journey, Architecture Diagram, Three-Card Recommendation, Appendix Dense) with structured metadata. Marks which archetypes have working renderers in `pptx-engine/scripts/generate_deck.py` and which are spec-only awaiting future builder support.
+- [Image Direction](references/image-direction.md) — Image-prompt template (subject + style + composition + lighting + crop + negatives + business relevance) and reject-list. Linked from the Visual Hero / Image-Driven slide types and full-bleed treatment rules.
+- [Chart Selection](../pptx-engine/references/chart-selection.md) — Relationship→chart-type matrix (trend / comparison / composition / distribution / correlation / flow / ranking / geospatial), no-3D / no-pie rules, direct-labels-over-legends, chart-title-vs-slide-title discipline. Loaded by the deck-builder when a slide's evidence is a chart.
 
 ## Rendering Subsystem Rebuild (2026-05-04)
 
