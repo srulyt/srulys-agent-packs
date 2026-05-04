@@ -1,0 +1,46 @@
+id: negative-missing-fence
+pack: product-brief
+description: |
+  Negative test: verifies that when a specialist returns an
+  incomplete output contract (e.g., evidence-analyst omits the
+  contradictions-json fence), the orchestrator detects the missing
+  fence, increments the relevant iteration counter, and re-delegates
+  rather than proceeding with a partial payload. Rubric
+  output-contract-fences-present must hold across the full trace.
+
+prompt_file: prompt.md
+
+prompt_template_vars: {}
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents/eval-judge.agent.md
+      dest: .github/agents/eval-judge.agent.md
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: final-brief
+      path_pattern: "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"
+      required: true
+  invocations:
+    evidence-analyst: { min: 1, max: 3 }
+    brief-composer: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:final-brief": "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"

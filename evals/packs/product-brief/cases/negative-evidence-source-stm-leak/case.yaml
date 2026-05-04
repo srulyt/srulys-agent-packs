@@ -1,0 +1,50 @@
+id: negative-evidence-source-stm-leak
+pack: product-brief
+description: |
+  Negative test: verifies that no evidence-log entry, contradictions
+  entry, or final-brief source reference cites a path under
+  ``.product-brief-agent-stm/`` (working memory) instead of a
+  user-provided source. STM files are NEVER valid evidence sources;
+  the evidence-analyst's self-check and the orchestrator's
+  optional-section gate must catch any leak.
+
+prompt_file: prompt.md
+
+prompt_template_vars: {}
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents/eval-judge.agent.md
+      dest: .github/agents/eval-judge.agent.md
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: evidence-log
+      path_pattern: "^\\.product-brief-agent-stm/runs/[^/]+/agents/evidence-analyst/evidence-log\\.md$"
+      required: true
+    - id: final-brief
+      path_pattern: "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"
+      required: true
+  invocations:
+    evidence-analyst: { min: 1, max: 2 }
+    brief-composer: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:evidence-log": "^\\.product-brief-agent-stm/runs/[^/]+/agents/evidence-analyst/evidence-log\\.md$"
+    "artifact:final-brief": "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"

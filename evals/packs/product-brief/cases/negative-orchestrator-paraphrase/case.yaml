@@ -1,0 +1,49 @@
+id: negative-orchestrator-paraphrase
+pack: product-brief
+description: |
+  Negative test: verifies the orchestrator persists specialist fenced
+  payloads VERBATIM (byte-for-byte) before any editing. If the
+  orchestrator paraphrases the composer's product-brief-draft fence
+  into product-brief.draft.md, the editing-pass-applied rubric fails:
+  the persisted draft must equal the composer fence body before any
+  editing-pass mutations are applied.
+
+prompt_file: prompt.md
+
+prompt_template_vars: {}
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents/eval-judge.agent.md
+      dest: .github/agents/eval-judge.agent.md
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: draft-brief
+      path_pattern: "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-composer/product-brief\\.draft\\.md$"
+      required: true
+    - id: final-brief
+      path_pattern: "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"
+      required: true
+  invocations:
+    brief-composer: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:draft-brief": "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-composer/product-brief\\.draft\\.md$"
+    "artifact:final-brief": "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"

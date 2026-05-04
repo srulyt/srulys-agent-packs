@@ -51,12 +51,14 @@ This pack implements multiple quality gates:
 | Standalone Document | Zero links, all info inlined | Composer rules + orchestrator check |
 | Markdown Lint | Proper formatting, heading hierarchy, consistent markers | Composer rules + orchestrator check |
 | Executive Tone | No filler phrases, no buzzword inflation | Composer skill + orchestrator review |
+| Eval suite | Delegation correctness, output-contract fences, scope discipline, model-pin honored, editing-pass applied, zero links, word-count ceiling, no bold-as-structure, heading naturalness | `evals/packs/product-brief/` |
+| Model pin | Per-role model assignments are the single source of truth | `evals/packs/product-brief/spec.yaml` `models:` block |
 
 ## Included Agents
 
 | Agent | Role |
 |-------|------|
-| `brief-orchestrator` | Coordination, delegation, mandatory 11-point editing pass, quality gates, final artifact assembly |
+| `brief-orchestrator` | Coordination, delegation, mandatory 12-point editing pass, quality gates, final artifact assembly |
 | `evidence-analyst` | Decision-relevant evidence extraction, contradiction surfacing, compact table output |
 | `strategy-modeler` | Options/tradeoffs (recommendation-first), metrics, milestones, financial framing |
 | `brief-composer` | Executive-ready narrative drafting with agency-over-formatting and anti-bloat rules |
@@ -81,9 +83,21 @@ Audience: internal leadership.
 Decision needed: whether to fund and prioritize in the next planning cycle.
 ```
 
+## Evals
+
+This pack ships an eval suite under `evals/packs/product-brief/`. The suite encodes the same contracts the agents declare in their `.agent.md` files: per-role model pinning, agent-flow ordering, per-agent tool/scope allow-lists, output-contract fences, and prompt-required sections. Cases under `cases/` cover happy paths (late-stage decision ask, early-stage summary) and negative paths (orchestrator direct source-read, missing fence, iteration-cap breach, orchestrator paraphrase, model drift, evidence STM source leak).
+
+To run the suite from the monorepo:
+
+```bash
+python -m eval_engine.harness.run_pack --pack product-brief
+```
+
+All rubrics are pinned at `severity: info` for the first iteration. Promote to `warn` / `blocker` only after at least three baseline runs.
+
 ## Notes
 
 - If required data is missing, the system preserves all sections and marks `Insufficient data`, with explicit `Assumptions` and `Open Questions`.
-- The orchestrator performs a mandatory 11-point editing pass on every draft before producing the final artifact.
+- The orchestrator performs a mandatory 12-point editing pass on every draft before producing the final artifact.
 - Drafts exceeding the hard ceiling are rejected and returned to the composer for condensation.
 - The orchestrator is responsible for deterministic output paths and final quality validation.

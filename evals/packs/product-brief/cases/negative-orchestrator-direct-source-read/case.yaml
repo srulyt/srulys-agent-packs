@@ -1,0 +1,46 @@
+id: negative-orchestrator-direct-source-read
+pack: product-brief
+description: |
+  Negative test: verifies the orchestrator does NOT read user source
+  files directly to extract evidence claims. The harness traces all
+  read operations; the rubric orchestrator-no-direct-source-read
+  fails if the orchestrator opens inputs/*.md for evidence rather
+  than delegating to evidence-analyst.
+
+prompt_file: prompt.md
+
+prompt_template_vars: {}
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/product-brief/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents/eval-judge.agent.md
+      dest: .github/agents/eval-judge.agent.md
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: final-brief
+      path_pattern: "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"
+      required: true
+  invocations:
+    evidence-analyst: { min: 1, max: 2 }
+    brief-composer: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:final-brief": "^\\.product-brief-agent-stm/runs/[^/]+/agents/brief-orchestrator/product-brief\\.md$"
+    "trace:orchestrator-reads": "^inputs/.*"
