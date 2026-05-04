@@ -168,19 +168,32 @@ from the diff.
 Build `sources-json` per the schema in the Output Contract. For
 every candidate source:
 
-- Set `is_local_dump: true` when the URL resolves under
-  `.spec-author/`, `.local/`, `.git-ignored/`, or any gitignored
-  directory. Such entries MUST also have `must_cite: false` and
-  MUST NOT be forwarded to the drafter as cite-worthy.
+- Set `is_local_dump: true` when the URL resolves to **any path
+  the workspace's `.gitignore` matches** — not only the three
+  illustrative roots (`.spec-author/`, `.local/`,
+  `.git-ignored/`). The rule is `.gitignore`-driven, not
+  hard-coded. The detective NEVER forwards a candidate whose URL
+  resolves to a filesystem path (any path starting with `./`,
+  `../`, an absolute path, or a leading-dot directory under the
+  workspace) — such candidates are dropped from `sources-json`
+  entirely; they do not ship with `is_local_dump: true`, they
+  ship not at all. The `is_local_dump` flag is preserved only for
+  legacy session data the drafter may still encounter.
 - Set `is_authoritative: true` only for: published web docs,
   standards, RFCs, peer specs, ADO items, SharePoint pages,
   internal wikis with a stable URL, vendor docs, regulator pages.
 - When two sources cover the same fact, keep only the **primary**.
   Discard secondary sources that merely mention the primary.
-- Set `must_cite: true` only when **all three** hold: the
-  evidence is critical for additional context, the source is
-  authoritative, AND there is a high probability the reader will
-  actually need to open it. Otherwise `must_cite: false`.
+- Set `must_cite: true` only when **all four** hold: (a) the
+  evidence is non-reconstructable from the spec body alone, AND
+  (b) the source is authoritative (web doc / standard / RFC /
+  spec / ADO / SharePoint / vendor doc / regulation), AND (c) the
+  source is primary (not "as cited in …"), AND (d) a downstream
+  reader will plausibly need to OPEN the URL (to verify a number,
+  follow a regulation, reproduce a metric). If any of (a)–(d) is
+  uncertain, set `must_cite: false`. The drafter applies a second
+  gate (Step 3a — pre-emit citation gate); the detective should
+  err on the side of `false`.
 - Always include the actual URL (web URL, SharePoint URL, ADO
   link), not just the document title.
 - Use a short human-readable footnote slug for `id`

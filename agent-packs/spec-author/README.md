@@ -149,11 +149,16 @@ conventions in every generated spec:
   rejected.
 - **No hard wraps in body prose.** Each paragraph is one logical
   line in the markdown source.
-- **Markdown footnotes for evidence**, not a numbered "Citations"
-  appendix table. Footnote names are short slugs
-  (`[^load-2024]`). Citations only appear when the source is
-  authoritative, primary, and likely useful to the reader; never
-  for gitignored or session-local paths.
+- **Footnotes are rare and high-value.** Most specs ship with
+  zero footnotes. A footnote is added only when (a) the evidence
+  is non-reconstructable from the spec body, (b) the source is
+  authoritative AND primary (web doc / standard / RFC / ADO /
+  SharePoint / vendor doc / regulation), AND (c) the reader will
+  plausibly open the URL. Use markdown footnotes (`[^slug]`) —
+  not a numbered "Citations" appendix or `S1, S2` scheme. Never
+  cite a path the workspace's `.gitignore` matches; see
+  [`.github/skills/spec-driven-prd-best-practices/SKILL.md` §8](.github/skills/spec-driven-prd-best-practices/SKILL.md#8-evidence--citation-discipline)
+  for the canonical policy.
 - **Anchored internal links**, e.g.
   `[Acceptance Criteria](#acceptance-criteria)` — not bare
   section names.
@@ -236,7 +241,7 @@ does not restate the field list to avoid drift.
 
 ## Evals
 
-The companion eval pack lives at `evals/packs/spec-author/`. Seven
+The companion eval pack lives at `evals/packs/spec-author/`. Eight
 smoke cases ship at the first cut:
 
 1. `smoke-greenfield-context-complete` — Stop A path only
@@ -257,6 +262,13 @@ smoke cases ship at the first cut:
    implementation nouns (Postgres, Kafka, Redis, MongoDB) into the
    user framing must be recast into externally-observable FRs, and
    the critic must surface at least one D9 finding.
+8. `smoke-evidence-discipline-no-gitignored-cite` — bait-prompts
+   the drafter to cite a session-internal context-pack path under
+   a gitignored directory. Asserts the published spec contains
+   zero gitignored citations, no `## Appendix: Citations` table,
+   and no `S1, S2` legacy scheme. Exercises the D4 evidence-
+   discipline severity schedule: any such citation forces a
+   `blocker` finding and a `block` verdict.
 
 Together the cases cover all three `spec_kind` values (`product`,
 `technical`, `mixed`).

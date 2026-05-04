@@ -1,0 +1,65 @@
+id: smoke-evidence-discipline-no-gitignored-cite
+pack: spec-author
+description: "Smoke test: evidence-discipline gate. The user prompt baits the drafter to cite a session-internal context-pack path. The drafter MUST NOT emit any footnote whose URL resolves to a gitignored path; if it does, the critic MUST flip the verdict to block via the D4 evidence-discipline severity schedule. Also asserts no Citations appendix table or `S1, S2` legacy scheme appears in the published spec."
+
+prompt_file: prompt.md
+
+mode_kind: creation
+spec_kind: product
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-output-location
+    reply: "output_path: docs/specs/digest-evidence.md, spec_kind: product"
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/digest-evidence\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  artifact_content_assertions:
+    - artifact: specification
+      must_not_match:
+        - "\\.spec-author/"
+        - "\\.copilot-factory/"
+        - "\\.factory/"
+        - "\\.local/"
+        - "\\.prompts/"
+        - "evals/packs/[^/]+/workspaces/"
+        - "evals/packs/[^/]+/results-local/"
+        - "evals/packs/[^/]+/fixtures/"
+        - "## Appendix: Citations"
+        - "\\| S\\d+ \\|"
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 0 }
+    prd-drafter:       { min: 1, max: 3 }
+    prd-critic:        { min: 1, max: 3 }
+  rubric_targets:
+    "artifact:specification": "^docs/specs/digest-evidence\\.md$"
+  rubric_overrides:
+    content-quality:  { severity: error }
+    scope-discipline: { severity: warn }

@@ -77,7 +77,7 @@ missing.
 | **D1 mandatory-coverage** | both modes | Are all `mandatory` sections from `prd-template` present and non-empty (or marked `[TBD]` with an Open-Question entry)? |
 | **D2 gated-appropriateness** | both modes | For each `complexity-gated` section, is the include/omit decision justified by the heuristic given the inputs **AND the `spec_kind`**? Penalise (a) bloat — gated section present without a triggering axis or without `spec_kind` permitting it; (b) underspecification — axis present, `spec_kind` permits inclusion, section omitted. In `spec_kind: product`, do NOT penalise omission of implementation-shaped sections (Data Model, API Contract, Capacity & Performance Targets, Threat Model Summary, Versioning & Deprecation Policy, NFR↔FR Traceability) regardless of axis. |
 | **D3 naming-consistency** | both modes | Do section names match the neutral catalogue, OR a Stop-A-approved override? |
-| **D4 content-quality** | both modes | Clarity; testability of acceptance criteria (EARS-aligned where applicable — see `spec-driven-prd-best-practices` §4a); NFR↔FR traceability where NFRs exist; no fabrication; **evidence discipline** (every footnote is to an authoritative primary source, no footnote points at a gitignored / session-local path, internal cross-references use anchored links, no "Citations" appendix table); **format hygiene** (paragraphs are unwrapped — single source line — no bold-as-header, FR statements use EARS, ACs use Given/When/Then nested under their FR). |
+| **D4 content-quality** | both modes | Clarity; testability of acceptance criteria (EARS-aligned where applicable — see `spec-driven-prd-best-practices` §4a); NFR↔FR traceability where NFRs exist; no fabrication; **evidence discipline + severity schedule** per `prd-quality-rubric` §D4 (Evidence-discipline violations); **format hygiene** per the same skill (paragraphs are unwrapped — single source line — no bold-as-header, FR statements use EARS, ACs use Given/When/Then nested under their FR). |
 | **D5 changelog-completeness** | update only | Does `CHANGELOG.md` exist, use the Keep-a-Changelog categories, and account for every change visible between prior and revised? |
 | **D6 id-stability** | update only | Do all prior requirement IDs still resolve (renames carry alias; deprecations preserve ID + status marker)? |
 | **D7 versioning-correctness** | update only | Does the version bump match the rule (MAJOR/MINOR/PATCH per `prd-evolution`)? Is the `Updates:` / `Obsoletes:` header present? |
@@ -105,13 +105,13 @@ For each issue you found, emit one entry:
 ```
 
 Categories of common findings the critic surfaces include:
-**evidence-discipline** (D4) — footnote points at a gitignored
-path; opaque `S1, S2` numbering; bare section reference instead of
-anchor; "Citations" appendix table present. **format-hygiene**
-(D4) — hard-wrapped paragraphs; bold-as-header; FR not in EARS
-shape; AC not Given/When/Then. **scope-discipline** (D9) — FR
-names an internal library/datastore/framework in `product`/`mixed`
-mode; boilerplate "implementation is out of scope" item; technical
+**evidence-discipline (D4)** — apply the severity schedule in
+`prd-quality-rubric` §D4 verbatim; do not invent ad-hoc
+severities. **format-hygiene** (D4) — hard-wrapped paragraphs;
+bold-as-header; FR not in EARS shape; AC not Given/When/Then.
+**scope-discipline** (D9) — FR names an internal
+library/datastore/framework in `product`/`mixed` mode;
+boilerplate "implementation is out of scope" item; technical
 content inline in FRs in `mixed` mode.
 
 ### Step 5: Verdict rules

@@ -84,11 +84,26 @@ discipline upheld; is format hygiene upheld?
   context pack).
 - Vague goals without baseline + target + measurement window.
 - Missing P0/P1/P2 priority on FRs.
-- **Evidence-discipline violations:** footnote points at a
-  gitignored or session-local path (e.g. `.spec-author/`,
-  `.local/`); opaque `S1, S2` numeric citations; bare section
-  reference instead of an anchored link; "Citations" appendix
-  table present; footnote that omits a real URL.
+- **Evidence-discipline violations.** Apply the following severity
+  schedule (overrides the default-to-minor rule):
+  - **blocker** — any footnote whose URL resolves to a
+    gitignored / session-local / local-scratch path (per
+    `spec-driven-prd-best-practices` §8 and `.gitignore`).
+    Verdict goes to `block` regardless of weighted score. The
+    drafter is required to remove the footnote (not relabel it,
+    not move it to a "References" appendix).
+  - **blocker** — any footnote pointing at a non-authoritative or
+    non-primary source (e.g. a third-party blog post quoting the
+    standard instead of the standard itself). The drafter must
+    replace it with the primary source or drop it.
+  - **major** — a footnote that adds no value (decorative or
+    redundant; a competent reader could act on the section
+    without it). The drafter must drop it; verdict revises.
+  - **major** — `S1, S2` numeric scheme; "Citations" appendix
+    table present.
+  - **minor** — formatting issues (bare section reference instead
+    of an anchored link, missing URL on a footnote that is
+    otherwise valid).
 - **Format-hygiene violations:** hard-wrapped body paragraphs;
   bold-as-header; structure carried by bolded lines instead of
   `###`/`####` headers.
@@ -164,7 +179,7 @@ weighted = mean(dim for dim in [D1..D9] if dim is not null)
 
 | Severity | When to use |
 |----------|-------------|
-| **blocker** | The spec must not ship as-is. Examples: silent ID deletion in update mode; mandatory section missing without OQ; fabricated facts. |
+| **blocker** | The spec must not ship as-is. Examples: silent ID deletion in update mode; mandatory section missing without OQ; fabricated facts; any footnote citing a gitignored / non-authoritative / non-primary source (per `spec-driven-prd-best-practices` §8). |
 | **major**   | Significant quality issue that should block this draft. Examples: NFR section present without any traceable axis; non-testable AC across most requirements; wrong version bump kind. |
 | **minor**   | Polish issue. Examples: a single non-testable AC; missing citation on one claim; naming drift on one heading. |
 

@@ -161,10 +161,29 @@ When a source qualifies, prefer the **primary** source — the
 standard, RFC, vendor doc, ADO item itself — never a secondary
 location that merely *mentions* the source.
 
-**Never** cite local context-dump files such as
-`.spec-author/sessions/<id>/artifacts/context-pack.md`,
-`.local/...`, or any path under a gitignored directory. They are
-ephemeral working notes and the reader cannot retrieve them.
+**Never** cite a path that the workspace's `.gitignore` matches.
+The agent treats `.gitignore` as authoritative; the patterns below
+are an illustrative subset that callers should expect to see, but
+ANY gitignored path is non-citable, even if it is not on this list.
+
+Common categories the agent sees in this pack's runs:
+- Pack STM directories: `.spec-author/`, `.copilot-factory/`,
+  `.factory/`, `.prompts/`, `.local/`, any `*-stm/` directory.
+- Eval scratch: `evals/packs/*/workspaces/`,
+  `evals/packs/*/results-local/`, `evals/packs/*/reports/`,
+  `evals/packs/*/fixtures/`, `evals/data/`.
+- IDE / system: `.vscode/`, `.idea/`, `node_modules/`,
+  `__pycache__/`.
+
+These are ephemeral working notes the reader cannot retrieve. A
+citation that would only resolve inside the agent's scratch space
+is, by definition, not citable.
+
+If you are tempted to cite a fact you can only point to via a
+gitignored path, that fact must be either (a) inlined into the
+spec body with attribution to its real upstream source, or
+(b) marked `[TBD — needs primary source URL]` and added as an
+`OQ-NN` entry, or (c) dropped if it does not earn its place.
 
 **Notation.** Use markdown footnotes for citations:
 

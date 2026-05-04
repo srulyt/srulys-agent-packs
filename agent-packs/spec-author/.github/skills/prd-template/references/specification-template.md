@@ -18,7 +18,9 @@ section names, vocabulary, or rules.
 >   section names.
 > - Every footnote must point at a durable, authoritative URL
 >   (web, SharePoint, ADO, RFC, vendor doc, etc.). Never cite a
->   session-local artefact or any gitignored path.
+>   path the workspace's `.gitignore` matches. See
+>   `spec-driven-prd-best-practices` §8 for the canonical,
+>   `.gitignore`-driven evidence-discipline policy.
 > - Functional Requirements are written as **single EARS
 >   shall-statements**; Acceptance Criteria are nested under each
 >   FR as `AC-<FR>.<n>` Given/When/Then scenarios.
@@ -296,14 +298,14 @@ inline in the dedicated sections (Data Model, API Contract, etc.).]
 
 ---
 
-## References  <!-- optional; only when one or more footnotes exist -->
+## References  <!-- optional; omit entirely if no footnote earned its place -->
 
-Footnotes used in this spec are rendered automatically by markdown
-renderers; this section is intentionally minimal. List here only
-durable references (standards, RFCs, vendor docs, regulatory
-texts, SharePoint URLs, ADO links) that benefit from being grouped
-— for example a regulation cited from multiple sections. Do not
-duplicate the inline footnote text and do NOT use an `S1, S2`
-numbered table.
+The default for most specs is **no References section and no
+footnotes** (see `spec-driven-prd-best-practices` §8). Include
+this section only if at least one inline footnote survived the
+high-value / authoritative-primary / not-gitignored gates. Example
+of a qualifying footnote (do NOT copy — replace with a real
+source):
 
-[^example]: Example primary source — full title, version, URL.
+[^standard-rfc7322]: IETF RFC 7322 — RFC Style Guide.
+    https://www.rfc-editor.org/rfc/rfc7322

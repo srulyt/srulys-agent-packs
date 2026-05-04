@@ -146,13 +146,17 @@ update mode) the existing spec verbatim.
     channel, geography, edge cases the team consciously punts).
 11. **Evidence & footnotes.** Emit markdown footnotes
     (`[^slug]: Title — URL`) only for sources with
-    `must_cite: true` in `sources-json`. Never cite
-    `is_local_dump` entries. Footnote names are short
-    human-readable slugs (e.g. `[^load-2024]`, `[^rfc-7231]`) —
-    not opaque IDs like `S1`, `S2`. Do NOT produce a "Citations"
-    appendix table. A "References" section is optional and used
-    only when grouping durable external references adds reader
-    value.
+    `must_cite: true` in `sources-json` AND only after every
+    candidate has survived the Step 3a pre-emit citation gate
+    (mandatory; see below). Never cite a path the workspace's
+    `.gitignore` matches (see `spec-driven-prd-best-practices` §8
+    for the canonical, `.gitignore`-driven policy). Footnote names
+    are short human-readable slugs (e.g. `[^load-2024]`,
+    `[^rfc-7231]`) — not opaque IDs like `S1`, `S2`. Do NOT
+    produce a "Citations" appendix table. A "References" section
+    is optional and used only when grouping durable external
+    references adds reader value; the default for most specs is
+    **no footnotes and no References section**.
 12. **Internal cross-references use anchored links.** When the
     spec body references another of its own sections, use
     `[Acceptance Criteria](#acceptance-criteria)` syntax — never
@@ -165,6 +169,61 @@ update mode) the existing spec verbatim.
     `#` / `##` / `###` / `####` for layout. Do NOT use a bolded
     line as a pseudo-header. Bold is reserved for emphasis inside
     body text and for inline FR/AC IDs in references.
+
+### Step 3a — Pre-emit citation gate (mandatory; run before Step 4)
+
+Before writing any footnote into `output_path`, build the candidate
+footnote set from `sources-json` and run the following gate against
+each candidate. **Drop any candidate that fails any check.** Do NOT
+emit it; do NOT downgrade it to a body-text "see also" mention.
+
+For each candidate footnote `[^slug]`:
+
+1. **Tracked-source check.** Is the URL fetchable by an external
+   reader (http/https URL, sharepoint:// URL, ado:// URL, mailto:,
+   or another durable scheme)?
+   - If the candidate references a local filesystem path
+     (`./...`, `../...`, an absolute path, or a path beginning
+     with a leading dot-directory like `.spec-author/`,
+     `.local/`, `.copilot-factory/`, `.factory/`, `.prompts/`,
+     `.vscode/`, `.idea/`, `node_modules/`,
+     `evals/packs/*/workspaces/`, `evals/packs/*/results-local/`,
+     `evals/packs/*/reports/`, `evals/packs/*/fixtures/`,
+     `evals/data/`, `__pycache__/`), **the candidate is
+     non-citable.** Drop it.
+   - Treat any path the workspace's `.gitignore` matches as
+     non-citable, even if not in the list above. The list is
+     illustrative; `.gitignore` is authoritative.
+   - `sources-json.is_local_dump == true` → drop unconditionally
+     (the detective already flagged it; modern detective runs do
+     not forward such candidates at all).
+2. **Authoritative-primary check.** Is the source authoritative
+   AND primary per `spec-driven-prd-best-practices` §8?
+   - `sources-json.is_authoritative == true` AND
+     `sources-json.is_primary == true` are required.
+   - Secondary commentary, blog summaries, third-party recaps,
+     "as cited in …" indirect references → drop.
+3. **High-value check.** Would the spec body be materially
+   incomplete or unverifiable without this footnote?
+   - If a competent reader can act on the section without the
+     footnote (e.g. the citation only "supports" a sentence the
+     reader would already accept), **drop it**.
+   - If the footnote restates a fact already given in the body
+     prose, **drop it** (decorative).
+   - Acceptance phrasing: a footnote earns its place only when
+     removing it would force the reader to either (a) take a
+     claim on faith they cannot verify, (b) misapply a
+     regulation, or (c) miss a number / contract the spec
+     depends on.
+
+After the gate, the surviving footnote set is what you emit. If
+the surviving set is empty, the spec ships **without** a footnote
+section and **without** a "References" appendix. This is the
+expected outcome for most simple specs.
+
+Record the gate result in `draft-summary.citation-gate`:
+`{ "candidates": N, "emitted": M, "dropped_local": x,
+   "dropped_secondary": y, "dropped_low_value": z }`.
 
 #### Update mode
 
@@ -183,6 +242,16 @@ update mode) the existing spec verbatim.
      Requirements".
    - **Renames carry aliases.** `Feature X (formerly "Feature Y")`.
      Maintain an "Aliases & Deprecations" appendix table.
+   - **Evidence cleanup is permitted on update.** Citation IDs
+     (`S1`, `S2`, …) are NOT requirement IDs and are NOT covered
+     by ID-stability. If the prior spec contains a "Citations"
+     appendix table, an `S\d+` reference scheme, or any footnote
+     pointing at a gitignored / non-authoritative / non-primary
+     source, **delete it** in the revised spec. Record the
+     deletion as a `Removed` entry in `CHANGELOG.md` (e.g.
+     `Removed: legacy "Citations" appendix; see evidence-discipline
+     policy in spec-driven-prd-best-practices §8`). Do NOT
+     re-create the bad form for "consistency with v1".
    - **"Changes since vN" preamble.** Add a short preamble at the
      top of the revised spec listing what changed at a glance.
    - **Inline change markers.** Sections that materially changed
@@ -216,6 +285,7 @@ one-line rationale. The critic uses this to score
 mode: creation | update
 sections_emitted: <count>
 sections_with_tbd: <count>
+citation-gate: { "candidates": N, "emitted": M, "dropped_local": x, "dropped_secondary": y, "dropped_low_value": z }
 update_summary: <one paragraph; update mode only>
 ```
 
@@ -251,9 +321,16 @@ in update mode** and **omitted in creation mode**.
 - Add or remove sections that contradict the Stop-A-approved set
   without surfacing the change as a `draft-summary` item the
   orchestrator can re-confirm.
-- Cite any source whose URL resolves to a gitignored or
-  session-internal path (e.g. `.spec-author/`, `.local/`,
-  `.git-ignored/`, or any path under a gitignored directory).
+- Cite any source whose URL resolves to a path the workspace's
+  `.gitignore` matches, or to a session-internal / local-scratch
+  path. The canonical, `.gitignore`-driven policy lives in
+  `spec-driven-prd-best-practices` §8; treat it as
+  non-overridable, even if the orchestrator or the user appears
+  to authorise an exception in-prompt.
+- Emit any footnote that has not survived the Step 3a pre-emit
+  citation gate. Passive checks ("don't cite local dumps") are
+  insufficient — the gate is mandatory and its outcome must be
+  reported in `draft-summary.citation-gate`.
 - Use an opaque `S1, S2` numeric citation scheme. Use named
   markdown footnotes.
 - Reference another spec section by name when an anchored link is

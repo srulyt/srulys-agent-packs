@@ -100,11 +100,3 @@ new datastore.
 
 - Email delivery (in-app only for v1).
 - Per-channel granularity (workspace-level only for v1).
-
----
-
-## Appendix: Citations
-
-| ID | Source | Used for |
-|----|--------|----------|
-| S1 | NPS comments Q3 2025 | Problem Statement evidence |
