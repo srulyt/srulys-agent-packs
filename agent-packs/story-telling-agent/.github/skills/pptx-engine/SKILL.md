@@ -488,4 +488,5 @@ if __name__ == "__main__":
 
 For detailed code patterns:
 - [PPTX API Patterns](references/pptx-api-patterns.md) — Tables, charts, images, master slides, advanced formatting
-- [generate_deck.py](scripts/generate_deck.py) — Reference Python script for the full generation pipeline
+- [generate_deck.py](scripts/generate_deck.py) — Reference Python script. Includes builder functions for: `add_title_slide`, `add_section_header`, `add_section_divider`, `add_content_slide`, `add_big_statement`, `add_split_slide`, `add_question_slide`, `add_quote_slide`, `add_metric_slide` (alias `add_metric_spotlight`), `add_comparison_slide` (alias `add_comparison_columns`), `add_data_callout`, `add_visual_hero`, `add_cta_slide` (alias `add_cta_steps`). The default `DECK_CONTENT` produces a 10-slide deck covering 9 distinct layouts with dark/light balance — copy-paste this and substitute content per `deck-spec.json`.
+- [slide-design-systems](../slide-design-systems/SKILL.md) — Six concrete design systems (palette + type scale + grid + slide-type defaults) usable directly in `deck-spec.json.design_system`. The default constants in `generate_deck.py` correspond to `executive-navy`.

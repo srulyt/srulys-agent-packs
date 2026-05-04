@@ -1,0 +1,63 @@
+id: smoke-buy-in-deck
+pack: story-telling-agent
+description: "Smoke test: ask story-orchestrator to build a buy-in deck for a platform team requesting Phase-1 budget. Verifies the full happy-path flow (intake → research → proposal → APPROVED → build → qa pass → complete), Stop-B approval gate behavior, and that all five expected artifacts land under .story-telling-stm/runs/{run-id}/."
+
+prompt_file: prompt.md
+
+prompt_template_vars:
+  audience: "VP Engineering and Director of Product"
+  decision: "approve $200K Phase-1 budget"
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    # Stage SUT agents + skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/.github/skills
+      dest: .github/skills
+    - kind: copy_tree
+      src: ../../../../../agent-packs/story-telling-agent/examples
+      dest: examples
+
+teardown:
+  policy: delete-on-pass
+
+# Bound web invocations per M-4: research-only, no inline web calls expected
+# in this case (all facts in prompt). Agents may still emit zero web calls.
+limits:
+  web_invocations_max: 2
+
+expected:
+  artifacts:
+    - id: state
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/state\\.json$"
+      required: true
+    - id: proposal
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/story-strategist/proposal\\.md$"
+      required: true
+    - id: deck-spec
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+      required: true
+    - id: deck-pptx
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/output\\.pptx$"
+      required: true
+    - id: qa-report
+      path_pattern: "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"
+      required: true
+  invocations:
+    story-strategist: { min: 1, max: 2 }
+    deck-builder: { min: 1, max: 2 }
+    deck-critic: { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:proposal": "^\\.story-telling-stm/runs/[^/]+/agents/story-strategist/proposal\\.md$"
+    "artifact:deck-spec": "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/deck-spec\\.json$"
+    "artifact:qa-report": "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/qa-report\\.json$"

@@ -1,9 +1,26 @@
 ---
 name: presentation-design
-description: "Visual presentation design principles for translating narratives into compelling slide decks. Covers slide types, one-message-per-slide rule, visual hierarchy, sequencing patterns, and design quality checklist. Keywords: slides, presentation, deck, visual hierarchy, slide types, layout, design, PowerPoint."
+description: "Positive visual-design rules for slides — what good looks like. Slide-type taxonomy, one-message-per-slide, visual hierarchy, layout vocabulary, sequencing patterns, color/type tokens, design quality checklist. Antipattern catalog lives in slide-critique. Keywords: slides, presentation, deck, visual hierarchy, slide types, layout, design, PowerPoint."
 ---
 
 # Presentation Design
+
+> **Content placement** — This skill is the canonical home for **positive design rules** ("what good looks like").
+> The negative-space catalog of AI-generated slide antipatterns lives in `slide-critique`.
+> Reference design *systems* (palettes, type scales, grids, accent rules) live in `slide-design-systems`.
+
+## Table of Contents
+
+1. [When to Use This Skill](#when-to-use-this-skill)
+2. [Slide Types Taxonomy](#slide-types-taxonomy)
+3. [The One-Message-Per-Slide Rule](#the-one-message-per-slide-rule)
+4. [Visual Hierarchy Patterns](#visual-hierarchy-patterns)
+5. [Layout Composition — Slides as Visual Forms](#layout-composition--slides-as-visual-forms)
+6. [Section Colors](#section-colors--visual-narrative-structure)
+7. [Modern Design Trends](#design-principles--modern-2024-trends)
+8. [Default Color Palettes](#professional-color-palettes-default-quick-references)
+9. [Slide Sequencing Patterns](#slide-sequencing-patterns)
+10. [Design Quality Checklist](#design-quality-checklist)
 
 Expert knowledge for translating narrative strategies into visually compelling, professionally designed slide decks.
 
@@ -193,7 +210,12 @@ Modern deck design is moving toward:
 8. **Visual rhythm** — Alternate dark and light slides to create a cinematic flow through the narrative
 9. **Restraint as taste** — The best slides have LESS, not more. Empty space is a design element. Knowing what to leave out is more important than knowing what to put in.
 
-## Professional Color Palettes
+## Professional Color Palettes (Default Quick References)
+
+> Six fully-specified design systems (palette + type scale + grid + slide-type defaults) live in
+> `slide-design-systems/references/systems/*.md`. Use those for full design-system selection.
+> The palettes below are the minimal default fallbacks the deck-builder uses when no design system
+> is specified.
 
 ### Palette 1: Executive Navy (Default)
 

@@ -1,0 +1,31 @@
+{
+  "expected_design_system": "customer-coral",
+  "expected_slide_count_range": [10, 14],
+  "expected_slide_types_must_include": [
+    "title",
+    "quote",
+    "metric",
+    "data_callout",
+    "section_divider",
+    "comparison",
+    "cta"
+  ],
+  "expected_narrative_framework": "Hero's Journey",
+  "expected_core_message_themes": [
+    "Northwind",
+    "forecast accuracy",
+    "11 weeks",
+    "champion voice"
+  ],
+  "structural_requirements": {
+    "every_metric_slide_paired_with_quote": true,
+    "speaker_notes_on_every_slide": true,
+    "no_third_party_logos_other_than_northwind": true
+  },
+  "antipatterns_must_be_absent": [
+    "wall-of-text",
+    "vendor-brand-dominant slide",
+    "uncited metric",
+    "generic feature list"
+  ]
+}

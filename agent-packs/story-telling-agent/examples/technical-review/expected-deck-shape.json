@@ -1,0 +1,33 @@
+{
+  "expected_design_system": "technical-slate",
+  "expected_slide_count_range": [12, 18],
+  "expected_slide_types_must_include": [
+    "title",
+    "content",
+    "comparison",
+    "data_callout",
+    "section_divider",
+    "split",
+    "cta"
+  ],
+  "expected_narrative_framework": "Pyramid",
+  "expected_core_message_themes": [
+    "p99 latency",
+    "rejected alternatives",
+    "rollback plan",
+    "risk register"
+  ],
+  "structural_requirements": {
+    "rejected_alternatives_listed": true,
+    "risk_register_all_4_entries_present": true,
+    "rollback_plan_present": true,
+    "speaker_notes_on_every_slide": true,
+    "no_superlatives_in_titles": true
+  },
+  "antipatterns_must_be_absent": [
+    "wall-of-text",
+    "uncited metric",
+    "vague CTA",
+    "marketing language"
+  ]
+}

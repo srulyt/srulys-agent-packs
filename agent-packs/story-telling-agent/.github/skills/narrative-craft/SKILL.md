@@ -252,3 +252,5 @@ When the knowledge graph supports several equally compelling paths:
 For detailed framework deep-dives:
 - [Storytelling Frameworks](references/storytelling-frameworks.md) — Complete framework guides with examples and anti-patterns
 - [Audience Psychology](references/audience-psychology.md) — Stakeholder archetypes, decision-making psychology, persuasion patterns
+- [Headline Craft](references/headline-craft.md) — Punch Test patterns, emotional-arc annotation, language-that-punches
+- [Approval-Gate Rationale](references/approval-gate-rationale.md) — Why the orchestrator's Stop-B gate is non-negotiable

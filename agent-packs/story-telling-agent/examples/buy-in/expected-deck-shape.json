@@ -1,0 +1,29 @@
+{
+  "expected_design_system": "executive-navy",
+  "expected_slide_count_range": [9, 12],
+  "expected_slide_types_must_include": [
+    "title",
+    "data_callout",
+    "comparison",
+    "quote",
+    "metric",
+    "cta"
+  ],
+  "expected_narrative_framework": "SCQA",
+  "expected_core_message_themes": [
+    "cost of inaction",
+    "$2.3M",
+    "three asks by Friday"
+  ],
+  "antipatterns_must_be_absent": [
+    "wall-of-text",
+    "unsourced metric",
+    "vague CTA",
+    "hockey-stick projection without basis"
+  ],
+  "structural_requirements": {
+    "speaker_notes_on_every_slide": true,
+    "title_underline_or_divider_on_content_slides": true,
+    "dark_light_alternation": true
+  }
+}

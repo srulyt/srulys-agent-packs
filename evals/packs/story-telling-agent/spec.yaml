@@ -1,0 +1,157 @@
+# Pack spec for story-telling-agent.
+#
+# Encodes the contracts the four agents declare in their .agent.md
+# front-matter and "File Access Boundaries" sections. Cases under
+# evals/packs/story-telling-agent/cases/ may override expectations per case.
+#
+# See eval_engine/docs/01-spec-schema.md for the full schema.
+
+pack: story-telling-agent
+orchestrator: story-orchestrator
+
+# Models: per-role model pinning. Scalars only until matrix expansion lands.
+models:
+  story-orchestrator: claude-sonnet-4.6
+  story-strategist: claude-sonnet-4.6
+  deck-builder: claude-sonnet-4.6
+  deck-critic: claude-sonnet-4.6
+  judge: claude-opus-4.7
+
+loops:
+  max_orchestrator_turns: 80
+
+flow:
+  ordering:
+    - [story-strategist, deck-builder, deck-critic]
+  no_unexpected_agents: true
+
+agents:
+  - name: story-strategist
+    invocations: { min: 1, max: 3, must_complete: true }
+    allowed_tools: [read, search, write, web]
+    write_scope_allow:
+      - "^\\.story-telling-stm/runs/[^/]+/agents/story-strategist/.*"
+    read_scope_allow:
+      - "^\\.story-telling-stm/runs/[^/]+/.*"
+      - "^\\.github/skills/.*"
+      - "^examples/.*"
+    scope_deny:
+      - "^_eval/"
+      - "^\\.git/"
+    prompt_contract:
+      required_sections:
+        - "Invocation Guard"
+        - "File Access Boundaries"
+        - "Output Contract"
+      required_fields:
+        - "session"
+      forbidden_input: []
+      forbidden_downstream: []
+    output_contract:
+      must_contain_sections:
+        - "status"
+        - "artifacts-json"
+        - "summary"
+    token_budget_max: 80000
+    no_subagent_reinvocation: true
+
+  - name: deck-builder
+    invocations: { min: 1, max: 3, must_complete: true }
+    allowed_tools: [read, search, write, execute]
+    write_scope_allow:
+      - "^\\.story-telling-stm/runs/[^/]+/agents/deck-builder/.*"
+    read_scope_allow:
+      - "^\\.story-telling-stm/runs/[^/]+/.*"
+      - "^\\.github/skills/.*"
+      - "^examples/.*"
+    scope_deny:
+      - "^_eval/"
+      - "^\\.git/"
+    prompt_contract:
+      required_sections:
+        - "Invocation Guard"
+        - "File Access Boundaries"
+        - "Output Contract"
+      required_fields:
+        - "session"
+    output_contract:
+      must_contain_sections:
+        - "status"
+        - "artifacts-json"
+        - "qa-summary"
+    token_budget_max: 120000
+    no_subagent_reinvocation: true
+
+  - name: deck-critic
+    invocations: { min: 1, max: 3, must_complete: true }
+    allowed_tools: [read, search, write, execute]
+    write_scope_allow:
+      - "^\\.story-telling-stm/runs/[^/]+/agents/deck-critic/.*"
+    read_scope_allow:
+      - "^\\.story-telling-stm/runs/[^/]+/.*"
+      - "^\\.github/skills/.*"
+    scope_deny:
+      - "^_eval/"
+      - "^\\.git/"
+    prompt_contract:
+      required_sections:
+        - "Invocation Guard"
+        - "File Access Boundaries"
+        - "Verdict Logic"
+        - "Output Contract"
+      required_fields:
+        - "session"
+        - "deck-pptx"
+    output_contract:
+      must_contain_sections:
+        - "status"
+        - "qa-report-json"
+        - "top-fixes-json"
+    token_budget_max: 80000
+    no_subagent_reinvocation: true
+
+  - name: story-orchestrator
+    invocations: { min: 1, max: 1, must_complete: true }
+    allowed_tools: [read, search, write, agent]
+    write_scope_allow:
+      - "^\\.story-telling-stm/.*"
+    read_scope_allow:
+      - "^\\.story-telling-stm/.*"
+      - "^\\.github/skills/.*"
+      - "^examples/.*"
+    scope_deny:
+      - "^_eval/"
+      - "^\\.git/"
+      - "^agent-packs/"
+      - "^evals/packs/"
+    prompt_contract:
+      required_sections:
+        - "Hard Delegation Rule (STOP-and-delegate)"
+        - "How to Delegate (Task Tool Mechanics)"
+        - "Stop-B Protocol"
+        - "Must NOT"
+      required_fields: []
+    output_contract:
+      must_contain_sections:
+        - "status"
+        - "deliverables-json"
+        - "next-action"
+    token_budget_max: 60000
+    no_subagent_reinvocation: false
+
+rubrics:
+  - id: coherence
+    apply_to: artifact:proposal
+    severity: info
+  - id: completeness
+    apply_to: artifact:proposal
+    severity: info
+  - id: faithfulness-to-input
+    apply_to: artifact:deck-spec
+    severity: info
+  - id: format-compliance
+    apply_to: artifact:deck-spec
+    severity: info
+  - id: visual-quality
+    apply_to: artifact:qa-report
+    severity: info

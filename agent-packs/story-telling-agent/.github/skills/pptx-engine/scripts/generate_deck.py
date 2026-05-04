@@ -596,6 +596,130 @@ def add_cta_slide(prs, title, next_steps, contact="", notes=""):
     return slide
 
 
+def add_data_callout(prs, title, big_number, label, supporting_text="", notes=""):
+    """Single-number-with-trend callout. Dark bg, gold number, minimal chrome."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide, NAVY)
+
+    tx_title = slide.shapes.add_textbox(Inches(1.2), Inches(0.7), Inches(10.9), Inches(0.9))
+    p = tx_title.text_frame.paragraphs[0]
+    p.text = title
+    p.font.size = Pt(32)
+    p.font.bold = False
+    p.font.name = FONT_TITLE
+    p.font.color.rgb = WHITE
+
+    tx_num = slide.shapes.add_textbox(Inches(1.2), Inches(2.2), Inches(10.9), Inches(2.6))
+    p_num = tx_num.text_frame.paragraphs[0]
+    p_num.text = big_number
+    p_num.font.size = Pt(120)
+    p_num.font.bold = True
+    p_num.font.name = FONT_TITLE
+    p_num.font.color.rgb = WARM_GOLD
+
+    tx_label = slide.shapes.add_textbox(Inches(1.2), Inches(5.0), Inches(10.9), Inches(0.7))
+    p_lab = tx_label.text_frame.paragraphs[0]
+    p_lab.text = label
+    p_lab.font.size = Pt(26)
+    p_lab.font.name = FONT_BODY
+    p_lab.font.color.rgb = ACCENT_TEAL
+
+    if supporting_text:
+        tx_sup = slide.shapes.add_textbox(Inches(1.2), Inches(5.9), Inches(10.9), Inches(1.0))
+        p_sup = tx_sup.text_frame.paragraphs[0]
+        p_sup.text = supporting_text
+        p_sup.font.size = BODY_SMALL
+        p_sup.font.name = FONT_BODY
+        p_sup.font.color.rgb = LIGHT_GRAY
+
+    set_notes(slide, notes)
+    return slide
+
+
+def add_visual_hero(prs, title, caption="", image_path=None, notes=""):
+    """Image-driven hero slide. Falls back to a colored panel + caption when no image."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide, OFF_WHITE)
+    add_left_accent_stripe(slide, NAVY, Inches(0.45))
+
+    if image_path and os.path.exists(image_path):
+        try:
+            slide.shapes.add_picture(image_path, Inches(0.9), Inches(0.9), width=Inches(8.0))
+        except Exception:
+            # fallback panel
+            panel = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(0.9), Inches(8.0), Inches(5.5))
+            panel.fill.solid()
+            panel.fill.fore_color.rgb = ACCENT_BLUE
+            panel.line.fill.background()
+    else:
+        panel = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(0.9), Inches(8.0), Inches(5.5))
+        panel.fill.solid()
+        panel.fill.fore_color.rgb = ACCENT_BLUE
+        panel.line.fill.background()
+
+    tx_title = slide.shapes.add_textbox(Inches(9.2), Inches(1.2), Inches(3.6), Inches(2.5))
+    tf = tx_title.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = title
+    p.font.size = Pt(30)
+    p.font.bold = True
+    p.font.name = FONT_BODY
+    p.font.color.rgb = NAVY
+
+    if caption:
+        tx_cap = slide.shapes.add_textbox(Inches(9.2), Inches(4.0), Inches(3.6), Inches(2.5))
+        tf2 = tx_cap.text_frame
+        tf2.word_wrap = True
+        p2 = tf2.paragraphs[0]
+        p2.text = caption
+        p2.font.size = BODY_SMALL
+        p2.font.name = FONT_BODY
+        p2.font.color.rgb = TEXT_MID
+
+    set_notes(slide, notes)
+    return slide
+
+
+def add_section_divider(prs, section_title, section_subtitle="", section_color=None, notes=""):
+    """Full-body section divider — colored panel, large numbered/named heading. Distinct from add_section_header."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide, NAVY)
+    color = section_color or ACCENT_BLUE
+
+    # Vertical color band on left third
+    band = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(4.5), Inches(7.5))
+    band.fill.solid()
+    band.fill.fore_color.rgb = color
+    band.line.fill.background()
+
+    tx_title = slide.shapes.add_textbox(Inches(5.0), Inches(2.5), Inches(7.5), Inches(2.0))
+    tf = tx_title.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = section_title
+    p.font.size = TITLE_SIZE_SECTION
+    p.font.name = FONT_TITLE
+    p.font.color.rgb = WHITE
+
+    if section_subtitle:
+        tx_sub = slide.shapes.add_textbox(Inches(5.0), Inches(4.7), Inches(7.5), Inches(1.0))
+        p_sub = tx_sub.text_frame.paragraphs[0]
+        p_sub.text = section_subtitle
+        p_sub.font.size = SUBTITLE_SIZE
+        p_sub.font.name = FONT_BODY
+        p_sub.font.color.rgb = ACCENT_TEAL
+
+    set_notes(slide, notes)
+    return slide
+
+
+# Aliases matching presentation-design vocabulary (deck-builder uses these names)
+add_metric_spotlight = add_metric_slide
+add_comparison_columns = add_comparison_slide
+add_cta_steps = add_cta_slide
+
+
 # ===========================================================================
 # DECK CONTENT — The deck-builder agent replaces this section per deck
 # ===========================================================================
@@ -627,41 +751,73 @@ DECK_CONTENT = {
             "notes": "Expand on each point verbally. Transition: move to the next section."
         },
         {
-            "type": "split",
-            "title": "The context that frames the argument",
-            "context": "This is where you provide the narrative context that makes the supporting points meaningful.",
-            "points": [
-                "Evidence point one with specifics",
-                "Evidence point two with data",
-                "Evidence point three with outcome",
-            ],
-            "notes": "Left side sets up the story, right side delivers the proof."
+            "type": "section_divider",
+            "section_title": "Part 2: The Evidence",
+            "section_subtitle": "Three numbers that prove the case",
+            "notes": "Pause for transition. The next slides deliver proof."
         },
         {
-            "type": "question",
-            "question": "What if we could solve this\nwithout adding headcount?",
-            "notes": "Pause after the question. Let the audience think. Then move to the answer."
+            "type": "data_callout",
+            "title": "We left $2.3M on the table last quarter",
+            "big_number": "$2.3M",
+            "label": "Revenue at risk \u2014 unaddressed pipeline",
+            "supporting_text": "Source: Q3 board pack, Sept 2025. 14 enterprise deals stalled at procurement.",
+            "notes": "Let the number land. This is the cost-of-inaction slide."
+        },
+        {
+            "type": "comparison",
+            "title": "Two paths forward \u2014 only one keeps us competitive",
+            "left_header": "Status quo",
+            "left_points": [
+                "12-week procurement cycles",
+                "Manual deal desk review",
+                "$340K/month opportunity cost",
+            ],
+            "right_header": "Proposed",
+            "right_points": [
+                "3-week self-serve flow",
+                "Automated risk gating",
+                "Recover $2.3M annually",
+            ],
+            "notes": "Walk left, then right. End on the gain."
+        },
+        {
+            "type": "quote",
+            "quote": "We chose this platform because it gave us back two weeks per deal.",
+            "attribution": "VP Revenue Operations, Acme Corp",
+            "notes": "Let the quote breathe. Customer voice is the most credible voice."
+        },
+        {
+            "type": "split",
+            "title": "The plan that gets us there",
+            "context": "Three phases over six months. Each phase ships independently.",
+            "points": [
+                "Phase 1: Self-serve pricing (Apr)",
+                "Phase 2: Risk automation (May-Jun)",
+                "Phase 3: Procurement integration (Jul-Sep)",
+            ],
+            "notes": "Left frames the timeline; right delivers the milestones."
         },
         {
             "type": "metric",
-            "title": "Key Results That Speak for Themselves",
+            "title": "Three numbers that close the case",
             "metrics": [
-                ("40%", "Churn Reduction"),
-                ("$2.3M", "Pipeline Growth"),
-                ("3x", "Faster Onboarding"),
+                ("40%", "Cycle time reduction"),
+                ("$2.3M", "Annual revenue recovered"),
+                ("3x", "Deals processed per AE"),
             ],
-            "notes": "Let the numbers land. Pause after revealing each metric."
+            "notes": "Read each metric. Pause. The numbers compound the argument."
         },
         {
             "type": "cta",
-            "title": "Clear Next Steps to Drive Action",
+            "title": "Three decisions \u2014 by Friday",
             "next_steps": [
-                ("Approve the proposed approach", "Decision by Friday"),
-                ("Kick off Phase 1 implementation", "Engineering lead \u2014 Week of March 23"),
-                ("Schedule follow-up review", "All stakeholders \u2014 April 15"),
+                ("Approve $200K Phase 1 budget", "VP Eng \u2014 Friday"),
+                ("Assign deal-desk lead to project", "VP RevOps \u2014 next week"),
+                ("Schedule Q1 progress review", "All stakeholders \u2014 Apr 15"),
             ],
-            "contact": "Questions? Reach out to team@company.com",
-            "notes": "Be explicit about what you need. Make the ask clear and concrete."
+            "contact": "Questions? \u2014 platform-team@company.com",
+            "notes": "Be explicit about every ask. Make saying yes easy."
         },
     ],
 }
@@ -757,6 +913,34 @@ def build_deck(content, template_path=None, output_path="output.pptx"):
                 slide_spec["title"],
                 slide_spec.get("next_steps", []),
                 slide_spec.get("contact", ""),
+                notes,
+            )
+
+        elif slide_type == "data_callout":
+            add_data_callout(
+                prs,
+                slide_spec["title"],
+                slide_spec.get("big_number", ""),
+                slide_spec.get("label", ""),
+                slide_spec.get("supporting_text", ""),
+                notes,
+            )
+
+        elif slide_type == "visual_hero":
+            add_visual_hero(
+                prs,
+                slide_spec["title"],
+                slide_spec.get("caption", ""),
+                slide_spec.get("image_path", None),
+                notes,
+            )
+
+        elif slide_type == "section_divider":
+            add_section_divider(
+                prs,
+                slide_spec.get("section_title", slide_spec.get("title", "Section")),
+                slide_spec.get("section_subtitle", ""),
+                None,
                 notes,
             )
 
