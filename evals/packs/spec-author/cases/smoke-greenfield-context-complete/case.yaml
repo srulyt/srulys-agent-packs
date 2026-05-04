@@ -5,6 +5,7 @@ description: "Smoke test: greenfield creation mode, context complete, Stop A pat
 prompt_file: prompt.md
 
 mode_kind: creation
+spec_kind: product
 
 workspace:
   isolation: copy-tree
@@ -28,6 +29,8 @@ teardown:
   policy: delete-on-pass
 
 scripted_user:
+  - on_phase: awaiting-output-location
+    reply: "output_path: docs/specs/digest.md, spec_kind: product"
   - on_phase: awaiting-structure-approval
     reply: "APPROVE"
 
@@ -40,7 +43,7 @@ expected:
       path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
       required: true
     - id: specification
-      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      path_pattern: "^docs/specs/digest\\.md$"
       required: true
     - id: spec-review
       path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
@@ -59,7 +62,7 @@ expected:
     prd-drafter:       { min: 1, max: 2 }
     prd-critic:        { min: 1, max: 2 }
   rubric_targets:
-    "artifact:specification": "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+    "artifact:specification": "^docs/specs/digest\\.md$"
   rubric_overrides:
     mandatory-coverage: { severity: error }
     format-compliance:  { severity: warn }

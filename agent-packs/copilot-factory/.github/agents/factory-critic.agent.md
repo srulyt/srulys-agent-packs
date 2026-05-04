@@ -143,6 +143,39 @@ and the
 The following checks apply across review types. Each rule states its
 default severity; review-type-specific overrides are noted below.
 
+**Frontmatter Schema Validation (BLOCKING):**
+
+For every `.agent.md` (and `SKILL.md`) in the generated pack, parse the
+YAML frontmatter block and validate against the Canonical Frontmatter
+Schema in the `agent-builder` skill
+([SKILL.md → Canonical Frontmatter Schema](../skills/agent-builder/SKILL.md)).
+This is the single source of truth shared with `@factory-engineer`'s
+pre-emit checklist.
+
+- [ ] YAML parses cleanly (block starts at line 1, no malformed
+      indentation, no unquoted `description` containing `:`).
+- [ ] No duplicate keys.
+- [ ] Every key is in the supported set:
+      `.agent.md` → `name`, `description`, `tools`,
+      `disable-model-invocation`, `user-invocable`, `model`, `target`;
+      `SKILL.md` → `name`, `description`, `license`.
+- [ ] Unknown frontmatter keys are BLOCKING. **Worked anti-example:**
+      `display-name: "Spec Author"` (introduced by session
+      `2026-05-04-3f8b21ac` finding F1) is unsupported by the Copilot
+      CLI loader and MUST be flagged BLOCKING. The friendly label
+      belongs in the canonical `name:` field
+      (e.g. `name: "Spec Author Orchestrator"`), NOT in a custom key.
+- [ ] **`name:` is human-readable; do NOT flag a non-slug `name:`
+      value as a violation.** `name:` accepts friendly strings
+      (e.g. `"Spec Author Orchestrator"`, `"Factory Architect"`,
+      `"Context Detective"`). The user-facing invocation slug is the
+      kebab-case **filename** (`spec-author.agent.md` → `@spec-author`),
+      derived independently of `name:`. `name:` and the filename slug
+      MAY differ. Flagging a non-slug `name:` as invalid is itself a
+      defect. (Session `2026-05-04-b8a05c19`'s rule that `name:`
+      must equal the filename slug is rescinded.)
+- [ ] `description` is present on every agent and is double-quoted.
+
 **Negative Scope (Must NOT):**
 - Every agent in the generated pack has a `## Must NOT` section listing
   forbidden paths, forbidden tools, forbidden sub-agent re-invocations,

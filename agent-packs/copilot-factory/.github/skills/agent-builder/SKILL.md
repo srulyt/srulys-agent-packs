@@ -28,6 +28,44 @@ Load this skill when:
 
 For detailed Copilot patterns, see [references/copilot-artifacts.md](references/copilot-artifacts.md).
 
+### Canonical `.agent.md` Frontmatter Schema (Single Source of Truth)
+
+This is the **authoritative** list of frontmatter keys supported by the
+Copilot CLI agent loader in this codebase. Both `@factory-engineer`
+(pre-emit) and `@factory-critic` (review-pass) MUST validate every
+generated `.agent.md` against this list. Unknown keys are a build bug —
+the loader may silently ignore them or reject the file outright.
+
+**Supported keys** (all others are unknown and MUST be rejected):
+
+| Key | Required | Type | Notes |
+|---|---|---|---|
+| `name` | recommended | string | **Friendly / display name** for the agent (e.g. `"Spec Author Orchestrator"`). Human-readable; quoted strings with spaces are fine. The user-facing invocation slug (`@spec-author`) is derived from the **kebab-case filename** (`spec-author.agent.md`), NOT from this field. `name:` and the filename slug MAY differ. Do NOT force `name:` to match the filename slug. |
+| `description` | **required** | string (double-quoted) | Triggers + purpose. MUST be wrapped in `"..."`. |
+| `tools` | optional | list of strings | Tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `vision`, `github/*`). |
+| `disable-model-invocation` | optional | bool | Orchestrators set `true`; subagents MUST omit. |
+| `user-invocable` | optional | bool | Subagents set `false`; orchestrators set `true` (default). |
+| `model` | optional | string | Model override (IDE only). |
+| `target` | optional | string | `vscode` or `github-copilot`. |
+
+Sources used to derive this list:
+- `agent-packs/copilot-factory/.github/skills/agent-builder/references/copilot-artifacts.md` (full schema block).
+- The working orchestrator `agent-packs/copilot-factory/.github/agents/copilot-factory.agent.md` and all five `factory-*`, `eval-judge` sibling agents — none use any other keys.
+
+**NOT supported** — do NOT emit these in frontmatter. Place
+human-readable labels in the canonical `name:` field instead — see the
+Supported keys table above.
+
+| Unsupported key | Rationale |
+|---|---|
+| `display-name` | **Worked anti-example.** Added by session `2026-05-04-3f8b21ac` finding F1 to provide a friendly label, then doubled-down on by session `2026-05-04-b8a05c19` which forced the friendly name into the body H1 only. **Both are wrong.** Copilot CLI's loader has no `display-name` field, but the friendly name DOES have a home: the canonical `name:` field accepts human-readable strings (e.g. `name: "Spec Author Orchestrator"`). The invocation slug is the kebab-case **filename** (`spec-author.agent.md` → `@spec-author`), independent of `name:`. Use `name:` for the friendly label; do not invent `display-name`. |
+| `title` / `label` / `friendly-name` | Same reason — no loader support. The friendly label belongs in `name:`. |
+| `version` / `author` / `tags` | No loader support. Track in README or memory files instead. |
+| `aliases` | No loader support. The `@invocation-slug` is the kebab-case filename, not an alias field. |
+
+When in doubt: if the key is not in the **Supported keys** table
+above, it MUST NOT appear in `.agent.md` frontmatter.
+
 ### Quick Reference
 
 **.agent.md** format:
@@ -93,6 +131,7 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
 - [ ] `description` field present (required)
 - [ ] **`description` value is always wrapped in double quotes** — bare strings containing `:` cause YAML parse errors (e.g. `description: "... Trigger keywords: foo, bar."`)
 - [ ] **YAML frontmatter starts at line 1** — never wrap it in a code fence (` ```skill ` or similar)
+- [ ] **Frontmatter contains ONLY keys from the Canonical Frontmatter Schema** — see the supported-keys table above. Unknown keys (e.g. `display-name`, `title`, `version`) are a build bug. No duplicate keys. YAML must parse cleanly.
 - [ ] `tools` uses correct aliases
 - [ ] Agent prompt under 30,000 characters
 - [ ] Skill under 5,000 words

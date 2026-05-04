@@ -5,6 +5,7 @@ description: "Validates Q1 end-to-end: update mode. The user supplies a path to 
 prompt_file: prompt.md
 
 mode_kind: update
+spec_kind: technical
 
 workspace:
   isolation: copy-tree
@@ -26,6 +27,8 @@ teardown:
   policy: delete-on-pass
 
 scripted_user:
+  - on_phase: awaiting-output-location
+    reply: "output_path: docs/specs/digest.md, spec_kind: technical"
   - on_phase: awaiting-structure-approval
     reply: "APPROVE"
 
@@ -38,10 +41,10 @@ expected:
       path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
       required: true
     - id: specification
-      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      path_pattern: "^docs/specs/digest\\.md$"
       required: true
     - id: changelog
-      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+      path_pattern: "^docs/specs/CHANGELOG\\.md$"
       required: true
     - id: spec-review
       path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
@@ -71,8 +74,8 @@ expected:
         - "###\\s*Added"
         - "###\\s*Deprecated"
   rubric_targets:
-    "artifact:specification": "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
-    "artifact:changelog":     "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+    "artifact:specification": "^docs/specs/digest\\.md$"
+    "artifact:changelog":     "^docs/specs/CHANGELOG\\.md$"
   rubric_overrides:
     mandatory-coverage:      { severity: error }
     id-stability:            { severity: error }

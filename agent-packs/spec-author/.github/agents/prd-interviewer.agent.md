@@ -1,5 +1,5 @@
 ---
-name: prd-interviewer
+name: "PRD Interviewer"
 description: "Converts detected context gaps into a structured, section-keyed user interview (max 12 questions, each tagged P0/P1/P2). Subagent of @spec-author. Triggers on: generate interview questions, ask the user about missing context, structured PRD interview."
 tools: ["read", "edit"]
 user-invocable: false

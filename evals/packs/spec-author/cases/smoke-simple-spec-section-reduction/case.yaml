@@ -5,6 +5,7 @@ description: "Validates Q2 adaptive sectioning. Low-complexity input — a singl
 prompt_file: prompt.md
 
 mode_kind: creation
+spec_kind: product
 
 workspace:
   isolation: copy-tree
@@ -26,6 +27,8 @@ teardown:
   policy: delete-on-pass
 
 scripted_user:
+  - on_phase: awaiting-output-location
+    reply: "output_path: docs/specs/tweak.md, spec_kind: product"
   - on_phase: awaiting-structure-approval
     reply: "APPROVE"
 
@@ -38,7 +41,7 @@ expected:
       path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
       required: true
     - id: specification
-      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+      path_pattern: "^docs/specs/tweak\\.md$"
       required: true
     - id: spec-review
       path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
@@ -66,7 +69,7 @@ expected:
     - section: "Appendix: NFR↔FR Traceability"
       status: gated-omitted
   rubric_targets:
-    "artifact:specification": "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
+    "artifact:specification": "^docs/specs/tweak\\.md$"
   rubric_overrides:
     gated-appropriateness: { severity: error }
     mandatory-coverage:    { severity: error }

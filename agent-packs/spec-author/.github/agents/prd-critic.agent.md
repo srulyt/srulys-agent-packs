@@ -1,5 +1,5 @@
 ---
-name: prd-critic
+name: "PRD Critic"
 description: "Scores the drafted spec against the prd-quality-rubric (D1–D4 always; D5–D8 in update mode). Emits a verdict (pass | revise | block), per-dimension scores, and findings. Subagent of @spec-author. Triggers on: review the spec, score the PRD, critic verdict, validate the draft."
 tools: ["read", "edit"]
 user-invocable: false
@@ -57,9 +57,10 @@ blocks below.
 
 ### Step 1: Parse the prompt
 
-Extract `mode`, `spec_path`, `prior_spec_path` (if update mode),
-and the drafter's `section-decisions-json` (the orchestrator
-forwards it).
+Extract `mode`, `spec_kind`, `spec_path`, `prior_spec_path` (if
+update mode), and the drafter's `section-decisions-json` (the
+orchestrator forwards it). Refuse if `mode` or `spec_kind` is
+missing.
 
 ### Step 2: Read inputs
 
@@ -74,13 +75,14 @@ forwards it).
 | Dim | Applies | Question |
 |-----|---------|----------|
 | **D1 mandatory-coverage** | both modes | Are all `mandatory` sections from `prd-template` present and non-empty (or marked `[TBD]` with an Open-Question entry)? |
-| **D2 gated-appropriateness** | both modes | For each `complexity-gated` section, is the include/omit decision justified by the heuristic given the inputs? Penalise both bloat (gated section present without a triggering axis) and underspecification (axis present in inputs but section omitted). |
+| **D2 gated-appropriateness** | both modes | For each `complexity-gated` section, is the include/omit decision justified by the heuristic given the inputs **AND the `spec_kind`**? Penalise (a) bloat — gated section present without a triggering axis or without `spec_kind` permitting it; (b) underspecification — axis present, `spec_kind` permits inclusion, section omitted. In `spec_kind: product`, do NOT penalise omission of implementation-shaped sections (Data Model, API Contract, Capacity & Performance Targets, Threat Model Summary, Versioning & Deprecation Policy, NFR↔FR Traceability) regardless of axis. |
 | **D3 naming-consistency** | both modes | Do section names match the neutral catalogue, OR a Stop-A-approved override? |
-| **D4 content-quality** | both modes | Clarity; testability of acceptance criteria; NFR↔FR traceability where NFRs exist; no fabrication; citations preserved from `sources-json`. |
+| **D4 content-quality** | both modes | Clarity; testability of acceptance criteria (EARS-aligned where applicable — see `spec-driven-prd-best-practices` §4a); NFR↔FR traceability where NFRs exist; no fabrication; **evidence discipline** (every footnote is to an authoritative primary source, no footnote points at a gitignored / session-local path, internal cross-references use anchored links, no "Citations" appendix table); **format hygiene** (paragraphs are unwrapped — single source line — no bold-as-header, FR statements use EARS, ACs use Given/When/Then nested under their FR). |
 | **D5 changelog-completeness** | update only | Does `CHANGELOG.md` exist, use the Keep-a-Changelog categories, and account for every change visible between prior and revised? |
 | **D6 id-stability** | update only | Do all prior requirement IDs still resolve (renames carry alias; deprecations preserve ID + status marker)? |
 | **D7 versioning-correctness** | update only | Does the version bump match the rule (MAJOR/MINOR/PATCH per `prd-evolution`)? Is the `Updates:` / `Obsoletes:` header present? |
 | **D8 section-stability** | update only | No silent renumbering. No removed gated section without a changelog rationale. |
+| **D9 scope-discipline** | both modes when `spec_kind` is `product` or `mixed`; `null` when `spec_kind == technical` | In `product` / `mixed` mode: no FR names an internal component, library, datastore, framework, language, or specific API; technical content (when present) is confined to a "Technical Considerations" appendix; "Out of Scope" contains no boilerplate "implementation is out of scope" item. In `technical` mode: D9 is `null`. |
 
 Each dimension gets a score in `[0, 1]`. Dimensions not applicable
 to the current mode are reported as `null`, **not** `0`.
@@ -95,12 +97,22 @@ For each issue you found, emit one entry:
 ```json
 {
   "severity": "blocker | major | minor",
-  "dimension": "D1..D8",
+  "dimension": "D1..D9",
   "section": "<which spec section, or null>",
   "issue":   "<what is wrong>",
   "fix":     "<concrete suggestion the drafter can apply>"
 }
 ```
+
+Categories of common findings the critic surfaces include:
+**evidence-discipline** (D4) — footnote points at a gitignored
+path; opaque `S1, S2` numbering; bare section reference instead of
+anchor; "Citations" appendix table present. **format-hygiene**
+(D4) — hard-wrapped paragraphs; bold-as-header; FR not in EARS
+shape; AC not Given/When/Then. **scope-discipline** (D9) — FR
+names an internal library/datastore/framework in `product`/`mixed`
+mode; boilerplate "implementation is out of scope" item; technical
+content inline in FRs in `mixed` mode.
 
 ### Step 5: Verdict rules
 
@@ -125,7 +137,7 @@ pass | revise | block
 ```
 
 ```scores-json
-{"D1":0.9,"D2":0.8,"D3":1.0,"D4":0.85,"D5":null,"D6":null,"D7":null,"D8":null,"weighted":0.89}
+{"D1":0.9,"D2":0.8,"D3":1.0,"D4":0.85,"D5":null,"D6":null,"D7":null,"D8":null,"D9":0.9,"weighted":0.89}
 ```
 
 ```findings-json

@@ -77,8 +77,18 @@ agents:
     invocations: { min: 1, max: 3, must_complete: true }
     allowed_tools: [read, write]
     write_scope_allow:
+      # Session-scratch artefacts the drafter always writes.
       - "^\\.spec-author/sessions/[^/]+/artifacts/specification\\.md$"
       - "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+      # User-chosen output paths from Stop 0 (output_path + spec_kind).
+      # The orchestrator resolves output_path before delegating; the
+      # drafter then writes the published spec there. Cases narrow
+      # this further via `case.yaml.agent_overrides.prd-drafter
+      # .write_scope_allow_extras` (anchored regex) when the test
+      # asserts a specific user path.
+      - "^docs/specs/[^/]+\\.md$"
+      - "^docs/specs/[^/]+/CHANGELOG\\.md$"
+      - "^docs/specs/CHANGELOG\\.md$"
     read_scope_allow:
       - "^\\.spec-author/sessions/[^/]+/.*"
       - "^\\.github/skills/.*"
@@ -114,6 +124,10 @@ agents:
     allowed_tools: [read, search, write, agent]
     write_scope_allow:
       - "^\\.spec-author/.*"
+      # Orchestrator may touch the user-chosen output path during
+      # Stop 0 resolution (e.g. directory creation) before
+      # delegating the actual file write to prd-drafter.
+      - "^docs/specs/.*"
     read_scope_allow:
       - "^\\.spec-author/.*"
       - "^\\.github/skills/.*"
@@ -162,6 +176,15 @@ rubrics:
     apply_to: artifact:specification
     severity: info
     applies_when: "case.mode_kind == 'update'"
+  - id: scope-discipline             # D9 — product / mixed only
+    # Penalises FRs that name internal components, libraries,
+    # datastores, or specific APIs in product/mixed mode; rewards
+    # confinement of any technical content to a Technical
+    # Considerations appendix; rejects boilerplate
+    # "implementation is out of scope" non-goals.
+    apply_to: artifact:specification
+    severity: info
+    applies_when: "case.spec_kind in ['product', 'mixed']"
   - id: faithfulness-to-input
     apply_to: artifact:specification
     severity: info

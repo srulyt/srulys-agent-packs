@@ -1,5 +1,5 @@
 ---
-name: context-detective
+name: "Context Detective"
 description: "Reads inputs, performs research, discovers MCPs/CLIs available in the environment, and proposes a PRD section set using the prd-template complexity heuristic. Subagent of @spec-author. Triggers on: discover context, research for PRD, MCP discovery, propose section set."
 tools: ["read", "edit", "search"]
 user-invocable: false
@@ -121,6 +121,13 @@ mandatory section, list it. For every complexity-gated section,
 decide **include** (and which axis triggered it) or **omit** (with
 a one-line reason).
 
+Annotate every gated section with its `Requires spec_kind`
+constraint from `prd-template`'s gated-section table — for example
+"Data Model — gated-included(persistence-data), requires
+spec_kind=technical|mixed". This makes the spec-kind dependency
+visible to the orchestrator at Stop A so the user can opt in
+explicitly.
+
 ### Step 5: Identify gaps
 
 Build `gaps-json` with shape:
@@ -142,7 +149,8 @@ from the diff.
 
 - `artifacts/context-pack.md` — synthesised findings keyed by
   target PRD section, so the drafter can lift content directly.
-  Include a **Citations** subsection listing every source.
+  Group sources at the bottom; the drafter selects which qualify
+  as `must_cite: true` per `sources-json`.
 - `artifacts/discovery.json` — exact shape:
 
   ```json
@@ -154,6 +162,29 @@ from the diff.
     "skipped": ["..."]
   }
   ```
+
+### Step 7: Triage sources for citation-worthiness
+
+Build `sources-json` per the schema in the Output Contract. For
+every candidate source:
+
+- Set `is_local_dump: true` when the URL resolves under
+  `.spec-author/`, `.local/`, `.git-ignored/`, or any gitignored
+  directory. Such entries MUST also have `must_cite: false` and
+  MUST NOT be forwarded to the drafter as cite-worthy.
+- Set `is_authoritative: true` only for: published web docs,
+  standards, RFCs, peer specs, ADO items, SharePoint pages,
+  internal wikis with a stable URL, vendor docs, regulator pages.
+- When two sources cover the same fact, keep only the **primary**.
+  Discard secondary sources that merely mention the primary.
+- Set `must_cite: true` only when **all three** hold: the
+  evidence is critical for additional context, the source is
+  authoritative, AND there is a high probability the reader will
+  actually need to open it. Otherwise `must_cite: false`.
+- Always include the actual URL (web URL, SharePoint URL, ADO
+  link), not just the document title.
+- Use a short human-readable footnote slug for `id`
+  (e.g. `load-2024`, `rfc-7231`) — not `S1, S2`.
 
 ## Output Contract
 
@@ -177,13 +208,24 @@ graceful_degradation: true | false
 - Document Information — mandatory
 - Problem Statement — mandatory
 - ...
-- Non-Functional Requirements — gated-included(infra-platform-change) — <reason>
+- Non-Functional Requirements — gated-included(infra-platform-change), requires spec_kind=any — <reason>
+- Data Model — gated-included(persistence-data), requires spec_kind=technical|mixed — <reason>
 - Security & Compliance — gated-omitted — <reason>
 - ...
 ```
 
 ```sources-json
-[{"id":"S1","title":"...","url":"...","used_for":"..."}]
+[{
+  "id":"footnote-slug",
+  "title":"...",
+  "url":"https://... or sharepoint:// or ado://...",
+  "kind":"web|standard|rfc|spec|ado|sharepoint|wiki|vendor-doc|regulation",
+  "is_authoritative":true,
+  "is_primary":true,
+  "is_local_dump":false,
+  "used_for":"<which spec section / FR>",
+  "must_cite":true
+}]
 ```
 
 ```open-questions-json

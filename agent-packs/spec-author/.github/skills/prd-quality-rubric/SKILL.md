@@ -41,16 +41,22 @@ mandatory section present but empty without `[TBD]`.
 ### D2 — gated-appropriateness  (both modes)
 
 **Question:** For each `complexity-gated` section, is the
-include/omit decision justified by the §heuristic given the
-inputs?
+include/omit decision justified by the §heuristic given the inputs
+**AND the user-chosen `spec_kind`** (see `prd-template`)?
 
 **Scoring:**
 - Penalise **bloat**: gated section present without a triggering
-  axis being detectable in the inputs.
-- Penalise **underspecification**: axis present in the inputs but
-  the section omitted.
+  axis being detectable in the inputs, OR without `spec_kind`
+  permitting it.
+- Penalise **underspecification**: axis present in the inputs AND
+  `spec_kind` permits inclusion, but the section is omitted.
 - Reward correctly omitted sections with a clear rationale in
-  `section-decisions-json`.
+  `section-decisions-json` (including
+  `gated-omitted-by-spec-kind`).
+- In `spec_kind: product`, do NOT penalise omission of
+  implementation-shaped sections (Data Model, API Contract,
+  Capacity & Performance Targets, Threat Model Summary, Versioning
+  & Deprecation Policy, NFR↔FR Traceability) regardless of axis.
 
 ### D3 — naming-consistency  (both modes)
 
@@ -63,15 +69,47 @@ deduct heavily.
 
 ### D4 — content-quality  (both modes)
 
-**Question:** Is the prose clear; are acceptance criteria testable;
-do NFRs (when present) trace to FRs; is there fabrication; are
-citations preserved?
+**Question:** Is the prose clear; are FRs in EARS shape; are
+acceptance criteria testable and nested under their FR; do NFRs
+(when present) trace to FRs; is there fabrication; is evidence
+discipline upheld; is format hygiene upheld?
 
 **Scoring:** penalise:
-- Non-testable acceptance criteria.
-- Untraceable claims (no citation, not in context-pack).
+- Non-EARS FR statements (multiple `shall`s, missing
+  `<system> shall`, intention-shaped triggers, passive-voice
+  responses). See `spec-driven-prd-best-practices` §4a.
+- Non-testable acceptance criteria; ACs not nested under their FR;
+  ACs without `AC-<FR>.<n>` IDs.
+- Untraceable claims (no footnote and not derivable from the
+  context pack).
 - Vague goals without baseline + target + measurement window.
 - Missing P0/P1/P2 priority on FRs.
+- **Evidence-discipline violations:** footnote points at a
+  gitignored or session-local path (e.g. `.spec-author/`,
+  `.local/`); opaque `S1, S2` numeric citations; bare section
+  reference instead of an anchored link; "Citations" appendix
+  table present; footnote that omits a real URL.
+- **Format-hygiene violations:** hard-wrapped body paragraphs;
+  bold-as-header; structure carried by bolded lines instead of
+  `###`/`####` headers.
+
+### D9 — scope-discipline  (both modes when `spec_kind` is `product` or `mixed`; `null` otherwise)
+
+**Question:** In `product` / `mixed` mode, is implementation
+content kept out of FRs and confined to a "Technical
+Considerations" appendix (mixed) or omitted entirely (product)?
+
+**Scoring:** penalise:
+- Any FR that names an internal component, library, datastore,
+  framework, language, or specific API in `product` / `mixed`
+  mode.
+- Inline implementation content next to FRs in `mixed` mode (it
+  belongs in "Technical Considerations").
+- Boilerplate "implementation is out of scope" / "technical design
+  choices are out of scope" entries in Out of Scope.
+
+In `spec_kind: technical`, D9 is reported as `null` (not 0) — the
+dimension does not apply.
 
 ### D5 — changelog-completeness  (update mode only)
 
@@ -112,7 +150,7 @@ applicable in the current mode are reported as `null`, **not 0**,
 in `scores-json`.
 
 ```
-weighted = mean(dim for dim in [D1..D8] if dim is not null)
+weighted = mean(dim for dim in [D1..D9] if dim is not null)
 ```
 
 ## Verdict rules

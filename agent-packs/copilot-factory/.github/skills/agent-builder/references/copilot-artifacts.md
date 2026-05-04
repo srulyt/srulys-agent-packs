@@ -14,14 +14,21 @@ Markdown with YAML frontmatter.
 
 ```yaml
 ---
-name: "Agent Name"                    # Optional: display name
+name: "Agent Name"                    # Optional: friendly/display name (human-readable, e.g. "Spec Author Orchestrator"). The `@invocation-slug` users type comes from the kebab-case FILENAME (e.g. `spec-author.agent.md` → `@spec-author`), NOT from this field. They MAY differ.
 description: "What and when"          # Required: triggers + purpose
 tools: ["read", "edit"]               # Optional: tool restrictions
 disable-model-invocation: true        # Optional: prevent auto-select
+user-invocable: true   # Optional: hide from /agents picker (sub-agents set false)
 target: "vscode"                       # Optional: vscode or github-copilot
 model: "gpt-4"                        # Optional: model override (IDE only)
 ---
 ```
+
+> **`name:` vs `@invocation-slug`** — `name:` is the friendly display
+> name (human-readable, e.g. `"Spec Author Orchestrator"`). The
+> `@invocation-slug` users type derives from the kebab-case filename
+> (e.g. `spec-author.agent.md` → `@spec-author`). They MAY differ; do
+> not force `name:` to match the slug.
 
 > **⚠️ YAML Safety — MANDATORY**
 > The `description` value **MUST** always be wrapped in double quotes (`"..."`). Bare strings containing `:` (e.g. `Trigger keywords: foo`) cause a **"Nested mappings are not allowed in compact mappings"** parse error and the agent **will not load**.

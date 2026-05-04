@@ -15,6 +15,11 @@ README links here; do not restate fields elsewhere.
 | `input_style` | `"autonomous" \| "helper"` | yes | Shape of user input. Replaces v1's overloaded `mode`. |
 | `mode_kind` | `"creation" \| "update"` | yes | Top-level workflow. Orthogonal to `input_style`. |
 | `existing_spec_path` | `string \| null` | yes when `mode_kind == "update"`, else `null` | Prior spec path. |
+| `output_path` | `string \| null` | yes once Stop 0 has resolved; until then `null` | User-chosen workspace path where the final spec is written. Repo-relative `.md`; MUST NOT begin with `.spec-author/` and MUST NOT contain `..`. |
+| `changelog_path` | `string \| null` | yes in update mode after Stop 0; else `null` | Sibling `CHANGELOG.md` to `output_path` by default; user may override. |
+| `spec_kind` | `"product" \| "technical" \| "mixed"` | yes once Stop 0 has resolved | Default `product`. Determines which implementation-shaped gated sections may be included (see `prd-template`). |
+| `awaiting_output_location` | `boolean` | yes | Set `true` while Stop 0 is in flight (no `output_path` / `spec_kind` yet); cleared once both are recorded. |
+| `output_location_attempts` | `integer` (>=0) | yes | Number of times the orchestrator re-prompted at Stop 0 because validation failed. |
 | `phase` | enum (see below) | yes | Current workflow phase. |
 | `structure_proposed` | `boolean` | yes | Has the orchestrator surfaced Stop A yet? |
 | `structure_approved` | `boolean` | yes | Did the user say `APPROVE`? Drafter cannot run while `false`. |
@@ -33,9 +38,10 @@ README links here; do not restate fields elsewhere.
 
 ### `phase` enum
 
-`intake`, `context-discovery`, `awaiting-structure-approval`,
-`awaiting-interview-answers`, `drafting`, `review`, `complete`,
-`complete-with-warnings`, `failed`.
+`intake`, `awaiting-output-location`, `context-discovery`,
+`awaiting-structure-approval`, `awaiting-interview-answers`,
+`drafting`, `review`, `complete`, `complete-with-warnings`,
+`failed`.
 
 ## Machine-readable form
 
@@ -46,6 +52,8 @@ README links here; do not restate fields elsewhere.
   "type": "object",
   "required": [
     "session_id", "input_style", "mode_kind", "existing_spec_path",
+    "output_path", "changelog_path", "spec_kind",
+    "awaiting_output_location", "output_location_attempts",
     "phase", "structure_proposed", "structure_approved",
     "structure_overrides", "structure_open_questions",
     "interview_required", "interview_complete", "interview_retries",
@@ -58,7 +66,12 @@ README links here; do not restate fields elsewhere.
     "input_style":       { "enum": ["autonomous", "helper"] },
     "mode_kind":         { "enum": ["creation", "update"] },
     "existing_spec_path":{ "type": ["string", "null"] },
-    "phase":             { "enum": ["intake", "context-discovery", "awaiting-structure-approval", "awaiting-interview-answers", "drafting", "review", "complete", "complete-with-warnings", "failed"] },
+    "output_path":       { "type": ["string", "null"] },
+    "changelog_path":    { "type": ["string", "null"] },
+    "spec_kind":         { "enum": ["product", "technical", "mixed", null] },
+    "awaiting_output_location": { "type": "boolean" },
+    "output_location_attempts": { "type": "integer", "minimum": 0 },
+    "phase":             { "enum": ["intake", "awaiting-output-location", "context-discovery", "awaiting-structure-approval", "awaiting-interview-answers", "drafting", "review", "complete", "complete-with-warnings", "failed"] },
     "structure_proposed":       { "type": "boolean" },
     "structure_approved":       { "type": "boolean" },
     "structure_overrides":      { "type": "array", "items": { "type": "string" } },

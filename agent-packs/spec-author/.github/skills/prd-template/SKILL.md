@@ -45,41 +45,49 @@ user-approved overrides at Stop A; otherwise it stays neutral.
 | Goals & Success Metrics | Business / user / technical outcomes; measurable | — |
 | Users & Personas | Primary users, their needs, expected outcome | — |
 | Solution Summary | Proposed approach at a high level | — |
-| Functional Requirements | What the system does | `FR-NN` |
-| Acceptance Criteria | Testable conditions for FRs | `AC-NN` |
+| Functional Requirements | What the system does, written as **EARS shall-statements** (one `shall` per FR) — see [`spec-driven-prd-best-practices` §4a](../spec-driven-prd-best-practices/SKILL.md#4a-ears--easy-approach-to-requirements-syntax) for the pattern catalogue. ACs are nested under each FR as Given/When/Then scenarios. | `FR-NN`; ACs `AC-<FR>.<n>` |
 | Risks & Mitigations | Identified risks + mitigation per risk | `R-NN` |
 | Open Questions | Unresolved decisions; nothing silent | `OQ-NN` |
-| Out of Scope | Explicit non-goals | — |
+| Out of Scope | Explicit non-goals (no boilerplate "implementation is out of scope" — it's redundant in product mode) | — |
 
 A `mandatory` section is present in every spec. If content is
 genuinely unknown, the drafter writes `[TBD — <reason>]` and adds
 a corresponding `OQ-NN` entry to "Open Questions".
 
+**Acceptance Criteria are NOT a separate top-level section.** Each
+FR carries its own `#### Acceptance Criteria` sub-section with one
+or more `AC-<FR>.<n>` Given/When/Then scenarios. This eliminates
+the FR↔AC traceability mismatch that arises from a flat AC table.
+
 ### Complexity-gated sections (include only when an axis triggers)
 
-| Section | Triggering axis | ID convention |
-|---------|-----------------|---------------|
-| Stakeholders & Reviewers | cross-team-scope | — |
-| Dependencies & Assumptions | cross-team-scope | — |
-| Non-Functional Requirements | infra-platform-change | `NFR-NN` |
-| Capacity & Performance Targets | infra-platform-change | — |
-| Security & Compliance | security-surface | — |
-| Threat Model Summary | security-surface | — |
-| Regulatory & Privacy | regulatory-load | — |
-| Data Model | persistence-data | — |
-| Telemetry & Analytics | persistence-data | — |
-| API Contract | public-api-surface | — |
-| Versioning & Deprecation Policy | public-api-surface | — |
-| Rollout Plan | rollout-risk | — |
-| Rollback Strategy | rollout-risk | — |
-| Test Scenarios | cross-team-scope OR infra-platform-change | `TS-NN` |
-| Appendix: Glossary | optional polish | — |
-| Appendix: NFR↔FR Traceability | infra-platform-change | — |
-| Appendix: Aliases & Deprecations | update-mode rename history | — |
+| Section | Triggering axis | Requires `spec_kind` | ID convention |
+|---------|-----------------|----------------------|---------------|
+| Stakeholders & Reviewers        | cross-team-scope            | any                | — |
+| Dependencies & Assumptions      | cross-team-scope            | any                | — |
+| Non-Functional Requirements     | infra-platform-change       | any (NFRs are product-visible) | `NFR-NN` |
+| Capacity & Performance Targets  | infra-platform-change       | technical OR mixed | — |
+| Security & Compliance           | security-surface            | any                | — |
+| Threat Model Summary            | security-surface            | technical OR mixed | — |
+| Regulatory & Privacy            | regulatory-load             | any                | — |
+| Data Model                      | persistence-data            | technical OR mixed | — |
+| Telemetry & Analytics           | persistence-data            | any                | — |
+| API Contract                    | public-api-surface          | technical OR mixed | — |
+| Versioning & Deprecation Policy | public-api-surface          | technical OR mixed | — |
+| Rollout Plan                    | rollout-risk                | any                | — |
+| Rollback Strategy               | rollout-risk                | any                | — |
+| Test Scenarios                  | cross-team-scope OR infra-platform-change | any  | `TS-NN` |
+| Technical Considerations        | any technical signal in `mixed` mode | mixed only | — |
+| Appendix: Glossary              | optional polish             | any                | — |
+| Appendix: NFR↔FR Traceability   | infra-platform-change       | technical OR mixed | — |
+| Appendix: Aliases & Deprecations| update-mode rename history  | any                | — |
 
 A `complexity-gated` section is included only when at least one
-triggering axis fires. Each include / omit decision is justified
-in `section-decisions-json`.
+triggering axis fires **AND** the user-chosen `spec_kind` permits
+it. Each include / omit decision is justified in
+`section-decisions-json`. A section whose axis fires but whose
+`Requires spec_kind` is not satisfied is recorded as
+`gated-omitted-by-spec-kind`.
 
 ## Complexity heuristic
 
@@ -109,25 +117,29 @@ Recommended top-level ordering when included:
 4. Users & Personas
 5. Stakeholders & Reviewers (gated)
 6. Solution Summary
-7. Functional Requirements
-8. Acceptance Criteria
-9. Non-Functional Requirements (gated)
-10. Capacity & Performance Targets (gated)
-11. Security & Compliance (gated)
-12. Threat Model Summary (gated)
-13. Regulatory & Privacy (gated)
-14. Data Model (gated)
-15. Telemetry & Analytics (gated)
-16. API Contract (gated)
-17. Versioning & Deprecation Policy (gated)
-18. Dependencies & Assumptions (gated)
-19. Rollout Plan (gated)
-20. Rollback Strategy (gated)
-21. Test Scenarios (gated)
-22. Risks & Mitigations
-23. Open Questions
-24. Out of Scope
-25. Appendices (Glossary, NFR↔FR Traceability, Aliases & Deprecations, Citations)
+7. Functional Requirements (each FR carries its nested
+   `#### Acceptance Criteria` block — there is no separate
+   top-level Acceptance Criteria section)
+8. Non-Functional Requirements (gated)
+9. Capacity & Performance Targets (gated, technical/mixed only)
+10. Security & Compliance (gated)
+11. Threat Model Summary (gated, technical/mixed only)
+12. Regulatory & Privacy (gated)
+13. Data Model (gated, technical/mixed only)
+14. Telemetry & Analytics (gated)
+15. API Contract (gated, technical/mixed only)
+16. Versioning & Deprecation Policy (gated, technical/mixed only)
+17. Dependencies & Assumptions (gated)
+18. Rollout Plan (gated)
+19. Rollback Strategy (gated)
+20. Test Scenarios (gated)
+21. Risks & Mitigations
+22. Open Questions
+23. Out of Scope
+24. Technical Considerations (gated, **mixed mode only**; carries
+    any implementation-shaped detail isolated from FRs)
+25. Appendices (Glossary, NFR↔FR Traceability, Aliases &
+    Deprecations, References — optional)
 
 The drafter may reorder when the user's Stop A reply explicitly
 requests it; otherwise stick to the canonical order.
@@ -140,6 +152,9 @@ requests it; otherwise stick to the canonical order.
 | Omitting a gated section despite a triggering axis in the inputs | Underspecification; D2 penalty | Include it; cite the axis. |
 | Renaming sections to vendor- or industry-specific labels without user opt-in | Domain leakage; this pack is generic | Use neutral names. User-approved overrides at Stop A are the only exception. |
 | Renumbering existing requirement IDs in update mode | Breaks external references | Keep IDs stable; mark deprecations in place. |
+| Including a "Data Model" or "API Contract" section in a `product`-mode spec because inputs mention a datastore | Implementation leakage; the PRD becomes a design doc | Restrict implementation-shaped sections to `spec_kind: technical` or `mixed`; in `mixed`, place them under the Technical Considerations appendix, not inside FRs. |
+| Auto-listing "Implementation details are out of scope" in Out of Scope | Redundant with product-mode posture; reads as defensive | Omit. List only domain-meaningful non-goals. |
+| FRs that name an internal component, library, or storage technology | Locks engineering choice from the PRD | Re-cast the FR as a behaviour the system must exhibit; move technology references to Technical Considerations in `mixed` mode, or drop entirely in `product` mode. |
 
 ## References
 

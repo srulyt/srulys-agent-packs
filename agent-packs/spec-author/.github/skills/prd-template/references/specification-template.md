@@ -8,6 +8,31 @@ shape; produce content tailored to the user's request.
 The template is industry-neutral. It contains no domain-specific
 section names, vocabulary, or rules.
 
+> **Authoring conventions** (also enforced by the drafter and
+> critic):
+>
+> - Use markdown footnotes (`[^name]`) for evidence; never an
+>   inline numbered "Citations" appendix table.
+> - Cross-reference other sections with anchored links, e.g.
+>   `[Acceptance Criteria](#acceptance-criteria)` — never bare
+>   section names.
+> - Every footnote must point at a durable, authoritative URL
+>   (web, SharePoint, ADO, RFC, vendor doc, etc.). Never cite a
+>   session-local artefact or any gitignored path.
+> - Functional Requirements are written as **single EARS
+>   shall-statements**; Acceptance Criteria are nested under each
+>   FR as `AC-<FR>.<n>` Given/When/Then scenarios.
+> - Use headers (`#` / `##` / `###` / `####`) for layout. Do not
+>   use bolded lines as pseudo-headers. Bold is for emphasis only.
+> - Do not hard-wrap body prose — let editors wrap. Tables, lists,
+>   code blocks, and footnote text retain their natural multi-line
+>   structure.
+> - In `spec_kind: product` and `mixed` mode, FRs MUST NOT name
+>   internal components, libraries, datastores, frameworks,
+>   languages, or specific APIs. Implementation-shaped content
+>   goes under the "Technical Considerations" appendix (mixed) or
+>   is omitted (product).
+
 ---
 
 # [Feature / Product Name] — Specification
@@ -81,20 +106,40 @@ Key trade-offs.]
 
 ## Functional Requirements
 
-| ID    | Requirement | Priority |
-|-------|-------------|----------|
-| FR-01 | [statement] | P0       |
-| FR-02 | [statement] | P0       |
-| FR-03 | [statement] | P1       |
+Each FR is a single EARS shall-statement and carries its own
+nested `#### Acceptance Criteria` block. Do NOT use a flat
+FR / AC table.
+
+### FR-01 — [short title]  *(P0, ubiquitous)*
+
+The <system> shall <response>.
+
+*Rationale (1 line, optional):* …
+
+#### Acceptance Criteria
+
+- **AC-01.1** — Given …, when …, then … .
+- **AC-01.2** — Given …, when …, then … .
 
 ---
 
-## Acceptance Criteria
+### FR-02 — [short title]  *(P0, event-driven)*
 
-| ID    | For       | Given / When / Then |
-|-------|-----------|---------------------|
-| AC-01 | FR-01     | Given …, when …, then … |
-| AC-02 | FR-02     | … |
+When <trigger>, the <system> shall <response>.
+
+#### Acceptance Criteria
+
+- **AC-02.1** — Given …, when …, then … .
+
+---
+
+### FR-03 — [short title]  *(P1, unwanted-behaviour)*
+
+If <undesired condition>, then the <system> shall <response>.
+
+#### Acceptance Criteria
+
+- **AC-03.1** — Given …, when …, then … .
 
 ---
 
@@ -240,8 +285,25 @@ window.]
 
 ---
 
-## Appendix: Citations
+## Technical Considerations  <!-- gated: mixed mode only -->
 
-| ID | Source | Used for |
-|----|--------|----------|
-| S1 | …      | …        |
+[In `spec_kind: mixed` only. Carries any implementation-shaped
+detail (technology choices, data shapes, API surface notes,
+capacity figures) the user supplied — isolated from FRs so the
+product contract stays behaviour-shaped. Drop this section
+entirely in `product` mode; in `technical` mode the content lives
+inline in the dedicated sections (Data Model, API Contract, etc.).]
+
+---
+
+## References  <!-- optional; only when one or more footnotes exist -->
+
+Footnotes used in this spec are rendered automatically by markdown
+renderers; this section is intentionally minimal. List here only
+durable references (standards, RFCs, vendor docs, regulatory
+texts, SharePoint URLs, ADO links) that benefit from being grouped
+— for example a regulation cited from multiple sections. Do not
+duplicate the inline footnote text and do NOT use an `S1, S2`
+numbered table.
+
+[^example]: Example primary source — full title, version, URL.

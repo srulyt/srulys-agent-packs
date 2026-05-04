@@ -1,0 +1,81 @@
+id: smoke-product-mode-d9-scope-discipline
+pack: spec-author
+description: "Validates the new D9 scope-discipline rubric in the prd-critic. The scripted user submits a PRD request that explicitly asks for FRs naming a specific datastore (Postgres) and a specific message bus (Kafka) — i.e. a draft that smuggles implementation detail into product-mode FRs. The drafter MUST recast those FRs as observable behaviours; even if any leakage survives, the critic MUST flag it via D9 in findings-json. Asserts: (1) spec_kind: product is honoured at Stop 0; (2) the final specification.md contains no implementation tokens (Postgres|Kafka|Redis|MongoDB) inside FR or AC sections; (3) the spec-review.md findings-json contains at least one entry with dimension == 'D9'; (4) Out of Scope does NOT contain the boilerplate 'implementation is out of scope' string."
+
+prompt_file: prompt.md
+
+mode_kind: creation
+spec_kind: product
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-output-location
+    reply: "output_path: docs/specs/digest.md, spec_kind: product"
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: discovery
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/discovery\\.json$"
+      required: true
+    - id: context-pack
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
+      required: true
+    - id: specification
+      path_pattern: "^docs/specs/digest\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/CHANGELOG\\.md$"
+      required: false
+      forbidden: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 1 }
+    prd-drafter:       { min: 1, max: 3 }
+    prd-critic:        { min: 1, max: 3 }
+  artifact_content_assertions:
+    # The published spec MUST NOT contain implementation tokens
+    # anywhere — product mode forbids datastore / framework / API
+    # naming inside FRs and ACs.
+    - artifact: specification
+      must_not_match:
+        - "(?i)\\bpostgres(ql)?\\b"
+        - "(?i)\\bkafka\\b"
+        - "(?i)\\bredis\\b"
+        - "(?i)\\bmongodb\\b"
+        - "(?i)implementation\\s+is\\s+out\\s+of\\s+scope"
+    # The critic must surface a D9 finding referencing the
+    # impl-leakage framing in the user's prompt. Because the
+    # critic's findings-json uses the canonical schema
+    # `{ "dimension": "Dn", ... }`, we assert the literal token.
+    - artifact: spec-review
+      must_match:
+        - "\"dimension\"\\s*:\\s*\"D9\""
+  rubric_targets:
+    "artifact:specification": "^docs/specs/digest\\.md$"
+  rubric_overrides:
+    scope-discipline:    { severity: error }
+    mandatory-coverage:  { severity: error }
+    format-compliance:   { severity: warn }

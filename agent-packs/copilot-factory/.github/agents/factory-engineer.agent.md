@@ -164,6 +164,43 @@ Check `state.json.improvement_strategy` and the invocation prompt's
 > **⚠️ YAML Frontmatter Safety — MANDATORY**
 > Every `description` value in `.agent.md` and `SKILL.md` frontmatter **MUST** be wrapped in double quotes. Bare strings containing `:` (e.g. `Trigger keywords: foo`) cause "Nested mappings are not allowed in compact mappings" parse errors and the agent will fail to load. Always write `description: "..."` — no exceptions.
 
+> **⚠️ Pre-Emit Frontmatter Validation — MANDATORY**
+>
+> Before writing any `.agent.md` (or `SKILL.md`) to disk, run this
+> checklist against the file's frontmatter block. If any check fails,
+> fix the file before emitting it — do NOT ship a known-broken file.
+>
+> 1. **Parse the YAML.** The `---` block MUST start at line 1 and parse
+>    as a flat mapping. If parsing fails (malformed YAML, mis-indented
+>    block, unquoted value containing `:`), STOP and fix.
+> 2. **Reject unknown keys.** Every key MUST appear in the Canonical
+>    `.agent.md` Frontmatter Schema in the `agent-builder` skill
+>    ([SKILL.md → Canonical Frontmatter Schema](../skills/agent-builder/SKILL.md)):
+>    `name`, `description`, `tools`, `disable-model-invocation`,
+>    `user-invocable`, `model`, `target`. Any other key (e.g.
+>    `display-name`, `title`, `friendly-name`, `version`, `tags`,
+>    `aliases`) is a build bug. **Worked anti-example:**
+>    `display-name: "Spec Author"` was emitted by session
+>    `2026-05-04-3f8b21ac` finding F1 — Copilot CLI has no
+>    `display-name` field; the loader silently drops or rejects it.
+>    The friendly label belongs in the canonical `name:` field
+>    (e.g. `name: "Spec Author Orchestrator"`), NOT in a custom key
+>    and NOT only in the body H1. **`name:` is human-readable** —
+>    do NOT enforce slug-matching on `name:`. The user-facing
+>    invocation slug is the kebab-case **filename**
+>    (`spec-author.agent.md` → `@spec-author`); `name:` and the
+>    filename slug MAY differ. Session `2026-05-04-b8a05c19`'s
+>    rule that `name:` must equal the filename slug is rescinded.
+> 3. **Reject duplicate keys.** Each key must appear at most once.
+> 4. **`description` is double-quoted** and present on every agent.
+> 5. **Invocation flags are role-correct:** orchestrators have
+>    `disable-model-invocation: true` AND `user-invocable: true`;
+>    subagents have `user-invocable: false` AND no
+>    `disable-model-invocation` key.
+>
+> Apply the same checklist to every `SKILL.md` you emit (supported
+> SKILL keys: `name`, `description`, `license`).
+
 ```
 For each agent in architecture:
   - Create .agent.md file
