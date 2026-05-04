@@ -71,7 +71,10 @@ agent that was never built.
 | Module | Purpose |
 |---|---|
 | `python -m eval_engine.harness.run plan` | stage workspace + emit operator instructions |
-| `python -m eval_engine.harness.run judge-plan` | build judge manifest from a captured fixture |
+| `python -m eval_engine.harness.run judge-plan` | build judge manifest from a captured fixture (manual judge loop) |
+| `python -m eval_engine.harness.run run-judge` | invoke the judge agent non-interactively over a manifest (no human paste) |
+| `python -m eval_engine.harness.run run-case` | end-to-end single-case run: stage → drive SUT → capture → judge → score |
+| `python -m eval_engine.harness.run run-pack` | aggregate every case in a pack; emit pack-summary JSON; exit 0/1/2 |
 | `python -m eval_engine.harness.run score` | apply assertions + judge responses → JSONL + report |
 | `python -m eval_engine.harness.run replay` | re-score an existing fixture without re-staging |
 | `python -m eval_engine.harness.run promote` | move a local result line into committed results |
@@ -80,6 +83,11 @@ agent that was never built.
 | `python -m eval_engine.harness.run abandon` | mark a stuck workspace abandoned |
 | `python -m eval_engine.harness.trend` | trend reports across runs |
 | `python -m eval_engine.harness.precommit` | git pre-commit guard |
+
+Both `python -m eval_engine <subcommand>` and
+`python -m eval_engine.harness.run <subcommand>` work — the former is a thin
+delegation shim. The pack-summary JSON contract is documented in
+[`docs/06-pack-summary-schema.md`](docs/06-pack-summary-schema.md).
 
 Every subcommand of `run` accepts `--evals-root <path>` to override
 the per-repo evals dir. The engine resolves it via:

@@ -17,6 +17,12 @@ from .orchestration import (
     load_responses,
     apply_double_invoke,
 )
+from .subprocess_runner import (
+    CopilotBinNotFound,
+    JudgeRunResult,
+    run_manifest,
+    run_one_judge_request,
+)
 
 __all__ = [
     "JudgeManifest",
@@ -25,4 +31,8 @@ __all__ = [
     "build_manifest",
     "load_responses",
     "apply_double_invoke",
+    "CopilotBinNotFound",
+    "JudgeRunResult",
+    "run_manifest",
+    "run_one_judge_request",
 ]

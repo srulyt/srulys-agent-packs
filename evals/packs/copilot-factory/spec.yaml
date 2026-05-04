@@ -169,3 +169,37 @@ rubrics:
     apply_to: artifact:architecture
     severity: warn
     threshold: 0.7
+
+# loop_convergence — controls when @factory-eval-runner emits a
+# `pass` verdict during the fix-loop. See improvement-analysis F8.
+# Parsed by eval_engine/harness/loaders.py::_load_loop_convergence;
+# documented in eval_engine/docs/01-spec-schema.md §loop_convergence.
+loop_convergence:
+  required_status: pass            # pass | strict-pass
+  # `pass`        → blocker-clean per the harness's existing
+  #                 aggregation; warn-severity rubric fails are
+  #                 tolerated. (default; matches today's semantics)
+  # `strict-pass` → any warn-severity rubric fail also blocks
+  #                 convergence (matches "perfect" framing).
+  warn_promotes_to_blocker: false  # alias for strict-pass behaviour
+  allow_failing_cases: []          # opt-out for known-flaky cases
+  # Example entry (commented; uncomment as needed):
+  #   - case_id: judge-flaky-due-to-non-determinism
+  #     reason: "tracked in issue #N; remove when rubric is deterministic"
+  #     max_runs_to_tolerate: 3
+
+# budgets — cost / wall-clock guardrails for the fix-loop. See F9.
+# @factory-eval-runner reads these on each invocation; the
+# orchestrator additionally enforces the across-loop ceiling via
+# state.eval_loop.guardrails.judge_calls_used.
+# Parsed by eval_engine/harness/loaders.py::_load_budgets and
+# enforced by run-pack via min(spec, --max-* flags). See
+# eval_engine/docs/01-spec-schema.md §budgets.
+budgets:
+  max_judge_calls_per_loop: 200          # hard cap per iteration
+  max_wall_clock_seconds_per_loop: 1800  # 30 min per iteration
+  max_total_wall_clock_seconds: 5400     # 90 min across iterations
+  bail_action: surface-partial           # on guard trip, emit
+                                         # whatever eval-run-{n}.json
+                                         # the runner could build and
+                                         # set harness_error: "budget-exceeded"

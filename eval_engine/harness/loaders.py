@@ -68,6 +68,83 @@ def load_spec(path: str | os.PathLike[str]) -> models.PackSpec:
         rubrics=rubrics,
         models=raw.get("models", {}) or {},
         loops=raw.get("loops", {}) or {},
+        loop_convergence=_load_loop_convergence(
+            raw.get("loop_convergence"), where=f"{where}#loop_convergence",
+        ),
+        budgets=_load_budgets(raw.get("budgets"), where=f"{where}#budgets"),
+    )
+
+
+_LOOP_CONVERGENCE_KEYS = {
+    "required_status",
+    "warn_promotes_to_blocker",
+    "allow_failing_cases",
+}
+_BUDGETS_KEYS = {
+    "max_judge_calls_per_loop",
+    "max_wall_clock_seconds_per_loop",
+    "max_total_wall_clock_seconds",
+    "bail_action",
+}
+
+
+def _load_loop_convergence(raw: Any, *, where: str) -> models.LoopConvergence:
+    if raw is None:
+        return models.LoopConvergence()
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{where}: must be a mapping")
+    unknown = set(raw.keys()) - _LOOP_CONVERGENCE_KEYS
+    if unknown:
+        raise ConfigError(f"{where}: unknown keys {sorted(unknown)}")
+    rs = str(raw.get("required_status", "pass"))
+    if rs not in {"pass", "strict-pass"}:
+        raise ConfigError(
+            f"{where}.required_status: must be 'pass' or 'strict-pass' (got {rs!r})"
+        )
+    afc = raw.get("allow_failing_cases", []) or []
+    if not isinstance(afc, list):
+        raise ConfigError(f"{where}.allow_failing_cases: must be a list")
+    norm: list[dict[str, Any]] = []
+    for i, e in enumerate(afc):
+        if not isinstance(e, dict):
+            raise ConfigError(
+                f"{where}.allow_failing_cases[{i}]: must be a mapping"
+            )
+        if "case_id" not in e:
+            raise ConfigError(
+                f"{where}.allow_failing_cases[{i}]: missing 'case_id'"
+            )
+        norm.append(dict(e))
+    return models.LoopConvergence(
+        required_status=rs,
+        warn_promotes_to_blocker=bool(raw.get("warn_promotes_to_blocker", False)),
+        allow_failing_cases=norm,
+    )
+
+
+def _load_budgets(raw: Any, *, where: str) -> models.Budgets:
+    if raw is None:
+        return models.Budgets()
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{where}: must be a mapping")
+    unknown = set(raw.keys()) - _BUDGETS_KEYS
+    if unknown:
+        raise ConfigError(f"{where}: unknown keys {sorted(unknown)}")
+
+    def _opt_int(key: str) -> int | None:
+        v = raw.get(key)
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            raise ConfigError(f"{where}.{key}: must be an int (got {v!r})")
+
+    return models.Budgets(
+        max_judge_calls_per_loop=_opt_int("max_judge_calls_per_loop"),
+        max_wall_clock_seconds_per_loop=_opt_int("max_wall_clock_seconds_per_loop"),
+        max_total_wall_clock_seconds=_opt_int("max_total_wall_clock_seconds"),
+        bail_action=str(raw.get("bail_action", "surface-partial")),
     )
 
 

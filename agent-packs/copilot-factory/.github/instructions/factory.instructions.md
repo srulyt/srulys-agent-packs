@@ -39,7 +39,9 @@ This workspace contains the Copilot Factory system for creating multi-agent pack
 5. **approval**: Get user approval
 6. **build**: Generate artifacts
 7. **review-prompts**: Validate implementation
-8. **complete**: Present results
+8. **eval-execute**: Run the pack's eval suite via `@factory-eval-runner`; persist `eval-run-1.json` and `last_eval_verdict`
+9. **eval-fix-loop** (entered only on `fail` AND user approval): iterate `@factory-engineer mode=fix` → `@factory-eval-runner` until `pass` or cap=3
+10. **complete**: Present results
 
 ### Quality Standards
 
@@ -58,7 +60,7 @@ When modifying `state.json`:
 
 ### Agent Delegation Model
 
-Only `@copilot-factory` communicates with users. Sub-agents (`@factory-architect`, `@factory-engineer`, `@factory-critic`) are invoked by the orchestrator and return results to it. Do not invoke sub-agents directly.
+Only `@copilot-factory` communicates with users. Sub-agents (`@factory-architect`, `@factory-engineer`, `@factory-critic`, `@factory-eval-runner`) are invoked by the orchestrator and return results to it. Do not invoke sub-agents directly.
 
 ### Common Pitfalls
 

@@ -280,6 +280,100 @@ def cmd_replay(args: argparse.Namespace) -> int:
     return cmd_score(args)
 
 
+# ---------- run-judge / run-case / run-pack ------------------------------
+
+
+def cmd_run_judge(args: argparse.Namespace) -> int:
+    """Invoke @eval-judge non-interactively for every request in a manifest."""
+    from .judge import run_manifest, JudgeManifest
+    from .judge.subprocess_runner import CopilotBinNotFound
+
+    try:
+        manifest = JudgeManifest.read(args.manifest)
+    except Exception as exc:
+        print(f"error: could not read manifest: {exc}", file=sys.stderr)
+        return 2
+    try:
+        results = run_manifest(
+            manifest,
+            copilot_bin=args.copilot_bin,
+            timeout_seconds=args.per_call_timeout,
+            judge_seed=args.judge_seed,
+        )
+    except CopilotBinNotFound as exc:
+        print(f"copilot-bin-not-found: {exc}", file=sys.stderr)
+        return 2
+    failed = [r for r in results if not r.success]
+    for r in results:
+        sys.stderr.write(
+            f"  {'OK ' if r.success else 'ERR'} {r.request_id} -> {r.response_file}\n"
+        )
+    if failed:
+        sys.stderr.write(f"{len(failed)} of {len(results)} requests failed\n")
+    return 0 if not failed else 1
+
+
+def cmd_run_case(args: argparse.Namespace) -> int:
+    from . import pack_runner
+
+    eval_root = _eval_root(args)
+    spec = loaders.load_spec(args.spec)
+    out_path = args.out or args.results_out
+    if not out_path:
+        # Default destination for run-case: per-case scratch under data/.
+        out_path = str(
+            paths_layout.data_dir(eval_root) / "case-summaries" / f"{spec.pack}-{Path(args.case).parent.name}.json"
+        )
+    options = pack_runner.PackRunOptions(
+        pack=spec.pack, evals_root=eval_root, out_path=out_path,
+        max_judge_calls=args.max_judge_calls,
+        max_wall_clock_seconds=args.max_wall_clock_seconds,
+        copilot_bin=args.copilot_bin,
+        judge_seed=args.judge_seed,
+        sut_timeout_seconds=args.sut_timeout,
+        judge_timeout_seconds=args.judge_timeout,
+        fixture_path=args.fixture,
+    )
+    return pack_runner.run_case_cli(
+        spec_path=args.spec, case_path=args.case,
+        options=options, repo_root=_repo_root(),
+        run_id=args.run_id,
+    )
+
+
+def cmd_run_pack(args: argparse.Namespace) -> int:
+    from . import pack_runner
+
+    eval_root = _eval_root(args)
+    pack = args.pack or args.pack_positional
+    if not pack:
+        print(
+            "error: pack name required (positional or --pack)",
+            file=sys.stderr,
+        )
+        return 2
+    out_path = args.out or args.results_out
+    if not out_path:
+        out_path = str(
+            paths_layout.data_dir(eval_root) / "pack-summaries" / f"{pack}.json"
+        )
+    cases_subset = None
+    if args.cases:
+        cases_subset = [c.strip() for c in args.cases.split(",") if c.strip()]
+    options = pack_runner.PackRunOptions(
+        pack=pack, evals_root=eval_root, out_path=out_path,
+        cases_subset=cases_subset,
+        max_judge_calls=args.max_judge_calls,
+        max_wall_clock_seconds=args.max_wall_clock_seconds,
+        copilot_bin=args.copilot_bin,
+        judge_seed=args.judge_seed,
+        fail_fast=args.fail_fast,
+        sut_timeout_seconds=args.sut_timeout,
+        judge_timeout_seconds=args.judge_timeout,
+    )
+    return pack_runner.run_pack(options, repo_root=_repo_root())
+
+
 # ---------- promote ------------------------------------------------------
 
 
@@ -621,6 +715,66 @@ def main(argv: list[str] | None = None) -> int:
                         "behaviour is suspected."
                     ))
     dr.set_defaults(func=cmd_drive)
+
+    rj = sub.add_parser(
+        "run-judge", parents=[common],
+        help="Invoke @eval-judge non-interactively for every request in a manifest",
+    )
+    rj.add_argument("--manifest", required=True)
+    rj.add_argument("--copilot-bin", default="copilot")
+    rj.add_argument("--judge-seed", default=None)
+    rj.add_argument(
+        "--per-call-timeout", type=float, default=600.0,
+        help="Per-request judge subprocess timeout in seconds",
+    )
+    rj.set_defaults(func=cmd_run_judge)
+
+    rc = sub.add_parser(
+        "run-case", parents=[common],
+        help="Run one case end-to-end (stage -> SUT -> capture -> judge -> score)",
+    )
+    rc.add_argument("--spec", required=True)
+    rc.add_argument("--case", required=True)
+    rc.add_argument("--run-id", default=None)
+    rc.add_argument("--out", default=None,
+                    help="Pack-summary JSON destination (also written to stdout)")
+    rc.add_argument("--results-out", default=None,
+                    help="Alias for --out (compatibility)")
+    rc.add_argument("--fixture", default=None,
+                    help="Replay mode: re-score this fixture, skip SUT")
+    rc.add_argument("--cases", default=None, help=argparse.SUPPRESS)
+    rc.add_argument("--copilot-bin", default="copilot")
+    rc.add_argument("--judge-seed", default=None)
+    rc.add_argument("--max-judge-calls", type=int, default=None)
+    rc.add_argument("--max-wall-clock-seconds", type=int, default=None)
+    rc.add_argument("--sut-timeout", type=float, default=1800.0)
+    rc.add_argument("--judge-timeout", type=float, default=600.0)
+    rc.set_defaults(func=cmd_run_case)
+
+    rp = sub.add_parser(
+        "run-pack", parents=[common],
+        help="Run all cases in a pack autonomously and emit a pack-summary JSON",
+    )
+    rp.add_argument(
+        "pack_positional", nargs="?", default=None,
+        help="Pack name (alternative to --pack)",
+    )
+    rp.add_argument("--pack", default=None,
+                    help="Pack name (preferred form for the agent contract)")
+    rp.add_argument("--out", default=None,
+                    help="Pack-summary JSON destination (also written to stdout)")
+    rp.add_argument("--results-out", default=None,
+                    help="Alias for --out (handoff-prompt compatibility)")
+    rp.add_argument("--cases", default=None,
+                    help="Comma-separated subset of case ids")
+    rp.add_argument("--max-judge-calls", type=int, default=None)
+    rp.add_argument("--max-wall-clock-seconds", type=int, default=None)
+    rp.add_argument("--copilot-bin", default="copilot")
+    rp.add_argument("--judge-seed", default=None)
+    rp.add_argument("--sut-timeout", type=float, default=1800.0)
+    rp.add_argument("--judge-timeout", type=float, default=600.0)
+    rp.add_argument("--fail-fast", action="store_true")
+    rp.set_defaults(func=cmd_run_pack)
 
     args = p.parse_args(argv)
     return args.func(args)

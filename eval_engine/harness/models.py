@@ -66,6 +66,56 @@ class RubricRef:
 
 
 @dataclass
+class LoopConvergence:
+    """Pack-level convergence rules consumed by ``run-pack``.
+
+    ``required_status``:
+      * ``pass`` (default) — case passes iff ``CaseVerdict.status == "pass"``
+        (blocker-clean; warn rubric fails tolerated).
+      * ``strict-pass`` — case must additionally have no warn-severity
+        rubric fails. Warn rubrics also get judge double-invoke under
+        this mode (see ``apply_double_invoke``).
+    ``warn_promotes_to_blocker`` is an alias for ``strict-pass`` semantics.
+    ``allow_failing_cases`` lists case ids that don't contribute to a
+    fail verdict (each entry is ``{case_id: ..., reason: ..., max_runs_to_tolerate: ...}``;
+    the engine honours ``case_id`` only — ``max_runs_to_tolerate`` is
+    runner/orchestrator-owned because it requires prior-loop state the
+    engine does not track).
+    """
+
+    required_status: str = "pass"  # pass | strict-pass
+    warn_promotes_to_blocker: bool = False
+    allow_failing_cases: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def is_strict(self) -> bool:
+        return self.required_status == "strict-pass" or self.warn_promotes_to_blocker
+
+    def is_case_allowed_to_fail(self, case_id: str) -> bool:
+        return any(
+            isinstance(e, dict) and e.get("case_id") == case_id
+            for e in self.allow_failing_cases
+        )
+
+
+@dataclass
+class Budgets:
+    """Pack-level budget guards consumed by ``run-pack``.
+
+    The engine enforces ``max_judge_calls_per_loop`` (pre-count manifest
+    size before invoking the judge) and ``max_wall_clock_seconds_per_loop``
+    (wall-clock since ``run-pack`` start). ``max_total_wall_clock_seconds``
+    is across-loop and is NOT enforced in-engine — the runner / orchestrator
+    tracks it. ``bail_action`` is metadata for the runner.
+    """
+
+    max_judge_calls_per_loop: int | None = None
+    max_wall_clock_seconds_per_loop: int | None = None
+    max_total_wall_clock_seconds: int | None = None
+    bail_action: str = "surface-partial"
+
+
+@dataclass
 class PackSpec:
     pack: str
     orchestrator: str
@@ -74,6 +124,8 @@ class PackSpec:
     rubrics: list[RubricRef] = field(default_factory=list)
     models: dict[str, str] = field(default_factory=dict)
     loops: dict[str, Any] = field(default_factory=dict)  # max_orchestrator_turns, etc.
+    loop_convergence: LoopConvergence = field(default_factory=LoopConvergence)
+    budgets: Budgets = field(default_factory=Budgets)
 
     def agent(self, name: str) -> AgentSpec | None:
         return next((a for a in self.agents if a.name == name), None)

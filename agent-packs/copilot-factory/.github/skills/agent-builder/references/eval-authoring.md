@@ -130,6 +130,14 @@ workspace:
     - kind: copy_tree
       src: ../../../../../.github/skills
       dest: .github/skills
+    # Stage the @eval-judge agent so the harness's run-judge
+    # subcommand can subprocess-invoke it. Without this step the
+    # judge agent is absent from the case workspace and judge calls
+    # fail with "Unknown agent_type: eval-judge". This is required
+    # for ALL packs, not just copilot-factory.
+    - kind: copy_tree
+      src: ../../../../../agent-packs/copilot-factory/.github/agents/eval-judge.agent.md
+      dest: .github/agents/eval-judge.agent.md
 
 teardown:
   policy: delete-on-pass
@@ -174,6 +182,13 @@ Source: see authoring-guide §2.2.
 - [ ] All YAML `description` values quoted
 - [ ] Eval files appear under `files_created` and `evals_created` in
       the build manifest
+- [ ] **`@eval-judge` is staged into the case workspace** via a
+      `copy_tree` step that brings in
+      `agent-packs/copilot-factory/.github/agents/eval-judge.agent.md`.
+      The harness's `run-judge` subcommand subprocess-invokes this
+      agent non-interactively; if it is not in the case workspace,
+      every judge call fails with `Unknown agent_type`. This is
+      required for ALL packs, not just `copilot-factory`.
 
 ## Source of truth
 

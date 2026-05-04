@@ -84,6 +84,10 @@ request.
   builds (see Step 4b).
 - Emit unquoted YAML `description` values.
 - Re-invoke other sub-agents.
+- In **Fix Mode**: edit any file outside the union of
+  `failures[].fixable_in[]` parsed from the eval-run JSON. The
+  standard File Access Boundaries are the upper bound; `fixable_in[]`
+  is the per-turn lower bound.
 - Materialise an orchestrator agent file (any `.agent.md` whose role
   in the architecture is "coordinator" / "orchestrator") without:
   (a) a `## How to Delegate (Task Tool Mechanics)` section that
@@ -132,9 +136,11 @@ Refer to the `agent-builder` skill templates and references for exact file forma
 
 ## Implementation Process
 
-Check `state.json.improvement_strategy` to determine mode:
-- If `null` or `"rebuild"`: follow the **Full Build** process below
-- If `"incremental"`: follow the **Incremental Improvement** process
+Check `state.json.improvement_strategy` and the invocation prompt's
+`Mode:` field to determine mode:
+- `Mode: fix` (with an `Eval run path:` field): follow the **Fix Mode Process**
+- `improvement_strategy: null` or `"rebuild"`: follow the **Full Build** process
+- `improvement_strategy: "incremental"`: follow the **Incremental Improvement** process
 
 ### Full Build Process
 
@@ -329,6 +335,53 @@ For each improvement (ordered by priority):
 
 **Critical**: In incremental mode, preserve all existing content that is NOT flagged for change. Do not restructure, reformat, or rewrite unflagged content.
 
+### Fix Mode Process
+
+When invoked with `Mode: fix` and an `Eval run path:` referencing
+`.copilot-factory/sessions/{id}/artifacts/eval-run-{n}.json`:
+
+#### Step 1: Read inputs
+1. Read the eval-run JSON; parse the `cases[].failures[]` array.
+2. Read `state.json` to confirm `phase == "eval-fix-loop"` AND
+   `iteration_counts["eval-fix-loop"] >= 1` (orchestrator increments
+   before delegating). If gate fails, return control to
+   `@copilot-factory`.
+3. Build the union of `failures[].fixable_in[]` paths — this is the
+   **only** set of files you may write to in this turn.
+
+#### Step 2: Plan fixes
+1. Group failures by file: a single edit may address multiple
+   failures (cross-failure consolidation is allowed and encouraged).
+2. For each failure, classify as:
+   - **fixable**: addressable within `fixable_in[]` and within scope
+     of an additive edit.
+   - **structural**: rubric threshold below 0.5 OR architecture-level
+     OR requires a rebuild. Mark as **skipped**; do NOT attempt a
+     partial rebuild from a fix turn.
+
+#### Step 3: Apply fixes
+1. For each fixable failure, edit only files in its `fixable_in[]`.
+2. Preserve unflagged content (same discipline as incremental mode).
+3. Verify each edit doesn't break surrounding YAML/markdown structure.
+
+#### Step 4: Report
+1. Emit the fix-mode output contract (see below).
+2. `ready-for-rerun: true` ONLY if at least one failure was
+   addressed. If everything is skipped, return `false` so the
+   orchestrator escalates instead of looping uselessly.
+
+**Fix Mode Must NOT**:
+- Edit any file outside the union of `failures[].fixable_in[]` for
+  the current eval run. This is stricter than the standard File
+  Access Boundaries.
+- Create new agents, skills, or eval cases (those need an architect
+  + full build).
+- Modify `evals/packs/{pack}/spec.yaml` unless an explicit failure
+  lists it in its `fixable_in[]` (rare; usually means a rubric
+  threshold change is the fix).
+- Re-run the eval harness yourself. The orchestrator will re-delegate
+  to `@factory-eval-runner` after parsing your contract.
+
 ## Quality Checklist
 
 Apply the full quality checklist from the `agent-builder` skill before reporting completion. Key gates:
@@ -392,6 +445,59 @@ The `eval-artifacts-json` block is REQUIRED for full builds and
 OPTIONAL (may be `{}`) for incremental improvements that don't touch
 evals. Build manifest must list eval files in `files_created` /
 `files_modified`.
+
+### Fix Mode Output Contract (additional fences)
+
+When invoked in **Fix Mode**, emit these blocks **in addition to**
+`files-modified-json` (the existing fence). The full-build fences
+(`implementation-summary`, `files-created-json`,
+`eval-artifacts-json`, `ready-for-review`) are NOT emitted in fix
+mode — substitute the fix-mode block set:
+
+````markdown
+```fix-summary
+session_id: <id>
+eval_run_index: <n>          # the run being addressed
+failures_addressed: <int>
+failures_skipped: <int>
+loop_iteration: <m>          # state.iteration_counts["eval-fix-loop"]
+```
+
+```failures-addressed-json
+[
+  {
+    "case_id": "scope-deny-respected",
+    "failure_id": "L2-prompt-sections",
+    "kind": "assertion",
+    "fix": "added '## Output Contract' to issue-router.agent.md",
+    "files": ["agent-packs/issue-triage/.github/agents/issue-router.agent.md"]
+  }
+]
+```
+
+```failures-skipped-json
+[
+  {
+    "case_id": "...",
+    "failure_id": "format-compliance",
+    "reason": "rubric threshold (0.7) requires architecture rewrite — out of fix-loop scope; flag for user"
+  }
+]
+```
+
+```files-modified-json
+["agent-packs/<pack>/.github/agents/<x>.agent.md", "..."]
+```
+
+```ready-for-rerun
+true | false
+```
+````
+
+`failures-skipped-json` is the safety valve: if every failure is
+skipped, set `ready-for-rerun: false` so the orchestrator escalates
+instead of looping. Block names mirror existing engineer style
+(`*-json` for arrays, trailing `ready-for-*` boolean).
 
 ## Constraints
 

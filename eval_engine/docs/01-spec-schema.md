@@ -144,6 +144,55 @@ rubrics:
 2. Exactly one `agents[]` entry has `role: orchestrator`.
 3. `orchestrator` field equals that agent's `name`.
 4. All `name`s are unique within `agents[]`.
+
+## `loop_convergence` (optional, top-level)
+
+Controls how `run-pack` converts per-case verdicts into the pack-level
+exit code. All fields optional; defaults shown.
+
+```yaml
+loop_convergence:
+  required_status: pass            # "pass" | "strict-pass"
+  warn_promotes_to_blocker: false  # bool
+  allow_failing_cases:             # cases excluded from gating
+    - case_id: legacy-flake
+      reason: tracked in #123
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `required_status` | enum | `pass` (default) gates only on blocker assertions/rubrics. `strict-pass` ALSO requires every warn rubric to pass — under strict-pass, warn rubrics get double-invoke and any |A−B|>tolerance disagreement becomes `status="fail"` (NOT a harness `error`). |
+| `warn_promotes_to_blocker` | bool | When `true`, warn rubric failures gate the case the same as blockers (same effect as `strict-pass` for rubric severity, but does not enable double-invoke for warn). |
+| `allow_failing_cases[]` | list[obj] | Each entry needs `case_id:`. These cases may fail without affecting the pack-level exit code. `reason:` is informational. |
+
+If `loop_convergence:` is omitted, defaults are `required_status: pass`,
+`warn_promotes_to_blocker: false`, `allow_failing_cases: []`.
+
+## `budgets` (optional, top-level)
+
+Caps that `run-pack` enforces per case and per pack run. All fields
+optional.
+
+```yaml
+budgets:
+  max_judge_calls_per_case: 12     # null = unlimited
+  max_judge_calls_per_loop: 60     # cumulative cap for one run-pack invocation
+  max_wall_clock_seconds_per_loop: 1800
+  max_total_wall_clock_seconds: 3600
+  bail_action: surface-partial     # "surface-partial" (default) | "fail-fast"
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `max_judge_calls_per_case` | int \| null | Pre-check: if `len(manifest.requests)` exceeds this, the case errors with `harness_error: "budget-exceeded: …"` BEFORE any judge subprocess is invoked. |
+| `max_judge_calls_per_loop` | int \| null | Cumulative across all cases in one `run-pack`. Same pre-check. |
+| `max_wall_clock_seconds_per_loop` | int \| null | Checked at the top of each case iteration; trips harness error and halts. |
+| `max_total_wall_clock_seconds` | int \| null | Equivalent to per-loop here (we don't currently distinguish). |
+| `bail_action` | enum | `surface-partial` (default) finishes the in-flight case and reports partial results. `fail-fast` is reserved for future use. |
+
+Both `--max-judge-calls` and `--max-wall-clock-seconds` CLI flags on
+`run-pack` are combined with these spec values via `min(flag, spec)`,
+so neither side can loosen the other's cap.
 5. All regexes compile.
 6. Every `flow_constraints.ordering[].before/.after` is a known agent name.
 7. Every rubric `id` resolves to a file at `eval_engine/rubrics/<id>.md`.

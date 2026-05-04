@@ -84,14 +84,15 @@ Generation:
   "version": "1.0.0",
   "created_at": "2026-02-23T09:00:00Z",
   "updated_at": "2026-02-23T09:30:00Z",
-  "phase": "intake|improve-analysis|design|review-arch|approval|build|review-prompts|complete",
+  "phase": "intake|improve-analysis|design|review-arch|approval|build|review-prompts|eval-execute|eval-fix-loop|complete",
   "mode": "creation|improvement",
   "improvement_strategy": "incremental|rebuild|null",
   "target_system": "my-agent-pack",
   "iteration_counts": {
     "review-arch": 0,
     "review-prompts": 0,
-    "improve-analysis": 0
+    "improve-analysis": 0,
+    "eval-fix-loop": 0
   },
   "override": false,
   "user_approved": false,
@@ -100,6 +101,10 @@ Generation:
     "architecture": null,
     "artifacts": []
   },
+  "eval_runs": [],
+  "last_eval_verdict": null,
+  "eval_loop": null,
+  "eval_status": null,
   "errors": []
 }
 ```
@@ -107,18 +112,42 @@ Generation:
 **Field reference**:
 - `iteration_counts` — per-review-type counter object. Incremented
   before each re-delegation of the same review type. When any value
-  reaches `2` and the latest critic verdict is BLOCKING, the
-  orchestrator escalates to the user instead of looping further.
+  reaches `2` (or `3` for `eval-fix-loop`) and the latest verdict is
+  BLOCKING / `fail`, the orchestrator escalates to the user instead of
+  looping further.
 - `override` — set to `true` only when the user explicitly chose
   `force-proceed` after hitting an iteration cap.
 - `improvement_strategy` — `"incremental"` (apply targeted edits to
   an existing pack), `"rebuild"` (full architecture redesign), or
   `null` (creation mode).
+- `eval_runs[]` — append-only list of per-iteration eval results.
+  Each entry: `{run_index, results_path, status, cases_total,
+  cases_passed, cases_failed, harness_error, started_at,
+  completed_at, fix_attempt_for_run_index?}`. Path points to
+  `.copilot-factory/sessions/{id}/artifacts/eval-run-{n}.json`.
+- `last_eval_verdict` — `{status: "pass"|"fail"|"harness-error",
+  run_index: <int>}`. Mirror of the latest verdict from
+  `@factory-eval-runner` for fast orchestrator branching.
+- `eval_loop` — `{approved_by_user, max_iterations, started_at,
+  completed_at, guardrails: {max_judge_calls,
+  max_wall_clock_seconds, judge_calls_used,
+  wall_clock_used_seconds}}`. The runtime mirror of the spec's
+  `budgets:` block, accumulated across all iterations.
+- `eval_status` — terminal status set when transitioning to
+  `complete`: `"pass"`, `"fail"`, `"failed-override"` (user chose
+  force-complete after cap-hit), `"skipped-incremental"` (no eval
+  changes flagged), or `"error"`.
+- `iteration_counts.eval-fix-loop` — fix-loop counter (cap=3,
+  one higher than review caps because the signal is objective).
 
 ## State Transitions
 
 ```
-intake → design → review-arch → approval → build → review-prompts → complete
+intake → design → review-arch → approval → build → review-prompts →
+  eval-execute → eval-fix-loop → complete
+   │                    │            │           │            ▲
+   │                    │            │           │            │ (loop until pass or cap=3)
+   │                    │            │           └────────────┘
    │                    │            │
    │                    │            └── (changes requested)
    │                    │                       │
@@ -138,7 +167,19 @@ intake → design → review-arch → approval → build → review-prompts → 
 - `review-arch → approval`: Review passed
 - `approval → build`: User approved
 - `build → review-prompts`: Implementation complete
-- `review-prompts → complete`: Implementation review passed
+- `review-prompts → eval-execute`: Implementation review passed
+- `eval-execute → complete`: Eval verdict `pass` (or
+  `skipped-incremental` for incremental builds with no eval changes)
+- `eval-execute → eval-fix-loop`: Eval verdict `fail` AND user
+  approved the loop (one-time gate)
+- `eval-execute → complete (eval_status: fail)`: Eval verdict
+  `fail` AND user chose `stop` at the approval gate
+- `eval-execute → escalate`: Eval verdict `harness-error` (no retry)
+- `eval-fix-loop → eval-fix-loop`: Fix turn produced
+  `ready-for-rerun: true`; runner re-executes; cycle continues
+- `eval-fix-loop → complete (eval_status: pass)`: Eval re-run passed
+- `eval-fix-loop → complete (eval_status: failed-override)`: Cap=3
+  hit, user chose `force-complete-with-failures`
 - `approval → design`: Changes requested (increment iteration)
 
 ## Atomic Updates

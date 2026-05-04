@@ -154,7 +154,15 @@ def build_manifest(
     golden_staging_dir: str,
     response_dir: str,
     judge_model: str | None,
+    strict_pass: bool = False,
 ) -> JudgeManifest:
+    """Build the judge manifest for one case.
+
+    When ``strict_pass`` is ``True`` (i.e. the pack's
+    ``loop_convergence.required_status == "strict-pass"``), warn-severity
+    rubrics also get the double-invoke treatment so that warn flap
+    can't silently re-loop the factory's fix loop forever (F10.6).
+    """
     manifest = JudgeManifest(
         run_id=fixture.run_id, pack=spec.pack, case_id=case.id, judge_model=judge_model,
     )
@@ -187,7 +195,10 @@ def build_manifest(
         for k, v in template_vars.items():
             body = body.replace("{{" + k + "}}", str(v))
         full_prompt = JUDGE_PREAMBLE + "\n---\n\n" + body
-        copies = 2 if ref.severity == "blocker" else 1
+        if ref.severity == "blocker" or (strict_pass and ref.severity == "warn"):
+            copies = 2
+        else:
+            copies = 1
         for letter_idx in range(copies):
             counter += 1
             letter = chr(ord("A") + letter_idx)
@@ -258,8 +269,20 @@ def apply_double_invoke(
     manifest: JudgeManifest,
     *,
     tolerance: float = 0.1,
+    strict_pass: bool = False,
 ) -> list[models.RubricVerdict]:
-    """Aggregate paired blocker rubrics; require |a-b| <= tolerance.
+    """Aggregate paired blocker (and, under strict_pass, warn) rubrics.
+
+    For BLOCKER rubrics: pair-disagreement (|A-B| > tolerance), or
+    fewer than two scored responses, both produce ``status="error"``
+    so the harness flags this as an infrastructure problem rather
+    than an evaluation result.
+
+    For WARN rubrics under ``strict_pass``: pair-disagreement is a
+    REGULAR FAILURE (``status="fail"``) — flap should surface as a
+    normal eval failure, not a harness error. Missing-pair (only one
+    response) under strict_pass is also ``status="fail"`` so the
+    factory can route it through the fix loop instead of escalating.
 
     Returns one :class:`RubricVerdict` per (rubric_id, apply_to) pair.
     """
@@ -296,6 +319,16 @@ def apply_double_invoke(
                 message="blocker rubric requires two scored responses",
             ))
             continue
+        if sev == "warn" and strict_pass and len(scored) < 2:
+            verdicts.append(models.RubricVerdict(
+                rubric_id=rid, apply_to=applied, severity=sev, threshold=thr,
+                score=scored[0].score if scored else None,
+                rationale=scored[0].rationale if scored else "",
+                evidence=scored[0].evidence if scored else [],
+                status="fail",
+                message="strict-pass: warn rubric requires two scored responses",
+            ))
+            continue
         if sev == "blocker":
             a, b = scored[0].score or 0.0, scored[1].score or 0.0
             if abs(a - b) > tolerance:
@@ -306,6 +339,21 @@ def apply_double_invoke(
                     evidence=scored[0].evidence + scored[1].evidence,
                     status="error",
                     message=f"|A - B| = {abs(a-b):.3f} > tolerance {tolerance}",
+                ))
+                continue
+        if sev == "warn" and strict_pass and len(scored) >= 2:
+            a, b = scored[0].score or 0.0, scored[1].score or 0.0
+            if abs(a - b) > tolerance:
+                verdicts.append(models.RubricVerdict(
+                    rubric_id=rid, apply_to=applied, severity=sev, threshold=thr,
+                    score=(a + b) / 2.0,
+                    rationale=f"strict-pass self-consistency failed: A={a}, B={b}",
+                    evidence=scored[0].evidence + scored[1].evidence,
+                    status="fail",
+                    message=(
+                        f"strict-pass: |A - B| = {abs(a-b):.3f} > "
+                        f"tolerance {tolerance}"
+                    ),
                 ))
                 continue
         score = sum(r.score for r in scored) / len(scored)

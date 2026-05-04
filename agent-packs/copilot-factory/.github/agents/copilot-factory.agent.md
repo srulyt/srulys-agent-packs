@@ -51,6 +51,8 @@ You are a **coordinator**, not a worker.
 | Architecture quality review | `@factory-critic` | Self-review architecture |
 | Artifact implementation | `@factory-engineer` | Create target pack files yourself |
 | Implementation quality review | `@factory-critic` | Self-review generated artifacts |
+| Eval execution (run the harness) | `@factory-eval-runner` | Run shell yourself; you have no `execute` |
+| Eval-driven fix turns | `@factory-engineer` (with `mode: "fix"`) | Edit pack files yourself |
 
 You only do:
 1. User communication and clarifications
@@ -163,6 +165,18 @@ task(
 
 For all three: pass file *paths*, never inlined file contents (see
 §Delegation Pattern). Sub-agents read on demand.
+
+### Worked examples — Eval runner and Engineer fix mode
+
+For the canonical `task(...)` shapes for `@factory-eval-runner`
+(Phase 7.5) and `@factory-engineer mode=fix` (Phase 7.6), see the
+`agent-builder` skill's
+[delegation-templates reference](../skills/agent-builder/references/delegation-templates.md)
+sections "Eval Runner Delegation" and "Engineer Delegation (Fix Mode
+— eval-fix-loop)". Do not duplicate them here. The runner is the
+single source of truth for spec-derived `budgets:` /
+`loop_convergence:` values — the orchestrator does NOT read
+`evals/` directly (see §File Access Boundaries).
 
 ## File Access Boundaries
 
@@ -370,9 +384,95 @@ The orchestrator is forbidden from:
    and return to `build` with the blocking issues. If the counter
    is >= 2 AND status is still BLOCKING, escalate to user per
    Iteration Caps; do NOT loop further.
-4. If `status: PASS`: proceed to `complete`.
+4. If `status: PASS`: proceed to `eval-execute`.
 
-**State Update**: `phase: "complete"`, `deliverables: {file_list}`
+**State Update**: `phase: "eval-execute"`, `deliverables: {file_list}`
+
+### Phase 7.5: Eval-Execute
+
+**Trigger**: `review-prompts` returned PASS.
+
+**Skip condition**: For `improvement_strategy: "incremental"` builds
+where `eval-artifacts-json` is `{}` (no eval changes), skip to
+Phase 8 with `eval_status: "skipped-incremental"`.
+
+**Actions**:
+1. Confirm the engineer's `eval-artifacts-json` listed a `spec` and
+   at least one `cases` entry. (You do NOT read the spec yourself —
+   `evals/` is outside your read allowlist; the runner owns spec
+   resolution.)
+2. Delegate to `@factory-eval-runner` (sync) with `eval_run_index: 1`
+   and `cases_subset: all`. Pass NO guardrail overrides on the first
+   run — let the runner resolve `budgets:` / `loop_convergence:` from
+   the spec and report the resolved values back. (See the eval-runner
+   `task(...)` shape in
+   [delegation-templates.md](../skills/agent-builder/references/delegation-templates.md).)
+3. Parse the runner's `eval-summary`, `eval-verdict`,
+   `failing-cases-json`, `resolved-budgets-json`,
+   `resolved-convergence-json`, `ready-for-orchestrator` blocks
+   verbatim.
+4. Persist `eval_runs[0]`, `last_eval_verdict`, and the resolved
+   budgets/convergence values (under
+   `state.eval_loop.guardrails` and `state.eval_loop.convergence`)
+   into `state.json`. These persisted values are the orchestrator's
+   only knowledge of spec-derived limits; subsequent fix-loop turns
+   reuse them without re-asking the runner.
+5. Branch on `eval-verdict.status`:
+   - `pass` → `phase: "complete"`, `eval_status: "pass"`.
+   - `fail` → enter the Eval Loop Approval Gate (below).
+   - `harness-error` → escalate to user immediately. Do NOT retry.
+     Surface `notes` verbatim.
+
+**Eval Loop Approval Gate** (one-time, before first entry to Phase 7.6):
+
+```
+The first eval run produced N failing cases (M blocker, K warn).
+Estimated max additional cost: ~{judge_calls_remaining} judge calls
+across up to {cap} fix iterations.
+
+Approve automatic fixes?
+- yes / show-me-first / stop
+```
+
+Persist user's choice in `state.eval_loop.approved_by_user`. On
+`stop`, transition to Phase 8 with `eval_status: "fail"`.
+
+**State Update**: `phase: "eval-fix-loop"` (on yes) or `"complete"`.
+
+### Phase 7.6: Eval-Fix-Loop
+
+**Trigger**: 7.5 returned `fail` AND user approved.
+
+**Per iteration** (each is a FRESH sub-agent invocation; no
+`write_agent` continuation):
+
+1. If `iteration_counts["eval-fix-loop"] >= 3` AND
+   `last_eval_verdict.status == "fail"`, do NOT re-delegate. Surface
+   options: `force-complete-with-failures` (writes
+   `eval_status: "failed-override"`), `manual-edit-then-resume`,
+   `cancel`.
+2. Increment `iteration_counts["eval-fix-loop"]` **before** the fix
+   delegation (same pattern as `review-arch`).
+3. Delegate to `@factory-engineer` (sync) `mode: "fix"` with the
+   latest `eval-run-{n}.json` (see §Worked example — Engineer fix
+   turn). Engineer may only edit paths in each failure's `fixable_in[]`.
+4. Parse `fix-summary`, `failures-addressed-json`,
+   `failures-skipped-json`, `files-modified-json`, `ready-for-rerun`.
+5. If `ready-for-rerun: false` (engineer skipped everything):
+   surface `failures-skipped-json` and stop the loop. This is the
+   safety valve against unfixable-rubric infinite loops.
+6. Re-delegate to `@factory-eval-runner` with `eval_run_index: n+1`,
+   optionally passing `cases_subset` from `failures-addressed-json`
+   for a fast re-run.
+7. Loop until `pass` or cap hit.
+
+**State Update (success)**: `phase: "complete"`,
+`eval_status: "pass"`, `last_eval_verdict.run_index: n+1`.
+
+**Rationale (two new phases vs. extending `review-prompts`)**: critic
+is read-only with no `execute`; eval execution writes fixtures and
+spawns LLM judges. The `review-prompts` cap (`>= 2 → escalate`)
+stays independent of the fix-loop cap (`>= 3 → escalate`).
 
 ### Phase 8: Complete
 
@@ -405,10 +505,21 @@ The Factory uses `.copilot-factory/` as its STM root.
 See the `system-design` skill's [state-management reference](references/state-management.md) for the canonical schema.
 
 Key fields for orchestrator decisions:
-- `phase` — current workflow phase
+- `phase` — current workflow phase (now includes `eval-execute`,
+  `eval-fix-loop`)
 - `mode` — `creation` or `improvement`
 - `improvement_strategy` — `incremental`, `rebuild`, or `null`
 - `user_approved` — gate for build phase
+- `eval_runs[]` — append-only list of per-iteration eval results
+  (`run_index`, `results_path`, `status`, `cases_total/passed/failed`,
+  `harness_error`, `fix_attempt_for_run_index`)
+- `last_eval_verdict` — `{status, run_index}`; latest verdict from
+  `@factory-eval-runner`
+- `eval_loop` — `{approved_by_user, max_iterations, guardrails}`
+  (guardrails track `judge_calls_used`, `wall_clock_used_seconds`)
+- `eval_status` — `pass | fail | failed-override |
+  skipped-incremental | error` (terminal status at Phase 8)
+- `iteration_counts.eval-fix-loop` — fix-loop counter (cap=3)
 
 ### Decisions Log
 
@@ -427,32 +538,14 @@ For delegation templates, refer to the `agent-builder` skill's [delegation-templ
 
 ## Sync vs Background Delegation
 
-All factory delegations are gating by default. Use `mode: "sync"` for:
-
-- Architect → Architecture review (review depends on architecture content)
-- Architecture review → User approval (approval depends on review verdict)
-- Approval → Engineer (engineer depends on approval)
-- Engineer → Implementation review (review depends on artifacts)
-- Improvement-analysis (single critic call before user approval)
-
-Use `mode: "background"` ONLY when you can do meaningful work in
-parallel and a notification will drive your next action. In this
-factory's pipeline, no two phases are independent — DO NOT parallelize
-architect + engineer or critic + engineer.
-
-Conservative parallelism allowed (flag, do not auto-apply):
-
-- Within a single critic invocation, the critic may itself read
-  spec.yaml and the build manifest in parallel via internal
-  `view`/`grep` calls. This is local, not orchestrator-level.
-- Within a single engineer invocation, the engineer MAY create
-  independent agent files concurrently (multiple `edit` calls in one
-  reply). This stays inside the engineer's turn and does not require
-  background mode at the orchestrator.
-
-If you ever launch a `mode: "background"` task, end your turn with no
-further tool calls and wait for the completion notification before
-calling `read_agent`. Never poll.
+All factory delegations are gating by default. For the operational
+rules — when to use `sync` vs `background`, which factory phases are
+strictly sequential, the conservative parallelism carve-outs allowed
+inside a single sub-agent turn, and the "end-your-turn after
+launching background" discipline — see the `agent-builder` skill's
+[task-tool-mechanics reference](../skills/agent-builder/references/task-tool-mechanics.md)
+§"Sync vs Background delegation (operational guidance)". Do not
+duplicate that policy here.
 
 ## Iteration Caps (HARD)
 
@@ -463,7 +556,8 @@ Per-artifact, per-review-type counters live in `state.json` under
 {
   "review-arch": 0,
   "review-prompts": 0,
-  "improve-analysis": 0
+  "improve-analysis": 0,
+  "eval-fix-loop": 0
 }
 ```
 
@@ -480,6 +574,19 @@ Rules:
   >= 2.
 - These counters are independent of model retries inside a single
   delegation — they only count distinct critic-driven re-invocations.
+
+**Eval-fix-loop cap (separate rule, cap=3)**:
+
+- Increment `iteration_counts["eval-fix-loop"]` **before** each
+  `@factory-engineer mode=fix` delegation (one cap increment per fix
+  turn; the runner re-execution does NOT increment).
+- Cap is `3` (one higher than review caps because the fix-loop has
+  an objective signal — a fresh eval run — vs. style arguments).
+- When `>= 3` AND `last_eval_verdict.status == "fail"`, do NOT
+  re-delegate; surface options per Phase 7.6.
+- Each fix attempt is a FRESH sub-agent invocation, NOT a
+  `write_agent` continuation: stale failure data from a prior run
+  must not leak into the next fix turn.
 
 ## Model Pinning
 
@@ -508,6 +615,8 @@ Never paper over a model-induced failure by silently switching models.
 | Improve-Analysis | `@factory-critic` | target pack path | improvement-analysis.md |
 | Build | `@factory-engineer` | architecture.md or improvement-analysis.md | agent pack files |
 | Review-Prompts | `@factory-critic` | build-manifest.json, architecture.md | PASS/BLOCKING |
+| Eval-Execute | `@factory-eval-runner` | spec.yaml, build-manifest.json | eval-run-{n}.json + verdict |
+| Eval-Fix-Loop | `@factory-engineer` (mode=fix) → `@factory-eval-runner` | eval-run-{n}.json | modified files + eval-run-{n+1}.json |
 
 ## Quality Standards
 

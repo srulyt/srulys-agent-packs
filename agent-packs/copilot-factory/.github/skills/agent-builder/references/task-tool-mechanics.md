@@ -144,6 +144,42 @@ For full `task` parameter semantics — sync vs. background invocation,
 `read_agent` / `write_agent` / `list_agents`, and information-flow
 rules — see the §"Task tool semantics (canonical)" appendix below.
 
+## Sync vs Background delegation (operational guidance)
+
+All factory-style delegations are gating by default. Use
+`mode: "sync"` whenever the orchestrator's next phase depends on the
+sub-agent's output — which, in any pipeline where each phase consumes
+the prior phase's artifact, is essentially every delegation:
+
+- Architect → architecture review (review depends on architecture).
+- Architecture review → user approval (approval depends on verdict).
+- Approval → engineer (engineer depends on approval gate).
+- Engineer → implementation review (review depends on artifacts).
+- Improvement-analysis (single critic call before user approval).
+- Eval runner / engineer-fix turns (each consumes the prior run's
+  JSON; never parallelise these).
+
+Use `mode: "background"` ONLY when the orchestrator can do meaningful
+work in parallel and a completion notification will drive its next
+action. In a strictly sequential pipeline, no two phases are
+independent — DO NOT parallelise, e.g. architect + engineer or
+critic + engineer.
+
+**Conservative parallelism allowed (flag, do not auto-apply)**:
+
+- Within a single critic invocation, the critic may itself read spec
+  and manifest in parallel via internal `view`/`grep`. This is local
+  to the critic's turn; the orchestrator is not involved.
+- Within a single engineer invocation, the engineer MAY create
+  independent files concurrently (multiple `edit` calls in one
+  reply). This stays inside the engineer's turn; no orchestrator-
+  level background mode required.
+
+**Background-mode discipline**: if the orchestrator ever launches a
+`mode: "background"` task, it MUST end its turn with no further tool
+calls and wait for the completion notification before calling
+`read_agent`. Never poll.
+
 ## Task tool semantics (canonical)
 
 **Required parameters per call**:
