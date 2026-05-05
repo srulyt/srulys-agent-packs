@@ -14,13 +14,14 @@ Zen (signal-to-noise).
   "palette": {
     "background_dark": "#0A1628",
     "background_light": "#FAF6EC",
-    "background_accent": "#D4AF37",
+    "background_accent": "#8C6E1A",
     "primary_accent": "#D4AF37",
     "secondary_accent": "#9C7A2E",
     "highlight": "#D4AF37",
     "text_on_dark": "#FFFFFF",
     "text_on_light": "#1A1410",
     "text_secondary": "#6B6052",
+    "text_secondary_on_dark": "#BBA890",
     "divider": "#E0D6BB"
   },
   "type_scale": {"hero": 56, "section": 48, "title": 40, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},

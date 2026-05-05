@@ -22,6 +22,7 @@ extremes), Presentation Zen (radical signal-to-noise).
     "text_on_dark": "#FFFFFF",
     "text_on_light": "#000000",
     "text_secondary": "#666666",
+    "text_secondary_on_dark": "#999999",
     "divider": "#CCCCCC"
   },
   "type_scale": {"hero": 72, "section": 60, "title": 48, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},

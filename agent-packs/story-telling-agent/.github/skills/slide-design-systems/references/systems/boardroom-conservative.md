@@ -22,6 +22,7 @@ strip, 10pt footnoted sources), Pyramid Principle.
     "text_on_dark": "#FFFFFF",
     "text_on_light": "#1A1A1A",
     "text_secondary": "#5A5A5A",
+    "text_secondary_on_dark": "#A0A0A0",
     "divider": "#D0D5DC"
   },
   "type_scale": {"hero": 44, "section": 40, "title": 32, "subtitle": 20, "body": 20, "small": 16, "caption": 12, "fine_print": 10},

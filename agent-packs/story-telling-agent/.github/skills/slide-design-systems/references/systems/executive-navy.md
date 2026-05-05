@@ -15,13 +15,14 @@ buy-in / funding asks where credibility outweighs flair.
   "palette": {
     "background_dark": "#0F1B2D",
     "background_light": "#F4F5F7",
-    "background_accent": "#3B82F6",
+    "background_accent": "#1D4ED8",
     "primary_accent": "#3B82F6",
     "secondary_accent": "#06B6D4",
     "highlight": "#F59E0B",
     "text_on_dark": "#FFFFFF",
     "text_on_light": "#1A1A2E",
     "text_secondary": "#6B7080",
+    "text_secondary_on_dark": "#B8BCC8",
     "divider": "#E2E4E8"
   },
   "type_scale": {"hero": 54, "section": 48, "title": 40, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},

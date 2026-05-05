@@ -21,6 +21,7 @@ case studies. **Vibe**: Warm, human, narrative.
     "text_on_dark": "#FFFFFF",
     "text_on_light": "#1A1A2E",
     "text_secondary": "#7B6F66",
+    "text_secondary_on_dark": "#C9B8A8",
     "divider": "#FCD9C7"
   },
   "type_scale": {"hero": 54, "section": 48, "title": 40, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},
