@@ -176,6 +176,10 @@ rubrics:
     apply_to: artifact:specification
     severity: info
     applies_when: "case.mode_kind == 'update'"
+  - id: edit-minimalism              # D10 — update mode only
+    apply_to: artifact:specification
+    severity: info
+    applies_when: "case.mode_kind == 'update'"
   - id: scope-discipline             # D9 — product / mixed only
     # Penalises FRs that name internal components, libraries,
     # datastores, or specific APIs in product/mixed mode; rewards

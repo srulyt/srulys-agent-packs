@@ -1,44 +1,45 @@
 # Repository Instructions
 
 This repository is the source for the **Copilot Factory** agent pack
-(`agent-packs/copilot-factory/`) and other packs. Agent-pack creation and
-improvement work is owned by the `@copilot-factory` orchestrator.
+(`agent-packs/copilot-factory/`) and other packs.
 
-## Routing rule (read carefully)
+## Audience check (do this first)
 
-`@copilot-factory` can ONLY be activated by the user explicitly typing
-`@copilot-factory` in their prompt. It is not a `task`-tool `agent_type`,
-and the default Copilot CLI agent has **no programmatic way to invoke
-it**. Do not attempt to "delegate to" the orchestrator — there is no
-tool call that does so.
+These repo-level instructions are written for the **default Copilot
+CLI agent only**. Before applying anything below, check whether you
+are actually the default agent:
 
-When the user's request matches factory triggers (creating, improving,
-analyzing, or reviewing an agent pack; designing a multi-agent system)
-and the user did NOT prefix with `@copilot-factory`:
+- If your turn includes an `<agent_instructions>` block identifying
+  you as the **Copilot Factory Orchestrator** (or any other custom
+  agent), **stop reading this file**. Your `<agent_instructions>`
+  govern your behavior — the routing rule below does not apply to
+  you and you should not redirect the user back to yourself.
+- Otherwise, you are the default agent: follow the routing rule
+  below.
+
+## Routing rule (default agent only)
+
+The default Copilot CLI agent has **no programmatic way to invoke
+`@copilot-factory`**. It is activated only when the user explicitly
+types `@copilot-factory` in their prompt. It is not a `task`-tool
+`agent_type`, and proxying it through a `general-purpose` sub-agent
+or by calling the factory sub-agents (`Factory Architect`,
+`Factory Critic`, `Factory Engineer`) directly silently breaks the
+orchestrator's contract (skills, session state, file boundaries).
+
+When the user's request matches factory triggers — creating,
+improving, analyzing, or reviewing an agent pack; designing a
+multi-agent system — and the user did NOT prefix with
+`@copilot-factory`:
 
 1. Briefly tell the user this work is owned by `@copilot-factory`.
-2. Ask them to re-issue the request with the `@copilot-factory` prefix
-   (e.g. `@copilot-factory create a new pack for ...`).
-3. **Do not** attempt to run the workflow yourself.
-4. **Do not** invoke the factory sub-agents (`Factory Architect`,
-   `Factory Critic`, `Factory Engineer`) directly via the `task` tool —
-   they will refuse with an invocation guard, and proxying them
-   bypasses session-state, skill loading, and the delegation contract.
-5. **Do not** spawn a `general-purpose` (or any other) sub-agent and
-   instruct it to role-play as `@copilot-factory`. The orchestrator's
-   prompt, skills, file-access boundaries, and `state.json` discipline
-   cannot be reproduced by a proxy; this is a known anti-pattern that
-   silently breaks the contract.
+2. Ask them to re-issue the request prefixed with
+   `@copilot-factory` (e.g.
+   `@copilot-factory improve the spec-author pack ...`).
+3. Do **not** run the workflow yourself, invoke the factory
+   sub-agents directly, or have another sub-agent role-play as the
+   orchestrator.
 
-For requests unrelated to agent-pack creation/improvement (general
-coding, git operations, file exploration, repository maintenance),
-proceed normally as the default Copilot CLI agent.
-
-## When you ARE the orchestrator
-
-If you are running as `@copilot-factory` (the user invoked you
-explicitly), follow the orchestrator's own prompt at
-`agent-packs/copilot-factory/.github/agents/copilot-factory.agent.md`
-and the supporting instructions under
-`agent-packs/copilot-factory/.github/instructions/`. The repo-level
-instruction here does not override those.
+For requests unrelated to agent-pack work (general coding, git
+operations, file exploration, repository maintenance), proceed
+normally.

@@ -158,14 +158,54 @@ without a changelog rationale.
 
 **Scoring:** silently removed gated sections deduct heavily.
 
+### D10 — edit-minimalism  (update mode only)
+
+**Question:** Did the drafter make the smallest set of edits that fully
+reflects (a) the user's stated feedback, (b) any Stop-A-approved missing
+context, and (c) the ID-stability mechanics those edits trigger — and
+NOTHING else?
+
+**Inputs:** the drafter's `edit-audit-json`; a structural diff between
+`prior_spec_path` and `spec_path` (use the `read` tool to load both
+files and compute a section-by-section diff in working memory; you do
+not need an external diff tool).
+
+**Scoring (start at 1.0; deduct):**
+
+- For each modified or reordered span present in the diff but NOT
+  listed in `edit-audit-json`: deduct 0.2 and emit a `major` finding.
+  An edit the drafter cannot account for is by definition
+  unjustified.
+- For each edit whose recorded `reason` does not survive scrutiny —
+  e.g. `reason: requested` but the user request never mentioned that
+  section, or `reason: correctness` for a span that was not factually
+  wrong — deduct 0.2 and emit a `major` finding.
+- For each edit that is purely stylistic (prose reword with no
+  semantic change), reordering with no requested driver, or template
+  drift (renaming a section to match a newer skill default the user
+  did not ask for): deduct 0.3 and emit a `major` finding. If three
+  or more such edits are present, escalate ONE finding to `blocker`.
+- If the drafter omitted `edit-audit-json` entirely in update mode:
+  emit a single `blocker` finding and score D10 = 0.
+
+**Common deductions:** rewording the Problem Statement when the user
+asked only to change one FR; reordering Goals; renaming a section that
+the alias appendix does not record; tightening NFR prose; switching
+table layouts; "normalising" capitalisation across the document.
+
+**Out of scope for D10:** ADD-only edits that the user requested
+(e.g. "add an FR for X") — those are the legitimate change. D10 polices
+edits to the *prior* content, not new content.
+
 ## Weighted aggregation
 
 Equal-weight mean of applicable dimensions only. Dimensions not
 applicable in the current mode are reported as `null`, **not 0**,
-in `scores-json`.
+in `scores-json`. D10 follows the same null-not-zero rule as D5–D8:
+it is included in the weighted mean only when `mode == update`.
 
 ```
-weighted = mean(dim for dim in [D1..D9] if dim is not null)
+weighted = mean(dim for dim in [D1..D10] if dim is not null)
 ```
 
 ## Verdict rules

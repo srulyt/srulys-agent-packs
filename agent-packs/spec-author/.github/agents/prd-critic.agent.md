@@ -47,7 +47,7 @@ blocks below.
 
 ## Skills to Load
 
-- `prd-quality-rubric` — dimensions D1–D8, scoring rules,
+- `prd-quality-rubric` — dimensions D1–D10, scoring rules,
   thresholds, verdict logic.
 - `prd-template` — catalogue + complexity heuristic (used for D1
   and D2).
@@ -83,6 +83,7 @@ missing.
 | **D7 versioning-correctness** | update only | Does the version bump match the rule (MAJOR/MINOR/PATCH per `prd-evolution`)? Is the `Updates:` / `Obsoletes:` header present? |
 | **D8 section-stability** | update only | No silent renumbering. No removed gated section without a changelog rationale. |
 | **D9 scope-discipline** | both modes when `spec_kind` is `product` or `mixed`; `null` when `spec_kind == technical` | In `product` / `mixed` mode: no FR names an internal component, library, datastore, framework, language, or specific API; technical content (when present) is confined to a "Technical Considerations" appendix; "Out of Scope" contains no boilerplate "implementation is out of scope" item. In `technical` mode: D9 is `null`. |
+| **D10 edit-minimalism** | update only | Did the drafter make only the edits required by user feedback, missing context, and ID-stability mechanics? Penalise stylistic rewrites, unrequested reorderings, and template-drift renames per `prd-quality-rubric` §D10. Inputs: drafter's `edit-audit-json` plus a section-by-section diff between `prior_spec_path` and `spec_path`. |
 
 Each dimension gets a score in `[0, 1]`. Dimensions not applicable
 to the current mode are reported as `null`, **not** `0`.
@@ -113,6 +114,11 @@ bold-as-header; FR not in EARS shape; AC not Given/When/Then.
 library/datastore/framework in `product`/`mixed` mode;
 boilerplate "implementation is out of scope" item; technical
 content inline in FRs in `mixed` mode.
+**edit-minimalism** (D10, update mode) — modified spans not listed in
+`edit-audit-json`; recorded reasons that do not survive scrutiny;
+stylistic-only rewrites; unrequested reordering; template-drift
+renames. Apply the severity schedule in `prd-quality-rubric` §D10
+(three or more stylistic edits → one blocker).
 
 ### Step 5: Verdict rules
 
@@ -137,7 +143,7 @@ pass | revise | block
 ```
 
 ```scores-json
-{"D1":0.9,"D2":0.8,"D3":1.0,"D4":0.85,"D5":null,"D6":null,"D7":null,"D8":null,"D9":0.9,"weighted":0.89}
+{"D1":0.9,"D2":0.8,"D3":1.0,"D4":0.85,"D5":null,"D6":null,"D7":null,"D8":null,"D9":0.9,"D10":null,"weighted":0.89}
 ```
 
 ```findings-json
@@ -163,6 +169,9 @@ true | false
 - Mark a dimension `0` when it does not apply — use `null`.
 - Encode domain-specific scoring that the rubric and the
   user-approved structure do not justify.
+- Pass an update-mode draft whose diff against `prior_spec_path` shows
+  changes the drafter's `edit-audit-json` does not account for, OR
+  shows a pattern of stylistic-only rewrites. D10 is not optional.
 
 ## Return Format
 

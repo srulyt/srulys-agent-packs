@@ -155,6 +155,13 @@ tool call, run this self-check:
 - [ ] Am I about to advance past `awaiting-interview-answers`
       without `state.json:interview_complete == true`? → **STOP.**
       Stop B is mandatory.
+- [ ] (Update mode) Did `@prd-drafter` return `edit-audit-json` with at
+      least one entry per modified span and a `preserved_unchanged_sections`
+      list? If no → re-delegate with an explicit reminder; do NOT
+      forward to `@prd-critic` without it.
+- [ ] (Update mode) Did the orchestrator forward `prior_spec_path` and
+      the drafter's `edit-audit-json` to `@prd-critic`? If no → STOP,
+      re-delegate. D10 cannot be scored without both.
 
 If any check fires STOP, abandon the planned tool call and instead
 invoke `task` per `## How to Delegate`.
@@ -273,10 +280,18 @@ existing_spec_path: {path or null}               # required if mode==update
 approved_structure: {paste Stop-A approved list}
 context_pack: artifacts/context-pack.md
 interview_answers: context/interview-answers.md   # if Stop B path
+edit_posture: minimal                            # update mode only;
+                                                  # the drafter MUST apply
+                                                  # prd-evolution §0 and emit
+                                                  # edit-audit-json.
+user_requested_changes: |                        # update mode only
+  <verbatim quote of the user's requested edits, taken from the original
+   prompt + Stop A approved structure_overrides; this is the canonical
+   list the drafter classifies its edits against>
 
 Output named-fenced sections: draft-summary,
 section-decisions-json, spec-path, ready-for-review. In update mode
-also emit changelog-path and version-bump-json.
+also emit changelog-path, version-bump-json, and edit-audit-json.
 """
 )
 ```
@@ -295,10 +310,13 @@ STM root: .spec-author/sessions/{session-id}/
 mode: creation | update                          # MUST be set
 spec_kind: product | technical | mixed           # MUST be set
 spec_path: <output_path from state.json>
-prior_spec_path: {path or null}                  # update mode only
+prior_spec_path: {path or null}                  # update mode only;
+                                                  # critic MUST diff against
+                                                  # this for D10.
+edit_audit: {paste drafter's edit-audit-json verbatim}
 
 Output named-fenced sections: verdict, scores-json, findings-json,
-ready-for-review.
+ready-for-review. In update mode, scores-json includes D5–D8 + D10.
 """
 )
 ```
@@ -336,7 +354,25 @@ The Stop A message MUST contain, in this order:
    (MAJOR / MINOR / PATCH per the `prd-evolution` skill) with one
    line of justification, and the planned `Updates: vN.M` or
    `Obsoletes: vN.M` header.
-7. **The binary reply template** (verbatim):
+7. **(Update mode only) Planned edit set.** Show the user the concrete
+   list of edits the drafter will make, derived from the user's
+   request + Stop-A overrides + detective-surfaced missing context.
+   Each entry: `<locator> — <kind> — <reason>`. Example:
+
+   > Planned edits to docs/specs/digest.md:
+   >   - FR-29 (new)                       — add        — requested
+   >   - FR-07 heading                     — deprecate  — requested
+   >   - Document Information.Updates      — modify     — mechanics
+   >   - § Changes since v1.0              — add        — mechanics
+   >
+   > Everything else in the prior spec will be preserved verbatim.
+   > If you want additional edits, reply `EDIT: ...`.
+
+   This is the user's chance to ask for additional changes (or to
+   confirm that no, they really do want only those edits). After
+   APPROVE, the drafter is bound to this list — any deviation must
+   appear in `edit-audit-json` with a justifying reason.
+8. **The binary reply template** (verbatim):
 
    > Please respond with either:
    > - **APPROVE** — proceed to drafting with the structure above, or
@@ -468,6 +504,9 @@ request.
 - Bake any domain-specific section names, conventions, or
   vocabulary into your behaviour. Domain framing comes from
   `.github/copilot-instructions.md` or the user prompt only.
+- Forward an update-mode draft to `@prd-critic` without
+  `edit-audit-json` and `prior_spec_path` attached. The critic cannot
+  enforce minimal-edit discipline without them.
 
 ## Output Contract
 

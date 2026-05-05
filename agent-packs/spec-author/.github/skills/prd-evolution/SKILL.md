@@ -27,6 +27,86 @@ not from this skill.
 
 ## Core rules
 
+### 0. Minimal-edit discipline (prime directive)
+
+The single most important rule in update mode is: **make the smallest
+set of edits that fully reflects the user's request and any
+detective-surfaced missing context, and leave everything else
+literally unchanged.**
+
+A spec under update is an already-reviewed artifact. Reviewers,
+downstream consumers, and external references depend on its current
+wording and structure. Unrequested changes — even "improvements" — cost
+the reader real attention and obscure the actual delta. Treat the prior
+spec the way a careful patch author treats an upstream file: change the
+minimum, preserve the rest.
+
+#### The four (and only) legitimate reasons to mutate an existing span
+
+1. **Correctness** — the prior text is factually wrong, internally
+   contradictory, or violates a hard rule the user has now asked to
+   enforce (e.g. "please make the FRs EARS-shaped this revision").
+2. **Requested feedback** — the user explicitly asked for the change,
+   in the original prompt or in the Stop A reply.
+3. **Genuinely missing context** — Context Detective surfaced new
+   material information AND the user approved adding it at Stop A.
+4. **ID-stability mechanics** — `Updates:` header, `## Changes since vN`
+   preamble, deprecation markers, `[Changed in vX.Y]` tags, alias rows.
+   These are bookkeeping for edits already justified by reasons 1–3;
+   they do NOT independently authorise touching new sections.
+
+#### Insufficient reasons (do NOT edit)
+
+- Stylistic preference, prose tightening, "flow".
+- Consistent capitalisation, punctuation normalisation, `&` → `and`.
+- Reordering sections, lists, or bullets when the order is not wrong.
+- Re-wording for "clarity" when the prior wording was clear enough to
+  pass the prior review.
+- "While I'm here" cleanups, even of things you suspect the prior
+  author got slightly wrong, unless they meet bar (1) above AND the user
+  asked for them.
+- Aligning the prior spec with newer template-skill defaults that did
+  not exist when the prior spec was approved. (Template drift is not a
+  user request.)
+
+#### Pre-edit gate (drafter)
+
+Before mutating any span, the drafter classifies the planned edit
+against reasons 1–4. If none fits, the edit is dropped and the prior
+text is preserved verbatim. The classification is recorded in
+`edit-audit-json` (see drafter Output Contract).
+
+#### Post-edit audit (critic)
+
+The critic scores edit-minimalism as dimension **D10** (see
+`prd-quality-rubric`). An edit listed in `edit-audit-json` whose reason
+does not survive scrutiny against the prior-spec diff produces a
+`major` finding; a pattern of such edits produces a `blocker`.
+
+#### Worked example
+
+User request: "Add an FR for keyboard shortcuts and deprecate FR-07."
+
+Legitimate edits:
+
+- Add FR-29 (reason: requested).
+- Mark FR-07 `[Deprecated in v1.1, superseded by FR-29]` (reason:
+  requested + mechanics).
+- Bump version to v1.1, add `Updates: v1.0` header, add `## Changes
+  since v1.0` preamble, add CHANGELOG.md entries (reason: mechanics,
+  follow-on to the two edits above).
+- Add `[Changed in v1.1]` next to the FR list heading because FR-29
+  and the FR-07 deprecation marker now live there (reason: mechanics).
+
+Not legitimate (must be dropped):
+
+- Rewording the Problem Statement "for clarity".
+- Re-ordering Goals to put outcomes before scope.
+- Tightening NFR-04's prose.
+- Renaming `## Solution Summary` → `## Approach Overview` to match a
+  newer template default.
+- Reformatting Acceptance Criteria tables to bullet lists.
+
 ### 1. Semver-for-specs (version bump)
 
 Apply Semantic Versioning 2.0 editorially:
@@ -171,6 +251,11 @@ The critic uses these dimensions in update mode:
 - [ ] `CHANGELOG.md` emitted, using Keep-a-Changelog categories,
       with every diff accounted for.
 - [ ] No silently removed gated section.
+- [ ] Every edit in `edit-audit-json` has a reason in
+      {correctness, requested, missing, mechanics} (per §0).
+- [ ] `preserved_unchanged_sections` lists the top-level sections the
+      drafter consciously left alone (per §0).
+- [ ] No stylistic-only edits to prior prose (per §0).
 
 ## References
 
