@@ -1,0 +1,54 @@
+id: smoke-draft-renumber-with-cross-refs
+pack: spec-author
+description: "Smoke test: V12 / V13 cross-reference integrity during draft renumbering. The user adds an FR in the middle of an existing draft list; successors renumber AND every cross-reference (AC-<FR>.<n>, 'see FR-N', anchored links) is updated atomically. The drafter's cross-ref-audit-json is non-empty and orphaned_references is empty. The spec stays at the same draft version (V3: no mid-draft bump)."
+
+prompt_file: prompt.md
+
+mode_kind: update
+spec_kind: product
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/quick-toggle\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^.+/CHANGELOG\\.md$"
+      required: false
+      forbidden: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 0 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:specification": "^docs/specs/quick-toggle\\.md$"
+  rubric_overrides:
+    cross-ref-integrity: { severity: info }
+    versioning-no-mid-draft-bump: { severity: info }

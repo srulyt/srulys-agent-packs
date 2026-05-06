@@ -519,7 +519,8 @@ This skill was extended for the rendering rebuild (session
   per OQ2 produces a `<out>.skipped.json` sentinel that the
   builder treats as "asset unavailable; build slide without it".
 
-See eferences/styled-recipes.md for per-recipe EMU-coordinate
+See 
+eferences/styled-recipes.md for per-recipe EMU-coordinate
 implementations.
 
 

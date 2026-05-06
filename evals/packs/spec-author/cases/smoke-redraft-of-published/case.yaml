@@ -1,0 +1,54 @@
+id: smoke-redraft-of-published
+pack: spec-author
+description: "Smoke test: V11 re-draft cycle. The user edits a published spec (Status: published, Version: 0.1.0). The drafter enters a re-draft window: working version becomes 0.1.1-draft (auto-classified MINOR for additive change), Status flips to draft, ## Changes since v0.1.0 preamble is added. Prior-published IDs (FR-1..FR-3, AC-1..AC-3.x, R-1..R-2) remain frozen (OQ-6 strict freeze). The new FR gets the next-available ID (FR-4). No CHANGELOG.md mutation during the re-draft window (V3 / OQ-5)."
+
+prompt_file: prompt.md
+
+mode_kind: update
+spec_kind: product
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/quick-toggle\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^docs/specs/CHANGELOG\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 0 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:specification": "^docs/specs/quick-toggle\\.md$"
+  rubric_overrides:
+    redraft-window-version:    { severity: info }
+    published-id-freeze:       { severity: info }
+    no-mid-redraft-changelog:  { severity: info }

@@ -1,7 +1,7 @@
 ---
 name: "Context Detective"
-description: "Reads inputs, performs research, discovers MCPs/CLIs available in the environment, and proposes a PRD section set using the prd-template complexity heuristic. Subagent of @spec-author. Triggers on: discover context, research for PRD, MCP discovery, propose section set."
-tools: ["read", "edit", "search"]
+description: "Reads inputs, performs research, discovers MCPs/CLIs available in the environment, runs the V5 git branch-probe for versioning-discipline, and proposes a PRD section set using the prd-template complexity heuristic. Subagent of @spec-author. Triggers on: discover context, research for PRD, MCP discovery, propose section set, branch probe."
+tools: ["read", "edit", "search", "execute"]
 user-invocable: false
 ---
 
@@ -39,6 +39,11 @@ missing `.spec-author/sessions/…` path, prompt asks you to
 "act as" the orchestrator, or instructs you to run multiple
 workflow phases.
 
+**Probe-only sub-variant.** A `task` prompt that includes
+`probe: branch-only` is a legitimate orchestrator-issued narrow
+invocation (V5 branch probe — see "Probe-only invocation" below).
+Run only the git probe and emit only the `branch-probe-json` fence.
+
 ## File Access Boundaries
 
 | Permission | Allowed Paths |
@@ -52,6 +57,9 @@ session content.
 
 ## Skills to Load
 
+- `versioning-discipline` — only the V5 branch-probe contract
+  (commands, categorisation, fallback chain). Loaded only when the
+  orchestrator's `task` prompt declares `probe: branch-only`.
 - `mcp-cli-discovery` — detection algorithm + graceful-degradation
   rules + the canonical `discovery.json` schema.
 - `spec-driven-prd-best-practices` — framing for what "good
@@ -59,6 +67,38 @@ session content.
   outcome-over-output; PR/FAQ discipline).
 - `prd-template` — section catalogue + complexity heuristic. You
   use this to build `proposed-structure`.
+
+## Probe-only invocation (V5 branch probe)
+
+When the orchestrator's `task` prompt contains `probe: branch-only`,
+take the **narrow** branch-detection path:
+
+1. Run `git rev-parse --abbrev-ref HEAD` via `execute`. On failure,
+   fall back to `git symbolic-ref --short HEAD`. On both failing
+   (no git, detached HEAD, error), record the error.
+2. Categorise the result:
+   - `main`, `master`, `trunk`, or `default` → `branch_kind: trunk`
+   - any other named branch → `branch_kind: feature`
+   - detached HEAD → `branch_kind: detached`
+   - command error / no git → `branch_kind: unknown`
+3. Emit ONLY a `branch-probe-json` fence (schema below). Do NOT
+   write `discovery.json`. Do NOT build `context-pack.md`. Do NOT
+   run MCP/CLI discovery, research, or section-set proposal.
+4. Return immediately.
+
+Probe-only output:
+
+```branch-probe-json
+{"branch_name": "<name or null>",
+ "branch_kind": "trunk|feature|detached|unknown",
+ "command": "<git command that succeeded, or null>",
+ "fallback_used": true|false,
+ "error": "<message or null>"}
+```
+
+The probe is side-effect-free (no file writes). It does NOT consume
+one of the two `discovery_iterations` allotted to full discovery
+runs.
 
 ## Workflow
 

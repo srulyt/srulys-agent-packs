@@ -41,12 +41,20 @@ section names, vocabulary, or rules.
 
 ## Document Information
 
+<!--
+  `Status:` and `Version:` semantics are governed by the
+  `versioning-discipline` skill (V1, V2, V15). New specs MUST start
+  at `Status: draft` / `Version: 0.0.1-draft`. The `-draft` suffix
+  agrees with `Status:` (present iff status==draft, absent iff
+  status==published). See `.github/skills/versioning-discipline/SKILL.md`.
+-->
+
 - **Author(s)**: [Name(s)]
 - **Created**: [YYYY-MM-DD]
 - **Last Updated**: [YYYY-MM-DD]
-- **Status**: [Draft | In Review | Approved | Archived]
+- **Status**: draft | published   <!-- two-value enum per versioning-discipline §V1 -->
 - **Reviewers**: [Names or "Pending assignment"]
-- **Version**: [vX.Y]
+- **Version**: 0.0.1-draft         <!-- semver; carries -draft iff status == draft -->
 - **Updates**: [vN.M]   <!-- update mode only; RFC-style -->
 - **Obsoletes**: [vN.M] <!-- update mode, full replacement only -->
 

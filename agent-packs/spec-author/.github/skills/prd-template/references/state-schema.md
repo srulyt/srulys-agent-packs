@@ -34,14 +34,24 @@ README links here; do not restate fields elsewhere.
 | `stop_a_disambiguation_attempts` | `integer` (>=0) | yes | C4 binary re-prompt counter. |
 | `version_bump` | `object \| null` | yes when `mode_kind == "update"`, else `null` | `{ from: string, to: string, kind: "MAJOR"\|"MINOR"\|"PATCH" }`. |
 | `last_verdict` | `"pass" \| "revise" \| "block" \| null` | yes | Most recent critic verdict. |
+| `spec_status` | `"draft" \| "published"` | yes (mirrors front-matter once a spec exists; `null` until first read) | Mirror of the spec's `Status:` field per `versioning-discipline` §V1/V15. |
+| `spec_version` | `string \| null` | yes (mirrors front-matter) | SemVer; carries `-draft` iff `spec_status == draft`. |
+| `branch_name` | `string \| null` | yes (nullable when probe unavailable) | Result of the V5 branch probe. |
+| `branch_kind` | `"trunk" \| "feature" \| "detached" \| "unknown"` | yes | V5 categorisation. |
+| `branch_inference_at` | ISO-8601 `string \| null` | yes | Timestamp of the last branch probe; re-checked at session-start. |
+| `mode_signal` | `"explicit" \| "branch" \| "preserved" \| null` | yes | Per `versioning-discipline` §V4. |
+| `keep_draft_acknowledged` | `boolean` | yes | Per V6 `KEEP-DRAFT` reply; reset to `false` every turn. |
+| `awaiting_mode_decision` | `boolean` | yes | New parking phase per V6. |
+| `last_publish_version` | `string \| null` | yes | Helps re-draft (V11) compute `<next>-draft`. |
+| `mutated_this_turn` | `boolean` | yes | Did the drafter mutate the spec this turn? Gates the V7 pre-merge reminder. |
 | `updated_at` | ISO-8601 `string` | yes | Mandatory on every write. |
 
 ### `phase` enum
 
-`intake`, `awaiting-output-location`, `context-discovery`,
-`awaiting-structure-approval`, `awaiting-interview-answers`,
-`drafting`, `review`, `complete`, `complete-with-warnings`,
-`failed`.
+`intake`, `awaiting-output-location`, `awaiting-mode-decision`,
+`context-discovery`, `awaiting-structure-approval`,
+`awaiting-interview-answers`, `drafting`, `review`, `complete`,
+`complete-with-warnings`, `failed`.
 
 ## Machine-readable form
 
@@ -59,6 +69,9 @@ README links here; do not restate fields elsewhere.
     "interview_required", "interview_complete", "interview_retries",
     "discovery_iterations", "draft_iterations", "critic_iterations",
     "stop_a_disambiguation_attempts", "version_bump", "last_verdict",
+    "spec_status", "spec_version", "branch_name", "branch_kind",
+    "branch_inference_at", "mode_signal", "keep_draft_acknowledged",
+    "awaiting_mode_decision", "last_publish_version", "mutated_this_turn",
     "updated_at"
   ],
   "properties": {
@@ -71,7 +84,7 @@ README links here; do not restate fields elsewhere.
     "spec_kind":         { "enum": ["product", "technical", "mixed", null] },
     "awaiting_output_location": { "type": "boolean" },
     "output_location_attempts": { "type": "integer", "minimum": 0 },
-    "phase":             { "enum": ["intake", "awaiting-output-location", "context-discovery", "awaiting-structure-approval", "awaiting-interview-answers", "drafting", "review", "complete", "complete-with-warnings", "failed"] },
+    "phase":             { "enum": ["intake", "awaiting-output-location", "awaiting-mode-decision", "context-discovery", "awaiting-structure-approval", "awaiting-interview-answers", "drafting", "review", "complete", "complete-with-warnings", "failed"] },
     "structure_proposed":       { "type": "boolean" },
     "structure_approved":       { "type": "boolean" },
     "structure_overrides":      { "type": "array", "items": { "type": "string" } },
@@ -98,6 +111,16 @@ README links here; do not restate fields elsewhere.
       ]
     },
     "last_verdict": { "enum": ["pass", "revise", "block", null] },
+    "spec_status":   { "enum": ["draft", "published", null] },
+    "spec_version":  { "type": ["string", "null"] },
+    "branch_name":   { "type": ["string", "null"] },
+    "branch_kind":   { "enum": ["trunk", "feature", "detached", "unknown"] },
+    "branch_inference_at": { "type": ["string", "null"], "format": "date-time" },
+    "mode_signal":   { "enum": ["explicit", "branch", "preserved", null] },
+    "keep_draft_acknowledged": { "type": "boolean" },
+    "awaiting_mode_decision":  { "type": "boolean" },
+    "last_publish_version":    { "type": ["string", "null"] },
+    "mutated_this_turn":       { "type": "boolean" },
     "updated_at":   { "type": "string", "format": "date-time" }
   }
 }

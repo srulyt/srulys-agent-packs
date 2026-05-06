@@ -47,6 +47,11 @@ blocks below.
 
 ## Skills to Load
 
+- `versioning-discipline` — **load unconditionally**. Source of
+  truth for V18 quality checklist and the new D6/D7 sub-rubrics:
+  `d6.cross-ref-integrity`, `d7.status-version-consistency`,
+  `d7.draft-no-bump`, `d7.publish-changelog`,
+  `d7.numbering-stability-published`, `d7.initial-state`.
 - `prd-quality-rubric` — dimensions D1–D10, scoring rules,
   thresholds, verdict logic.
 - `prd-template` — catalogue + complexity heuristic (used for D1
@@ -79,8 +84,8 @@ missing.
 | **D3 naming-consistency** | both modes | Do section names match the neutral catalogue, OR a Stop-A-approved override? |
 | **D4 content-quality** | both modes | Clarity; testability of acceptance criteria (EARS-aligned where applicable — see `spec-driven-prd-best-practices` §4a); NFR↔FR traceability where NFRs exist; no fabrication; **evidence discipline + severity schedule** per `prd-quality-rubric` §D4 (Evidence-discipline violations); **format hygiene** per the same skill (paragraphs are unwrapped — single source line — no bold-as-header, FR statements use EARS, ACs use Given/When/Then nested under their FR). |
 | **D5 changelog-completeness** | update only | Does `CHANGELOG.md` exist, use the Keep-a-Changelog categories, and account for every change visible between prior and revised? |
-| **D6 id-stability** | update only | Do all prior requirement IDs still resolve (renames carry alias; deprecations preserve ID + status marker)? |
-| **D7 versioning-correctness** | update only | Does the version bump match the rule (MAJOR/MINOR/PATCH per `prd-evolution`)? Is the `Updates:` / `Obsoletes:` header present? |
+| **D6 id-stability** | update only | Do all prior requirement IDs still resolve (renames carry alias; deprecations preserve ID + status marker)? **Sub-rubric `d6.cross-ref-integrity` (severity: blocker)**: every renumber/insert/delete in the drafter's `cross-ref-audit-json` MUST have all internal references updated; `orphaned_references` MUST be empty (`versioning-discipline` §V12). |
+| **D7 versioning-correctness** | both modes (creation: `d7.initial-state` only; update: full set) | Does the version bump match the rule, and is `Status:` / `Version:` consistent with `versioning-discipline`? Sub-rubrics: **`d7.status-version-consistency`** (blocker) — `Status` and `Version` agree on draft vs. published per V1/V15; **`d7.draft-no-bump`** (blocker) — no `Version:` mutation while `Status: draft` (V3); **`d7.publish-changelog`** (blocker) — publish iff CHANGELOG entry written (V17, OQ-5); **`d7.numbering-stability-published`** (blocker) — published IDs were not renumbered (V9); **`d7.initial-state`** (creation-mode minimal check) — new specs MUST start at `Status: draft` / `Version: 0.0.1-draft` (V2). The classic `Updates:` / `Obsoletes:` header check from `prd-evolution` continues to apply in update mode. |
 | **D8 section-stability** | update only | No silent renumbering. No removed gated section without a changelog rationale. |
 | **D9 scope-discipline** | both modes when `spec_kind` is `product` or `mixed`; `null` when `spec_kind == technical` | In `product` / `mixed` mode: no FR names an internal component, library, datastore, framework, language, or specific API; technical content (when present) is confined to a "Technical Considerations" appendix; "Out of Scope" contains no boilerplate "implementation is out of scope" item. In `technical` mode: D9 is `null`. |
 | **D10 edit-minimalism** | update only | Did the drafter make only the edits required by user feedback, missing context, and ID-stability mechanics? Penalise stylistic rewrites, unrequested reorderings, and template-drift renames per `prd-quality-rubric` §D10. Inputs: drafter's `edit-audit-json` plus a section-by-section diff between `prior_spec_path` and `spec_path`. |

@@ -40,7 +40,7 @@ flow:
 agents:
   - name: context-detective
     invocations: { min: 1, max: 2, must_complete: true }
-    allowed_tools: [read, search, write]
+    allowed_tools: [read, search, write, execute]
     write_scope_allow:
       - "^\\.spec-author/sessions/[^/]+/artifacts/discovery\\.json$"
       - "^\\.spec-author/sessions/[^/]+/artifacts/context-pack\\.md$"
@@ -196,3 +196,105 @@ rubrics:
     apply_to: artifact:specification
     severity: info
     threshold: 0.8
+
+  # --- New rubrics introduced by the versioning-discipline build ---
+  # All ship at severity: info per the standing iteration-1 rule
+  # (new rubrics start at info to avoid scoring regressions before
+  # baseline runs justify promotion to warn/error).
+
+  - id: versioning-initial-state
+    # Asserts a fresh greenfield draft is published with version
+    # v0.1.0-draft (or the configured initial pre-publish version)
+    # and that no version increment occurs while the spec stays in
+    # draft. Derived from V1, V2.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: versioning-no-mid-draft-changelog
+    # Asserts no CHANGELOG entry is written for changes made while
+    # the spec is still in its initial pre-publish draft window.
+    # The first CHANGELOG entry only appears at the publish
+    # transition. Derived from V3, V4.
+    apply_to: artifact:changelog
+    severity: info
+
+  - id: versioning-no-mid-draft-bump
+    # Asserts that renumbers, restructures, and edits made within
+    # an open draft window do NOT bump the version number — the
+    # draft version is held constant until publish. Derived from
+    # V2, V5.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: cross-ref-integrity
+    # Asserts that when FRs/NFRs/ACs are renumbered inside a draft,
+    # every internal cross-reference is updated to point at the new
+    # IDs (no dangling references, no stale FR-04 pointing at what
+    # is now FR-07). Derived from V5, V8.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: branch-probe-respected
+    # Asserts the context-detective ran the V5 git branch probe
+    # (`git rev-parse --abbrev-ref HEAD`) and surfaced the result
+    # in discovery.json so downstream agents can decide between V6
+    # (still-draft prompt) and V7 (published-on-main). Derived from
+    # V5, V6, V17.
+    apply_to: agent:context-detective
+    severity: info
+
+  - id: v6-prompt-verbatim
+    # Asserts that when the branch probe shows the spec is still in
+    # draft on main (no publish merge yet), the orchestrator emits
+    # the V6 still-draft prompt verbatim — no paraphrase, no
+    # silent publish, no skip. Derived from V6.
+    apply_to: agent:spec-author
+    severity: info
+
+  - id: no-silent-publish
+    # Asserts the system never transitions a spec from draft to
+    # published without an explicit user-facing prompt and a
+    # corresponding CHANGELOG entry. Any draft→published flip MUST
+    # be user-acknowledged. Derived from V6, V11, V14.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: publish-transition
+    # Asserts the publish transition (draft → 1.0.0 or the
+    # user-chosen initial published version) drops the `-draft`
+    # suffix, stamps the publication date, and leaves the prior
+    # draft version recoverable from the CHANGELOG. Derived from
+    # V11, V12.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: publish-initial-changelog
+    # Asserts that the initial publish writes the first CHANGELOG
+    # entry with the correct shape (version, date, summary of
+    # everything accumulated during the draft window) — not a
+    # placeholder, not empty. Derived from V11, V13.
+    apply_to: artifact:changelog
+    severity: info
+
+  - id: redraft-window-version
+    # Asserts that opening a re-draft of a published spec creates a
+    # new draft version (e.g. v1.1.0-draft on top of v1.0.0) rather
+    # than mutating the published version in place. Derived from
+    # V14, V15.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: published-id-freeze
+    # Asserts FR/NFR/AC IDs from the last published version are
+    # frozen across the redraft window — no renumbers of published
+    # IDs, only additions for new requirements. Derived from V15,
+    # V16.
+    apply_to: artifact:specification
+    severity: info
+
+  - id: no-mid-redraft-changelog
+    # Asserts the redraft window writes no CHANGELOG entries until
+    # the next publish transition (mirrors V3/V4 for re-drafts).
+    # Derived from V14, V18.
+    apply_to: artifact:changelog
+    severity: info

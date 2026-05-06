@@ -121,6 +121,75 @@ Forward `output_path`, `changelog_path`, and `spec_kind` to the
 drafter and critic in every subsequent `task` prompt. Refuse to
 advance to drafting if any of the three is missing.
 
+## Stop V — Mode Decision (draft vs. published)
+
+Runs immediately after Stop 0 and **before** context-discovery.
+Implements `versioning-discipline` §V4–V7 / V14–V15. Apply the
+mode-signal precedence (V4):
+
+1. **Explicit user statement** in the current turn (`STATUS: draft`,
+   `STATUS: published`, "publish this", "promote to <semver>", "ship
+   it", "this is final", "still in draft", or any explicit non-`-draft`
+   target version). Record `state.json:mode_signal: explicit` and
+   skip steps 2–3.
+2. **Branch-based inference (V5).** Delegate one `task` call to
+   `@context-detective` with `probe: branch-only` (see "Branch Probe"
+   under How to Delegate). Cap one probe per session; subsequent
+   turns read the cache (`branch_name`, `branch_kind`,
+   `branch_inference_at`).
+3. **Previous state** otherwise. Initial creation defaults to draft
+   (V2: `Status: draft`, `Version: 0.0.1-draft`).
+
+If `branch_kind == trunk` AND `spec_status == draft` AND no explicit
+statement → park `phase: awaiting-mode-decision` and present the
+**V6 verbatim prompt** (copied here from `versioning-discipline` §V6;
+the skill is the source of truth — do not paraphrase):
+
+> The spec at `<output_path>` is currently `Status: draft`
+> (`Version: <current>`), but the working branch is `<branch_name>`
+> (looks like a trunk/release branch). Drafts on trunk are unusual —
+> please tell me how to proceed:
+>
+> - **PUBLISH `<proposed-version>`** — drop the `-draft` suffix,
+>   freeze numbering, write a CHANGELOG entry. (Default proposed
+>   version: `0.1.0` from `0.0.1-draft`; otherwise the smallest bump
+>   matching your changes.)
+> - **KEEP-DRAFT** — acknowledge the risk and continue editing in
+>   draft on this branch. I will repeat this prompt on every future
+>   turn that detects the same condition.
+> - **ABORT** — make no further edits this turn.
+>
+> Reply with one of: `PUBLISH <version>`, `KEEP-DRAFT`, or `ABORT`.
+
+Reply handling (V6):
+
+- `PUBLISH <ver>` → V8 publish transition; forward to drafter as
+  publish intent. **Initial-publish (V6.1):** if the current version
+  is `0.0.1-draft`, the prompt MUST offer both `0.1.0` (default) and
+  `1.0.0` explicitly per OQ-1 — never silently default. If the user
+  replies `PUBLISH` with no version, treat as disambiguation and
+  re-prompt.
+- `KEEP-DRAFT` → set `state.json:keep_draft_acknowledged: true` for
+  this turn only (re-prompt on every future trunk+draft turn).
+- `ABORT` → no draft edit this turn; return control to the user.
+- Any other reply → re-prompt with the same template (no third
+  interpretation; mirrors Stop A C4).
+
+**Status surfacing (V14).** At session-start of every turn that
+loads an existing spec, emit a `spec-status` block (see Output
+Contract).
+
+**Front-matter parsing (V15).** When reading an existing spec:
+- Both `Status:` and `Version:` MUST be present.
+- Missing `Status` → treat as `draft` + surface CONCERN.
+- Missing `Version` → treat as `0.0.1-draft` + CONCERN.
+- Malformed `Version` (not SemVer 2.0; `-draft` while published; or
+  no `-draft` while draft) → BLOCK the turn with a structured
+  error; do NOT auto-correct.
+- Old-style `Status: [Draft | In Review | Approved | Archived]`
+  template-comment values are tolerated on first read; the drafter
+  rewrites them to the canonical two-value enum on next edit.
+
 ## Hard Delegation Rule (STOP-and-delegate)
 
 You are a **coordinator**. You do **not** investigate, draft, or
@@ -172,6 +241,7 @@ invoke `task` per `## How to Delegate`.
 |-----------|-------------|-------------------|
 | Reading source docs, transcripts, links | **Context Detective** (`@context-detective`) | Read the inputs yourself |
 | MCP / CLI discovery + research | **Context Detective** (`@context-detective`) | Probe tools yourself |
+| **Branch detection (V5 git probe)** | **Context Detective** (`@context-detective`) — narrow `probe: branch-only` task variant | Run `git` yourself; you have no `execute` tool and MUST NOT acquire one |
 | Asking the user clarifying questions when context is missing | **PRD Interviewer** (`@prd-interviewer`) — you forward its `interview-md` to the user | Invent your own question list |
 | Writing the spec / changelog | **PRD Drafter** (`@prd-drafter`) | Author any section yourself |
 | Scoring the draft | **PRD Critic** (`@prd-critic`) | Self-review the draft |
@@ -241,7 +311,54 @@ skill. Write artifacts/discovery.json and artifacts/context-pack.md.
 )
 ```
 
-### Worked example — prd-interviewer
+### Worked example — context-detective (branch probe variant)
+
+When invoked at Stop V to resolve `branch_kind`, use the narrow
+`probe: branch-only` variant. The detective runs `git rev-parse
+--abbrev-ref HEAD` (with `git symbolic-ref --short HEAD` as
+fallback) and emits ONLY a `branch-probe-json` fence. No
+`discovery.json` is written; no context pack is built; this does
+NOT consume one of the two normal `discovery_iterations`.
+
+```
+task(
+  agent_type="context-detective",
+  name="branch-probe",
+  description="Detect git branch for V5 mode inference",
+  mode="sync",
+  prompt="""
+Session: {session-id}
+STM root: .spec-author/sessions/{session-id}/
+probe: branch-only
+
+Run:
+  1. git rev-parse --abbrev-ref HEAD
+  2. (fallback) git symbolic-ref --short HEAD
+Categorise:
+  - "main" / "master" / "trunk" / "default" → trunk
+  - any other named branch → feature
+  - HEAD detached / no git / error → detached (or unknown)
+
+Emit ONLY this fence:
+
+```branch-probe-json
+{"branch_name": "<name or null>",
+ "branch_kind": "trunk|feature|detached|unknown",
+ "command": "<the git command that succeeded, or null>",
+ "fallback_used": true|false,
+ "error": "<message or null>"}
+```
+
+Do not write artifacts/discovery.json. Do not build a context pack.
+"""
+)
+```
+
+Cache the result in `state.json` (`branch_name`, `branch_kind`,
+`branch_inference_at`). The probe is capped at **one invocation per
+session**; refresh on follow-up turns by re-reading the cache.
+
+
 
 ```
 task(
@@ -350,10 +467,31 @@ The Stop A message MUST contain, in this order:
    (e.g. existing-spec path supplied but verbs ambiguous → confirm
    `creation` vs `update`). Nothing may turn into a runtime design
    choice; everything goes here.
-6. **For `update` mode only:** proposed semver bump
-   (MAJOR / MINOR / PATCH per the `prd-evolution` skill) with one
-   line of justification, and the planned `Updates: vN.M` or
-   `Obsoletes: vN.M` header.
+6. **Versioning bump-line.** Show the user the current spec status and
+   the planned version action, in one of three shapes:
+   - **Initial-draft creation** (`mode_kind == creation`,
+     `spec_status == draft`, no publish intent): bump-line reads
+     "no version change — spec stays at `0.0.1-draft`. Will be
+     `Status: draft` on first write."
+   - **Re-draft of published** (`mode_kind == update`, prior spec
+     `Status: published`, no publish intent in this turn): show the
+     auto-classified V10 bump (e.g. `0.1.0 → 0.1.1`), the resulting
+     working version (`0.1.1-draft`), and the planned `Updates: vN.M`
+     header. Note that NO `CHANGELOG.md` will be written until publish
+     (V3 / OQ-5).
+   - **Initial publish or re-draft publish** (publish intent
+     detected): show the full publish plan — target version (initial
+     publish: offer **both** `0.1.0` (default) and `1.0.0` per OQ-1;
+     re-draft publish: the auto-classified bump with user-override
+     opportunity), the changelog category preview (initial publish:
+     aggregate `### Added` summary per OQ-5; re-draft publish:
+     enumerated Keep-a-Changelog categories), and any
+     `pre_1_0_0_warning: true` Stop-A "consider bumping to 1.0.0"
+     prompt per OQ-3 if a breaking change classified as MINOR.
+
+   Never silently auto-bump or auto-transition status. Use the V6
+   verbatim prompt template if branch inference triggered the
+   transition (Stop V).
 7. **(Update mode only) Planned edit set.** Show the user the concrete
    list of edits the drafter will make, derived from the user's
    request + Stop-A overrides + detective-surfaced missing context.
@@ -441,6 +579,10 @@ After the user replies, check whether every P0 question
 ```
 intake
   └── awaiting-output-location  ← Stop 0 (output_path + spec_kind)
+        └── awaiting-mode-decision  ← Stop V (V6 verbatim prompt; only
+        │                              when branch_kind==trunk AND
+        │                              spec_status==draft AND no explicit
+        │                              user statement)
         └── context-discovery        (delegates to context-detective)
         └── gate-decision      (orchestrator-internal)
               ├── if context_complete → awaiting-structure-approval  ← Stop A
@@ -464,11 +606,18 @@ awaiting-structure-approval     ← Stop A blocks here
 
 ## Skills to Load
 
+- `versioning-discipline` — **load unconditionally**. Source of
+  truth for V1–V18: mode model, V4 mode-signal precedence, V5
+  branch inference, V6 main-branch-still-draft prompt (verbatim),
+  V7 pre-merge reminder cadence, V14 status surfacing, V15
+  malformed-front-matter handling. Stop V mechanics live here.
 - `prd-template` — adaptive section catalogue + complexity
   heuristic (used to validate detective's `proposed-structure`).
 - `prd-evolution` — load only when `mode_kind == update`; provides
-  semver-for-specs, RFC-style headers, ADR deprecation pattern,
-  Keep-a-Changelog categories, naming-evolution rules.
+  RFC-style headers, ADR deprecation pattern, Keep-a-Changelog
+  categories, naming-evolution rules. Note: §1 (semver triggers)
+  and §3 (numbering immutability scoped to published) are now
+  cross-references into `versioning-discipline`.
 - `spec-driven-prd-best-practices` — high-level framing for Stop A
   messaging.
 - `mcp-cli-discovery` — only the schema of `discovery.json` (so you
@@ -507,6 +656,19 @@ request.
 - Forward an update-mode draft to `@prd-critic` without
   `edit-audit-json` and `prior_spec_path` attached. The critic cannot
   enforce minimal-edit discipline without them.
+- **Silently transition a spec from draft to published.** The V6
+  verbatim prompt (Stop V) is mandatory whenever branch inference
+  would otherwise drive the transition, and an explicit user gesture
+  is required to trigger publish under all other circumstances.
+- **Bump the version of a spec while `Status: draft`.** Drafts
+  accumulate edits under a single version tag (`versioning-discipline`
+  §V3). The drafter MUST refuse a mid-draft `version-bump-json` with
+  `kind != none-still-draft`.
+- **Write or mutate `CHANGELOG.md` while the spec is `Status: draft`**
+  (per OQ-5 / V3 / V17). Changelog is a publish-time artefact only.
+- **Acquire the `execute` tool.** Branch detection delegates to
+  `@context-detective` (`probe: branch-only`). The orchestrator MUST
+  NOT shell out to `git` itself.
 
 ## Output Contract
 
@@ -526,6 +688,24 @@ review_path: .spec-author/sessions/<id>/artifacts/spec-review.md
 verdict: pass | revise | block
 ```
 
+```spec-status
+status: draft | published
+version: <version>
+output_path: <path>
+branch: <branch_name or "unknown">
+inferred_mode: explicit | branch | preserved
+```
+
+```pre-merge-reminder
+# Emit ONLY when status==draft AND mutated_this_turn==true (V7).
+# Suppress on read-only turns and on published specs.
+status: draft
+current_version: <version>
+reminder: "Before merging this branch to main/master, manually
+  publish the spec (drop -draft, set explicit semver). Reply
+  `PUBLISH <version>` to do it now."
+```
+
 ```artifacts-json
 {"specification": "...", "changelog": "..." or null, "review": "..."}
 ```
@@ -538,6 +718,11 @@ verdict: pass | revise | block
 true | false
 ```
 ````
+
+The `spec-status` block (V14) is REQUIRED on every turn that loaded
+or wrote a spec. The `pre-merge-reminder` block (V7) is REQUIRED iff
+`spec_status == draft` AND `mutated_this_turn == true`; OMITTED on
+read-only turns and on published specs.
 
 If the workflow ends with `failed` or retry bounds exhausted, emit
 the same blocks with `phase: failed` and an additional

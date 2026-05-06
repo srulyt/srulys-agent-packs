@@ -109,20 +109,7 @@ Not legitimate (must be dropped):
 
 ### 1. Semver-for-specs (version bump)
 
-Apply Semantic Versioning 2.0 editorially:
-
-- **MAJOR** — scope or contract change. Removed requirements,
-  re-defined success metrics, redefined personas, rewritten goals.
-  Anything an external consumer would consider "the spec means
-  something different now".
-- **MINOR** — additive sections, additive requirements, clarified
-  acceptance criteria, new gated section because an axis newly
-  fires.
-- **PATCH** — typos, formatting, wording-only edits that do not
-  change interpretation.
-
-When in doubt between MAJOR and MINOR, surface the choice in the
-Stop A open-questions block — never decide silently.
+See `versioning-discipline` §V10 for post-publish bump classification, pre-1.0.0 nuance (OQ-3), and user-override rules.
 
 ### 2. RFC-style header annotations
 
@@ -138,8 +125,14 @@ Sections that materially changed carry an inline marker:
 
 ### 3. ID stability (ADR-style deprecation)
 
+> **Applies when `Status: published`.** Inside an active draft window
+> (initial draft or re-draft), renumbering of eligible items is
+> permitted per `versioning-discipline` §V11 / §V13. The rule below
+> governs published specs only. On any conflict between this section
+> and `versioning-discipline`, the latter wins.
+
 - Existing requirement IDs (FR-, NFR-, AC-, R-, OQ-, TS-) **keep
-  their numbers**. Renumbering is forbidden.
+  their numbers** once the spec is published. Renumbering is forbidden.
 - Removed requirements are **not deleted**. They become:
 
   ```
@@ -234,8 +227,24 @@ The critic uses these dimensions in update mode:
   and revised must appear in `CHANGELOG.md`.
 - **D6 id-stability** — every prior FR-/NFR-/AC-/R-/OQ-/TS- ID
   resolves in the revised spec.
+  - **Sub-rubric `d6.cross-ref-integrity`** (severity: blocker;
+    defined by `versioning-discipline` §V12) — every renumber /
+    insert / delete in the drafter's `cross-ref-audit-json` MUST
+    have all internal references updated. A single broken
+    cross-reference fails the dimension.
 - **D7 versioning-correctness** — bump matches the rule above; the
   `Updates:`/`Obsoletes:` header is present.
+  - **Sub-rubrics added by `versioning-discipline` §V18:**
+    - `d7.status-version-consistency` (blocker) — `Status` /
+      `Version` / `-draft` suffix must agree.
+    - `d7.draft-no-bump` (blocker) — `Version:` MUST NOT mutate
+      mid-draft (per V3).
+    - `d7.publish-changelog` (blocker) — publish ↔ changelog entry
+      is one-to-one.
+    - `d7.numbering-stability-published` (blocker) — published IDs
+      are immutable (V9).
+    - `d7.initial-state` (creation mode) — new specs MUST start at
+      `Status: draft` / `Version: 0.0.1-draft` (V2).
 - **D8 section-stability** — no silent renumbering or silent
   removal of gated sections.
 

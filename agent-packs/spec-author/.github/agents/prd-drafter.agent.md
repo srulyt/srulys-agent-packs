@@ -50,14 +50,24 @@ is undefined without the prior version.
 
 ## Skills to Load
 
+- `versioning-discipline` — **load unconditionally**. Source of
+  truth for V2 (initial state `0.0.1-draft` / `Status: draft`),
+  V3 (no mid-draft bump, no mid-draft changelog), V8 (publish
+  mechanics), V9 (post-publish numbering immutability), V10
+  (bump classification + pre-1.0.0 nuance), V11 (re-draft cycle),
+  V12 (cross-reference integrity — drives `cross-ref-audit-json`),
+  V13 (eligible items for draft renumbering), V15 (front-matter
+  parser + malformed handling), V17 (publish-time changelog
+  format).
 - `prd-template` — section catalogue + complexity heuristic. The
   catalogue declares each section as `mandatory` or
   `complexity-gated:<axis>`. Use it as the single source of truth
   for naming and for which sections to include.
 - `prd-evolution` — load **only when `mode == update`**. Provides
-  semver-for-specs rules, `Updates:`/`Obsoletes:` header
-  conventions, ADR-style deprecation pattern, Keep-a-Changelog
-  categories, naming-evolution + alias-table rules.
+  RFC-style `Updates:`/`Obsoletes:` headers, ADR-style deprecation
+  pattern, Keep-a-Changelog categories, naming-evolution + alias-
+  table rules. (Bump triggers and post-publish ID immutability are
+  cross-references into `versioning-discipline`.)
 - `spec-driven-prd-best-practices` — content-quality discipline
   (PR/FAQ framing, P0/P1/P2 prioritisation, outcome-over-output,
   testable acceptance criteria).
@@ -368,8 +378,66 @@ update_summary: <one paragraph; update mode only>
 ```
 
 ```version-bump-json
-{"from":"v1.0","to":"v1.1","kind":"minor","rationale":"additive: +FR-29 keyboard shortcuts; deprecates FR-07"}
+{
+  "from": "0.1.0" | "0.0.1-draft" | null,
+  "to":   "0.1.1-draft" | "0.1.0" | "1.0.0" | null,
+  "kind": "none-still-draft" | "publish-initial" | "publish-redraft" | "patch" | "minor" | "major",
+  "rationale": "<one line>",
+  "override": true | false,
+  "pre_1_0_0_warning": true | false
+}
 ```
+
+Rules for `version-bump-json`:
+
+- **REQUIRED on every turn that mutates a spec**, including creation
+  turns. Creation turns where the spec stays in draft emit
+  `kind: none-still-draft` with `from == to == "0.0.1-draft"` (or
+  whatever draft tag the spec carries).
+- `kind: publish-initial` is the only legal kind for the
+  `0.0.1-draft → 0.1.0|1.0.0` transition (V8).
+- `kind: publish-redraft` is used when re-publishing a spec that
+  entered the re-draft window (V11).
+- `pre_1_0_0_warning: true` MUST be set when a published spec at
+  `0.x.y` undergoes a change that would be MAJOR but is recorded as
+  MINOR per SemVer §4 (per OQ-3 — the orchestrator surfaces the
+  Stop A "consider 1.0.0" prompt).
+- The drafter MUST refuse to emit `kind != none-still-draft` while
+  `Status: draft` AND no publish intent was forwarded by the
+  orchestrator. A mid-draft bump is a V3 violation.
+- The drafter MUST refuse a `task` prompt that asks to renumber an
+  ID that existed in the prior published version (V9). Refuse with
+  a structured error that names the offending IDs and cites V9.
+
+```cross-ref-audit-json
+{
+  "renumbers": [
+    {"kind": "FR", "from": "FR-3", "to": "FR-4", "reason": "insert FR-3 above; shifts successors"}
+  ],
+  "inserts":   [{"kind": "FR", "id": "FR-3"}],
+  "deletes":   [],
+  "references_updated": [
+    {"in_section": "AC-3.1", "old": "FR-3", "new": "FR-4"},
+    {"in_section": "AC-3.2", "old": "FR-3", "new": "FR-4"},
+    {"in_section": "Risks & Mitigations", "old": "see FR-3", "new": "see FR-4"}
+  ],
+  "scan_complete": true,
+  "orphaned_references": []
+}
+```
+
+Rules for `cross-ref-audit-json` (V12):
+
+- **REQUIRED on every turn that touches IDs** (renumber, insert, or
+  delete). On turns that touch no IDs, emit
+  `{"renumbers":[],"inserts":[],"deletes":[],"references_updated":[],"scan_complete":true,"orphaned_references":[]}`.
+- Reference scan MUST cover: inline `FR-N`/`NFR-N`/`AC-<FR>.<n>`/
+  `R-N`/`OQ-N`/`TS-N`; anchored links `[FR-3](#fr-3)`; "depends on
+  FR-N" / "see FR-N" / "supersedes FR-N" prose; AC sub-IDs whose
+  parent FR shifted; `## Changes since v<N>` lines.
+- `orphaned_references` MUST be empty at end-of-turn. A non-empty
+  array fails the critic's blocker-severity sub-rubric
+  `d6.cross-ref-integrity` (V12 / V18).
 
 ```edit-audit-json
 {
@@ -403,10 +471,13 @@ true | false
 ```
 ````
 
-The `changelog-path` and `version-bump-json` blocks are **required
-in update mode** and **omitted in creation mode**. The
+The `changelog-path` block is **required at publish only** (V8 / V17)
+and **omitted otherwise** (no changelog mid-draft per OQ-5 / V3). The
 `edit-audit-json` block is **required in update mode** and **omitted
-in creation mode**.
+in creation mode**. The `version-bump-json` block is **REQUIRED on
+every turn** (creation turns emit `kind: none-still-draft`). The
+`cross-ref-audit-json` block is **REQUIRED on every turn** (empty
+arrays when no IDs were touched).
 
 ## Must NOT
 

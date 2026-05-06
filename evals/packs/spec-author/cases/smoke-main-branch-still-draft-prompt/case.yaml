@@ -1,0 +1,59 @@
+id: smoke-main-branch-still-draft-prompt
+pack: spec-author
+description: "Smoke test: V5 / V6 main-branch-still-draft prompt. The branch probe returns 'main', the spec is Status: draft, and the user did not state mode in the current turn. The orchestrator parks at awaiting-mode-decision and presents the V6 verbatim PUBLISH/KEEP-DRAFT/ABORT prompt. The scripted user replies KEEP-DRAFT; no transition occurs; the pre-merge reminder fires; spec_status remains draft."
+
+prompt_file: prompt.md
+
+mode_kind: update
+spec_kind: product
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    # Branch is `main` by default after `git_init`; that's the trunk
+    # the V5 probe should report.
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+scripted_user:
+  - on_phase: awaiting-mode-decision
+    reply: "KEEP-DRAFT"
+  - on_phase: awaiting-structure-approval
+    reply: "APPROVE"
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/quick-toggle\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^.+/CHANGELOG\\.md$"
+      required: false
+      forbidden: true
+  invocations:
+    context-detective: { min: 1, max: 3 }   # branch-probe + discovery
+    prd-interviewer:   { min: 0, max: 0 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  rubric_targets:
+    "artifact:specification": "^docs/specs/quick-toggle\\.md$"
+  rubric_overrides:
+    branch-probe-respected: { severity: info }
+    v6-prompt-verbatim:     { severity: info }
+    no-silent-publish:      { severity: info }

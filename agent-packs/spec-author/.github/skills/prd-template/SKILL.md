@@ -40,7 +40,7 @@ user-approved overrides at Stop A; otherwise it stays neutral.
 
 | Section | Purpose | ID convention |
 |---------|---------|---------------|
-| Document Information | Status, version, owners, reviewers, last-updated | — |
+| Document Information | Status, version, owners, reviewers, last-updated. Note: `Status:` and `Version:` semantics are governed by [`versioning-discipline`](../versioning-discipline/SKILL.md) (V1, V2, V15) — not by this skill. | — |
 | Problem Statement | What problem, who feels it, evidence | — |
 | Goals & Success Metrics | Business / user / technical outcomes; measurable | — |
 | Users & Personas | Primary users, their needs, expected outcome | — |

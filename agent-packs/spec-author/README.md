@@ -53,12 +53,25 @@ gates), not just in prose:
   `awaiting-output-location` and asks the user. `output_path` must
   be a repo-relative `.md` path that does not begin with
   `.spec-author/` and does not escape the workspace.
+- **Stop V — Mode decision (draft vs. published).** Runs after
+  Stop 0 and before context-discovery. Implements
+  `versioning-discipline` §V4–V7. Resolves `Status: draft` vs.
+  `published` using (1) explicit user statement, (2) git branch
+  inference (delegated to `@context-detective` as a narrow
+  `probe: branch-only` task), (3) previous state. When the working
+  branch is trunk and the spec is still draft and the user has not
+  stated mode in the current turn, the orchestrator parks at
+  `awaiting-mode-decision` and presents the V6 verbatim
+  `PUBLISH / KEEP-DRAFT / ABORT` prompt. Initial publish offers
+  both `0.1.0` (default) and `1.0.0` per OQ-1.
 - **Stop A — Structure approval.** Before the drafter runs, the
   user is shown the proposed mode (`creation` | `update`), the
   spec kind, the target output path, the chosen section set
   (mandatory + complexity-gated include / omit), open questions,
-  and (in update mode) the proposed version bump. The orchestrator
-  only advances when the user replies `APPROVE` or
+  and the versioning bump-line (one of three shapes per
+  `versioning-discipline`: initial-draft creation, re-draft of
+  published, or initial/redraft publish — never silent). The
+  orchestrator only advances when the user replies `APPROVE` or
   `EDIT: <changes>`. Ambiguous replies are re-prompted with a
   binary template until matched.
 - **Stop B — Interview.** When **Context Detective** reports
@@ -68,6 +81,36 @@ gates), not just in prose:
   user answers. If any P0 remains unanswered after one targeted
   retry, the drafter proceeds with `[TBD]` placeholders and
   surfaces the gaps in the spec's "Open Questions" section.
+
+## Versioning discipline (draft vs. published)
+
+The pack enforces a two-mode lifecycle for every spec, governed by
+the [`versioning-discipline`](.github/skills/versioning-discipline/SKILL.md)
+skill (rules V1–V18):
+
+- **V2 — Initial state.** Every newly created spec lands at
+  `Status: draft`, `Version: 0.0.1-draft`. The drafter MUST emit
+  those values verbatim — no silent starter version, even if the
+  user prompt mentions one.
+- **V3 — Draft invariants.** Edits in draft do NOT bump the
+  version, and NO `CHANGELOG.md` entry is written until publish
+  (per user OQ-5). All edits accumulate under one draft tag.
+- **V8 — Publish transition.** Triggered ONLY by an explicit
+  user gesture (`PUBLISH <ver>`, "publish this", "ship it"). At
+  publish, the drafter strips `-draft`, freezes numbering, sets
+  `Status: published`, and writes the changelog entry (aggregate
+  `### Added` summary at initial publish per OQ-5; enumerated
+  Keep-a-Changelog categories on subsequent publishes).
+- **V9 — Post-publish stability.** Published IDs are immutable;
+  removals become `[Deprecated in vX.Y]` markers in place.
+- **V11 — Re-draft cycle.** Editing a published spec sets
+  `<next>-draft` as the working version; prior-published IDs stay
+  frozen (OQ-6 strict freeze); newly added items in the re-draft
+  window may be reordered until publish.
+- **V12 — Cross-reference integrity.** Every renumber/insert/
+  delete updates all internal references atomically; the drafter's
+  `cross-ref-audit-json` and the critic's `d6.cross-ref-integrity`
+  sub-rubric (blocker) enforce this.
 
 ## Installation
 
@@ -241,8 +284,9 @@ does not restate the field list to avoid drift.
 
 ## Evals
 
-The companion eval pack lives at `evals/packs/spec-author/`. Eight
-smoke cases ship at the first cut:
+The companion eval pack lives at `evals/packs/spec-author/`.
+Thirteen smoke cases ship at this cut (8 original + 5 new for
+versioning-discipline):
 
 1. `smoke-greenfield-context-complete` — Stop A path only
    (`spec_kind: product`).
@@ -269,9 +313,32 @@ smoke cases ship at the first cut:
    and no `S1, S2` legacy scheme. Exercises the D4 evidence-
    discipline severity schedule: any such citation forces a
    `blocker` finding and a `block` verdict.
+9. `smoke-creation-initial-draft-state` — V2: a newly created spec
+   lands at `Status: draft`, `Version: 0.0.1-draft`. No
+   `CHANGELOG.md` is written. Drafter's `version-bump-json` reads
+   `kind: none-still-draft`.
+10. `smoke-draft-renumber-with-cross-refs` — V12 / V13: user adds
+    an FR in the middle of the draft list; successors renumber AND
+    every cross-reference (`AC-<FR>.<n>`, "see FR-N", anchored
+    links) is updated atomically. Drafter's `cross-ref-audit-json`
+    is non-empty and `orphaned_references` is empty.
+11. `smoke-main-branch-still-draft-prompt` — V5/V6: branch probe
+    returns `main`, spec is `Status: draft`, the V6 verbatim
+    `PUBLISH/KEEP-DRAFT/ABORT` prompt is presented, the user
+    replies `KEEP-DRAFT`, and no transition occurs. Pre-merge
+    reminder fires.
+12. `smoke-publish-initial` — V8 / OQ-1 / OQ-5: user replies
+    `PUBLISH 0.1.0`; spec front-matter flips to `Status: published`,
+    `Version: 0.1.0`; CHANGELOG.md created with an aggregate
+    `### Added` summary line.
+13. `smoke-redraft-of-published` — V11: user edits a published spec;
+    spec enters re-draft window with `<next>-draft`; published IDs
+    remain frozen (OQ-6 strict); new IDs get next-available
+    numbering; pre-merge reminder fires.
 
 Together the cases cover all three `spec_kind` values (`product`,
-`technical`, `mixed`).
+`technical`, `mixed`) and the full draft → publish → re-draft
+lifecycle.
 
 ## Tool naming alias
 
