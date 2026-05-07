@@ -30,8 +30,11 @@ import json
 import os
 import re
 import secrets
+import shutil
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -62,6 +65,7 @@ from .judge.subprocess_runner import (
 )
 from .sut_runner import (
     CopilotBinNotFound as SUTCopilotBinNotFound,
+    kill_all_active as kill_all_active_suts,
     run_sut_once,
 )
 
@@ -93,6 +97,10 @@ class PackRunOptions:
     fail_fast: bool = False
     sut_timeout_seconds: float = 1800.0
     judge_timeout_seconds: float = 600.0
+    # Case-level parallelism. 1 = sequential (current behavior).
+    # >1 = ThreadPoolExecutor fanout across cases; per-case work is
+    # I/O-bound (subprocess + judge HTTP), so threads are fine.
+    parallelism: int = 1
     # When set, run-case reuses this fixture and skips SUT execution.
     fixture_path: str | None = None
     # When True, do not invoke the SUT — only run judge+score against
@@ -105,6 +113,27 @@ class PackRunOptions:
 
 
 _SHORT_HEX = re.compile(r"^[0-9a-f]+$")
+
+
+def _safe_rmtree(path: str | None, log_progress=lambda *a, **k: None) -> None:
+    """Best-effort removal of a per-case workspace dir on hard-kill paths.
+
+    Patch 4: when a case is hard-killed (per-case timeout or pack-level
+    watchdog), we drop the workspace temp dir to keep disk usage bounded
+    across long-running smoke tests. Failures are logged and swallowed —
+    leftover dirs are surfaced by the existing ``cleanup-orphans`` CLI.
+    """
+    if not path:
+        return
+    try:
+        p = Path(path)
+        if p.exists():
+            shutil.rmtree(p, ignore_errors=True)
+    except Exception as exc:  # pragma: no cover - defensive
+        try:
+            log_progress(f"warning: workspace cleanup failed for {path}: {exc}")
+        except Exception:
+            pass
 
 
 def mint_run_id(seq: int) -> str:
@@ -236,6 +265,8 @@ def run_one_case(
     repo_root: str,
     log_progress=lambda *a, **k: None,
     judge_calls_remaining: int | None = None,
+    judge_semaphore: "threading.Semaphore | None" = None,
+    results_lock: "threading.Lock | None" = None,
 ) -> CaseOutcome:
     """Run a single case end-to-end. See module docstring for flow."""
     eval_root = options.evals_root
@@ -324,11 +355,13 @@ def run_one_case(
                 harness_error=f"copilot-bin-not-found: {exc}",
             )
         if sut_res.timed_out:
+            _safe_rmtree(ws_root, log_progress)
             return CaseOutcome(
                 case_id=case.id, run_id=run_id, status="error",
                 harness_error=(
-                    f"SUT exceeded sut_timeout_seconds="
-                    f"{options.sut_timeout_seconds}; stderr_tail="
+                    f"sut-timeout-killed: case exceeded "
+                    f"{int(options.sut_timeout_seconds)} seconds, "
+                    f"subprocess tree terminated; stderr_tail="
                     f"{sut_res.stderr_tail}"
                 ),
             )
@@ -419,12 +452,21 @@ def run_one_case(
         f"strict_pass={spec.loop_convergence.is_strict})"
     )
     try:
-        run_results = run_manifest(
-            manifest,
-            copilot_bin=options.copilot_bin,
-            timeout_seconds=options.judge_timeout_seconds,
-            judge_seed=options.judge_seed,
-        )
+        if judge_semaphore is not None:
+            with judge_semaphore:
+                run_results = run_manifest(
+                    manifest,
+                    copilot_bin=options.copilot_bin,
+                    timeout_seconds=options.judge_timeout_seconds,
+                    judge_seed=options.judge_seed,
+                )
+        else:
+            run_results = run_manifest(
+                manifest,
+                copilot_bin=options.copilot_bin,
+                timeout_seconds=options.judge_timeout_seconds,
+                judge_seed=options.judge_seed,
+            )
     except JudgeCopilotBinNotFound as exc:
         return CaseOutcome(
             case_id=case.id, run_id=run_id, status="error",
@@ -471,7 +513,11 @@ def run_one_case(
     # Persist as JSONL line + markdown report (matches existing `score` flow).
     results_dir = str(paths_layout.results_local_dir(eval_root, spec.pack))
     try:
-        jsonl_path = store.append(verdict, results_dir=results_dir)
+        if results_lock is not None:
+            with results_lock:
+                jsonl_path = store.append(verdict, results_dir=results_dir)
+        else:
+            jsonl_path = store.append(verdict, results_dir=results_dir)
     except Exception as exc:
         log_progress(f"[{case.id}] WARNING: failed to append results JSONL: {exc}")
         jsonl_path = None
@@ -534,6 +580,7 @@ def _build_pack_summary(
     exit_code: int,
     judge_calls_used: int,
     wall_clock_seconds: float,
+    parallelism_used: int = 1,
 ) -> dict[str, Any]:
     cases_json: list[dict[str, Any]] = []
     for o in outcomes:
@@ -569,6 +616,8 @@ def _build_pack_summary(
             "judge": spec_models.get("judge"),
         },
         "judge_calls_used": judge_calls_used,
+        "parallelism_used": parallelism_used,
+        "wall_clock_real_elapsed_seconds": round(wall_clock_seconds, 3),
         "resolved_budgets": (
             {
                 "max_judge_calls_per_loop": options.max_judge_calls,
@@ -628,6 +677,11 @@ def _write_summary(out_path: str, summary: dict[str, Any]) -> None:
 def run_pack(options: PackRunOptions, *, repo_root: str) -> int:
     """Execute the pack and return the process exit code (0/1/2)."""
 
+    if options.parallelism is None or options.parallelism < 1:
+        raise ValueError(
+            f"parallelism must be >= 1 (got {options.parallelism!r})"
+        )
+
     started_at = _now_iso()
     t0 = time.monotonic()
     outcomes: list[CaseOutcome] = []
@@ -635,10 +689,14 @@ def run_pack(options: PackRunOptions, *, repo_root: str) -> int:
     exit_code = 0
     judge_calls_used = 0
     spec: models.PackSpec | None = None
+    parallelism_used = max(1, int(options.parallelism))
+
+    progress_lock = threading.Lock()
 
     def progress(msg: str) -> None:
-        sys.stderr.write(msg + "\n")
-        sys.stderr.flush()
+        with progress_lock:
+            sys.stderr.write(msg + "\n")
+            sys.stderr.flush()
 
     def finalise(code: int, err: str | None) -> int:
         completed_at = _now_iso()
@@ -648,6 +706,7 @@ def run_pack(options: PackRunOptions, *, repo_root: str) -> int:
             started_at=started_at, completed_at=completed_at,
             harness_error=err, exit_code=code,
             judge_calls_used=judge_calls_used, wall_clock_seconds=wc,
+            parallelism_used=parallelism_used,
         )
         try:
             _write_summary(options.out_path, summary)
@@ -679,29 +738,103 @@ def run_pack(options: PackRunOptions, *, repo_root: str) -> int:
             return finalise(2, f"no cases match subset {options.cases_subset!r}")
         return finalise(2, f"no cases found under evals/packs/{options.pack}/cases/")
 
-    # Run loop.
+    # Pre-load every case so we can split parallel-safe vs sequential.
+    # A failure here yields an "error" outcome but does not abort the
+    # rest of the pack (matches prior behaviour).
+    @dataclass
+    class _Pending:
+        index: int  # input order (sorted by case dir name)
+        case_yaml: Path
+        case: models.CaseSpec | None
+        load_error: str | None = None
+
+    pending: list[_Pending] = []
     for i, case_yaml in enumerate(case_yamls, start=1):
         try:
-            case = loaders.load_case(case_yaml)
+            c = loaders.load_case(case_yaml)
+            pending.append(_Pending(index=i, case_yaml=case_yaml, case=c))
         except Exception as exc:
-            outcomes.append(CaseOutcome(
-                case_id=case_yaml.parent.name, run_id="-",
-                status="error",
-                harness_error=f"case-invalid ({case_yaml}): {exc}",
+            pending.append(_Pending(
+                index=i, case_yaml=case_yaml, case=None,
+                load_error=f"case-invalid ({case_yaml}): {exc}",
             ))
-            harness_error = "case-invalid"
-            if options.fail_fast:
-                exit_code = 2
-                break
-            continue
 
-        # Wall-clock budget check before starting the case.
+    # Slot results by input index so the final cases[] is stably ordered.
+    slots: dict[int, CaseOutcome] = {}
+
+    judge_calls_lock = threading.Lock()
+    results_lock = threading.Lock()
+    judge_semaphore: threading.Semaphore | None
+    if parallelism_used > 1:
+        judge_semaphore = threading.Semaphore(parallelism_used)
+    else:
+        judge_semaphore = None
+
+    fail_fast_tripped = threading.Event()
+    budget_tripped = threading.Event()
+    # When non-zero, recorded by the watchdog at the moment the
+    # pack-level wall-clock cap fires. Used for ``pack-loop-budget-
+    # exceeded: hard-killed at Ns`` messaging.
+    budget_killed_at: dict[str, float] = {"elapsed": 0.0}
+
+    # ---- pack-level watchdog (patch 4) ---------------------------------
+    #
+    # The per-case wall-clock check above runs only between dispatches.
+    # Under parallelism>1, if every worker thread is blocked inside a
+    # SUT subprocess that never exits, we never get back to the
+    # dispatch loop and the cap never fires. The watchdog runs on a
+    # daemon thread, polls every 10s, and on trip:
+    #   1. sets ``budget_tripped`` so the dispatcher stops scheduling;
+    #   2. hard-kills every still-running SUT subprocess via the
+    #      ``sut_runner`` registry (so ``communicate`` returns and the
+    #      worker can finish its case as ``error``);
+    #   3. records ``budget_killed_at`` so post-pool reconciliation can
+    #      stamp unfinished cases with the correct error string.
+    watchdog_stop = threading.Event()
+
+    def _watchdog() -> None:
+        while not watchdog_stop.wait(10):
+            if options.max_wall_clock_seconds is None:
+                continue
+            elapsed = time.monotonic() - t0
+            if elapsed >= options.max_wall_clock_seconds and not budget_tripped.is_set():
+                budget_tripped.set()
+                budget_killed_at["elapsed"] = elapsed
+                progress(
+                    f"watchdog: pack-loop-budget-exceeded at {elapsed:.0f}s "
+                    f"(cap={options.max_wall_clock_seconds}s); "
+                    "hard-killing all running SUT subprocesses"
+                )
+                try:
+                    n = kill_all_active_suts()
+                    progress(f"watchdog: signaled {n} SUT subprocess(es)")
+                except Exception as exc:
+                    progress(f"watchdog: kill_all_active_suts failed: {exc!r}")
+                return
+
+    watchdog_thread: threading.Thread | None = None
+    if options.max_wall_clock_seconds is not None:
+        watchdog_thread = threading.Thread(
+            target=_watchdog, name="pack-runner-watchdog", daemon=True,
+        )
+        watchdog_thread.start()
+
+    def _run_pending(p: _Pending) -> CaseOutcome:
+        nonlocal harness_error, judge_calls_used
+        if p.load_error is not None:
+            return CaseOutcome(
+                case_id=p.case_yaml.parent.name, run_id="-",
+                status="error", harness_error=p.load_error,
+            )
+        case = p.case  # type: ignore[assignment]
+        # Wall-clock budget check before launching this case.
         elapsed = time.monotonic() - t0
         if (
             options.max_wall_clock_seconds is not None
             and elapsed >= options.max_wall_clock_seconds
         ):
-            outcomes.append(CaseOutcome(
+            budget_tripped.set()
+            return CaseOutcome(
                 case_id=case.id, run_id="-",
                 status="error",
                 harness_error=(
@@ -709,36 +842,190 @@ def run_pack(options: PackRunOptions, *, repo_root: str) -> int:
                     f"max_wall_clock_seconds_per_loop="
                     f"{options.max_wall_clock_seconds}"
                 ),
-            ))
-            harness_error = "budget-exceeded"
-            break
+            )
 
-        run_id = mint_run_id(i)
-        progress(f"[{i}/{len(case_yamls)}] {case.id} (run-id={run_id})")
-        judge_remaining: int | None
-        if options.max_judge_calls is None:
-            judge_remaining = None
-        else:
-            judge_remaining = max(0, options.max_judge_calls - judge_calls_used)
+        run_id = mint_run_id(p.index)
+        progress(f"[{case.id}] start (run-id={run_id}, index={p.index}/{len(pending)})")
+        with judge_calls_lock:
+            if options.max_judge_calls is None:
+                judge_remaining: int | None = None
+            else:
+                judge_remaining = max(0, options.max_judge_calls - judge_calls_used)
         outcome = run_one_case(
-            spec=spec, spec_path=spec_path, case_path=str(case_yaml),
+            spec=spec, spec_path=spec_path, case_path=str(p.case_yaml),
             case=case, run_id=run_id, options=options,
             repo_root=repo_root, log_progress=progress,
             judge_calls_remaining=judge_remaining,
+            judge_semaphore=judge_semaphore,
+            results_lock=results_lock,
         )
-        outcomes.append(outcome)
-        judge_calls_used += outcome.judge_calls
+        with judge_calls_lock:
+            judge_calls_used += outcome.judge_calls
+        progress(f"[{case.id}] done (status={outcome.status})")
+        return outcome
 
+    # Split into parallel batch and sequential batch.
+    parallel_pending = [p for p in pending if p.case is None or p.case.parallel_safe]
+    sequential_pending = [p for p in pending if p.case is not None and not p.case.parallel_safe]
+
+    def _record(p: _Pending, outcome: CaseOutcome) -> bool:
+        """Slot a result; return True if we should stop scheduling more cases."""
+        nonlocal harness_error, exit_code
+        slots[p.index] = outcome
         if outcome.status == "error":
-            # Sticky harness_error on the pack summary if any case errored.
-            if outcome.harness_error and harness_error is None:
-                harness_error = outcome.harness_error
+            err_text = outcome.harness_error or ""
+            if "budget-exceeded" in err_text:
+                if harness_error is None:
+                    harness_error = "budget-exceeded"
+                return True
+            if p.load_error is not None:
+                if harness_error is None:
+                    harness_error = "case-invalid"
+                if options.fail_fast:
+                    return True
+                return False
+            if harness_error is None and err_text:
+                harness_error = err_text
             if options.fail_fast:
-                break
+                fail_fast_tripped.set()
+                return True
         elif outcome.status == "fail" and options.fail_fast:
-            break
+            fail_fast_tripped.set()
+            return True
+        return False
 
-    # Decide exit code.
+    # ---- parallel batch ------------------------------------------------
+    if parallelism_used > 1 and len(parallel_pending) > 1:
+        progress(
+            f"running {len(parallel_pending)} parallel-safe case(s) "
+            f"with parallelism={parallelism_used}"
+        )
+        with ThreadPoolExecutor(max_workers=parallelism_used) as pool:
+            futures = {pool.submit(_run_pending, p): p for p in parallel_pending}
+            for fut in as_completed(futures):
+                p = futures[fut]
+                try:
+                    outcome = fut.result()
+                except Exception as exc:
+                    outcome = CaseOutcome(
+                        case_id=(p.case.id if p.case else p.case_yaml.parent.name),
+                        run_id="-", status="error",
+                        harness_error=f"unhandled-exception: {exc!r}",
+                    )
+                stop = _record(p, outcome)
+                # Patch 4: the watchdog can flip ``budget_tripped`` from
+                # another thread. Treat that as an immediate stop signal
+                # — we still want already-completed futures to be
+                # recorded, but no further work should be scheduled and
+                # the pool should drain ASAP.
+                if stop or budget_tripped.is_set():
+                    for f in futures:
+                        if not f.done():
+                            f.cancel()
+                    if budget_tripped.is_set():
+                        if harness_error is None:
+                            harness_error = "pack-loop-budget-exceeded"
+                        break
+                    if stop:
+                        break
+    else:
+        # Sequential execution of "parallel-safe" set (parallelism=1, or
+        # only one such case). Behaviour byte-identical to pre-patch.
+        for p in parallel_pending:
+            if budget_tripped.is_set() or fail_fast_tripped.is_set():
+                break
+            outcome = _run_pending(p)
+            if _record(p, outcome):
+                break
+
+    # ---- sequential opt-out batch --------------------------------------
+    if (
+        sequential_pending
+        and not fail_fast_tripped.is_set()
+        and not budget_tripped.is_set()
+    ):
+        progress(
+            f"running {len(sequential_pending)} parallel_safe=false "
+            "case(s) sequentially"
+        )
+        for p in sequential_pending:
+            outcome = _run_pending(p)
+            if _record(p, outcome):
+                break
+
+    # ---- watchdog teardown + reconciliation (patch 4) ------------------
+    watchdog_stop.set()
+    if watchdog_thread is not None:
+        watchdog_thread.join(timeout=2)
+
+    # If the watchdog (or the per-case fast-path) tripped the pack-level
+    # budget, the executor may have left some cases unrecorded (cancelled
+    # before they ran, or never submitted because we're in the sequential
+    # branch). Stamp every still-unrecorded case as a hard-killed error
+    # so the JSON summary reflects the full pack.
+    if budget_tripped.is_set():
+        elapsed_killed = budget_killed_at["elapsed"] or (time.monotonic() - t0)
+        # Final sweep in case any SUTs spawned after the first kill burst.
+        try:
+            kill_all_active_suts()
+        except Exception:
+            pass
+        kill_msg = (
+            f"pack-loop-budget-exceeded: hard-killed at "
+            f"{elapsed_killed:.0f}s"
+        )
+        for p in pending:
+            if p.index in slots:
+                existing = slots[p.index]
+                # Re-label per-case sut-timeout-killed errors that were
+                # actually caused by the watchdog kill burst.
+                if (
+                    existing.status == "error"
+                    and existing.harness_error
+                    and existing.harness_error.startswith("sut-timeout-killed")
+                ):
+                    slots[p.index] = CaseOutcome(
+                        case_id=existing.case_id,
+                        run_id=existing.run_id,
+                        status="error",
+                        verdict=existing.verdict,
+                        harness_error=kill_msg,
+                        judge_calls=existing.judge_calls,
+                        failures=existing.failures,
+                        fixture_path=existing.fixture_path,
+                        results_path=existing.results_path,
+                        report_path=existing.report_path,
+                    )
+                continue
+            case_id = p.case.id if p.case else p.case_yaml.parent.name
+            slots[p.index] = CaseOutcome(
+                case_id=case_id, run_id="-", status="error",
+                harness_error=kill_msg,
+            )
+            # Best-effort cleanup of any workspace dir already allocated.
+            try:
+                ws = paths_layout.workspace_dir(
+                    options.evals_root, options.pack,
+                    workspace._safe_segment(case_id), "*",
+                )
+                # ws here is the case-level dir, not a specific run; the
+                # actual run-id was minted inside the worker, so we skip
+                # blind rmtree to avoid wiping co-tenant runs. The
+                # killed run's workspace is removed by the worker on
+                # the timeout return path.
+                _ = ws
+            except Exception:
+                pass
+        # The pack-level budget firing is the true root cause; overwrite
+        # any earlier per-case ``harness_error`` (e.g. "could not locate
+        # Copilot CLI session" from a half-completed in-flight case).
+        harness_error = kill_msg
+
+    # Assemble outcomes in stable input order.
+    for idx in sorted(slots):
+        outcomes.append(slots[idx])
+
+    # Decide exit code (mirror pre-patch semantics).
     if harness_error is not None:
         # If at least one case errored, exit 2.
         exit_code = 2

@@ -26,13 +26,6 @@ workspace:
 teardown:
   policy: delete-on-pass
 
-scripted_user:
-  - on_phase: awaiting-output-location
-    reply: "output_path: docs/specs/digest.md, spec_kind: product"
-  - on_phase: awaiting-structure-approval
-    reply: "APPROVE"
-
-# Explicitly disable any MCP tools the harness would otherwise expose.
 harness_overrides:
   disabled_tools:
     - "mcp_*"

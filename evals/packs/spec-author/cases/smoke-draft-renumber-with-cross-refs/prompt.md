@@ -8,5 +8,11 @@ publish intent. I'm on a feature branch. Please make the smallest
 edits required and update every cross-reference that points at the
 shifted FRs.
 
-When you propose the structure at Stop A, reply `APPROVE` on the
-first ask.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.

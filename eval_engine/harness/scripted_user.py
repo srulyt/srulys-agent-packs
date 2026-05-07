@@ -432,6 +432,11 @@ def run_with_subprocess(
             except OSError:
                 pass
     else:
+        # errors="replace" ensures the stdout reader thread can never
+        # crash on a stray non-UTF-8 byte. Without it, on Windows the
+        # default cp1252 codec would surface UnicodeDecodeError (e.g.
+        # byte 0x8f) inside subprocess._readerthread the first time
+        # the SUT emits a fancy quote / emoji / other non-cp1252 byte.
         proc = subprocess.Popen(
             cmd,
             cwd=str(workspace_root),
@@ -441,6 +446,7 @@ def run_with_subprocess(
             bufsize=1,
             text=True,
             encoding="utf-8",
+            errors="replace",
         )
 
         def _drain() -> None:

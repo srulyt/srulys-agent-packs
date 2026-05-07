@@ -356,6 +356,31 @@ def apply_double_invoke(
                     ),
                 ))
                 continue
+        if not scored:
+            # All judge invocations returned response files that parsed
+            # as JSON but produced no usable numeric score (e.g. the
+            # "score" field was missing, null, or non-numeric, so
+            # _coerce_score returned None while error stayed None).
+            # This is distinct from the ``errored and not scored`` branch
+            # above (which covers missing files / malformed JSON, where
+            # ``error`` is set on every response). Without this guard the
+            # average below blew up with ZeroDivisionError and aborted
+            # the entire pack run before the per-pack results JSON was
+            # written. Emit a structured judge-parse-failure verdict so
+            # the operator can see WHY this rubric had no signal, and
+            # let the harness continue to the next rubric / case.
+            verdicts.append(models.RubricVerdict(
+                rubric_id=rid, apply_to=applied, severity=sev, threshold=thr,
+                score=None,
+                rationale=(
+                    "judge-parse-failure: judges returned response files "
+                    "but none contained a parseable numeric score"
+                ),
+                evidence=[],
+                status="error",
+                message="judge-parse-failure: no parseable score in responses",
+            ))
+            continue
         score = sum(r.score for r in scored) / len(scored)
         status = "pass"
         message = ""

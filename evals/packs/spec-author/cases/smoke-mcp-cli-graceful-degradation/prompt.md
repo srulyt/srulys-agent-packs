@@ -10,4 +10,12 @@ Inputs available locally:
 
 Treat as single-team, no new datastore, no security-surface change.
 
-When you propose the structure at Stop A, I will reply `APPROVE`.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop 0 (output location):** `output_path: docs/specs/digest.md, spec_kind: product`
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.

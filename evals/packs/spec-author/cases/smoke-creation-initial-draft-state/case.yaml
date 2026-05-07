@@ -26,12 +26,6 @@ workspace:
 teardown:
   policy: delete-on-pass
 
-scripted_user:
-  - on_phase: awaiting-output-location
-    reply: "output_path: docs/specs/quick-toggle.md, spec_kind: product"
-  - on_phase: awaiting-structure-approval
-    reply: "APPROVE"
-
 expected:
   artifacts:
     - id: specification

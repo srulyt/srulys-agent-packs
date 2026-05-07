@@ -4,4 +4,11 @@ the IDs, and write the changelog entry.
 
 No other content edits this turn; just the publish transition.
 
-Reply `APPROVE` is fine when you propose the structure at Stop A.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.

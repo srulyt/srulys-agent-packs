@@ -266,6 +266,7 @@ def load_case(path: str | os.PathLike[str]) -> models.CaseSpec:
             case_dir=case_dir,
             where=f"{where}#scripted_user",
         ),
+        parallel_safe=bool(raw.get("parallel_safe", True)),
     )
 
 

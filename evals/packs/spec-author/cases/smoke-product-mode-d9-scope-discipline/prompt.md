@@ -22,5 +22,12 @@ nouns (datastore choices, message-bus choices, framework choices)
 must not appear in FRs or ACs. They belong in engineering design,
 not in this PRD.
 
-When you propose the section set at Stop A, I will reply `APPROVE`
-on the first ask.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop 0 (output location):** `output_path: docs/specs/digest.md, spec_kind: product`
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.

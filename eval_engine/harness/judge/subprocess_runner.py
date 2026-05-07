@@ -202,10 +202,18 @@ def run_one_judge_request(
     attempts = 2 if retry_on_malformed else 1
     for attempt in range(attempts):
         try:
+            # Force UTF-8 decoding with replacement on the captured
+            # pipes. Without an explicit encoding, Python's reader
+            # threads decode with the platform default (cp1252 on
+            # Windows) and crash with UnicodeDecodeError (e.g.
+            # byte 0x8f) the first time the judge emits a non-cp1252
+            # byte into stdout/stderr.
             proc = subprocess.run(
                 argv,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout_seconds,
             )
         except subprocess.TimeoutExpired:

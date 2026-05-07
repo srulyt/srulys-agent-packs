@@ -222,6 +222,24 @@ class StrictPassDoubleInvokeTests(unittest.TestCase):
         # Single response -> straightforward pass (no threshold).
         self.assertEqual(verdicts[0].status, "pass")
 
+    def test_judge_parse_failure_does_not_divide_by_zero(self):
+        # Regression: warn (non-strict) rubric where every response
+        # parsed as JSON but produced no numeric score (score=None,
+        # error=None). Previously this fell through to
+        # ``sum(...) / len(scored)`` and raised ZeroDivisionError,
+        # aborting the entire pack run. Must now return a structured
+        # judge-parse-failure verdict instead.
+        m = self._manifest(severity="warn", copies=2)
+        responses = {
+            "req-0": _resp("req-0", score=None, rationale="garbled"),
+            "req-1": _resp("req-1", score=None, rationale="garbled"),
+        }
+        verdicts = apply_double_invoke(responses, m, strict_pass=False)
+        self.assertEqual(len(verdicts), 1)
+        self.assertEqual(verdicts[0].status, "error")
+        self.assertIn("judge-parse-failure", verdicts[0].message)
+        self.assertIsNone(verdicts[0].score)
+
 
 if __name__ == "__main__":
     unittest.main()

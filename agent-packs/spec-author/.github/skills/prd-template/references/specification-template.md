@@ -34,6 +34,10 @@ section names, vocabulary, or rules.
 >   languages, or specific APIs. Implementation-shaped content
 >   goes under the "Technical Considerations" appendix (mixed) or
 >   is omitted (product).
+> - **Voice is professional-technical, not procedural.** See
+>   `spec-driven-prd-best-practices` §9. Lead each section with
+>   its key claim; strike filler phrases and buzzwords; state
+>   uncertainty with a reason or not at all.
 
 ---
 
@@ -68,27 +72,27 @@ section names, vocabulary, or rules.
 
 ## Problem Statement
 
-[What problem is this solving? Who feels it? What evidence — usage
-data, support volume, qualitative research — supports the claim?
-Why now?]
+[Lead with the problem itself; follow with who feels it, the
+strongest evidence (numbers preferred), and why now. Include
+only what helps a reader understand the plan and the most
+consequential decisions — push per-feature reasoning,
+alternatives, and edge-case caveats to their canonical homes
+(FR rationale, Risks & Mitigations, Open Questions). Backstop:
+~400 words. See spec-driven-prd-best-practices §10
+(upper-section signal density).]
 
 ---
 
 ## Goals & Success Metrics
 
-### Business outcomes
-- [Outcome — measurable]
+[Brief framing only — metric provenance, baselines, or
+measurement caveats when they materially affect interpretation.
+The metrics table below carries the weight of this section.
+Backstop: ~200 words.]
 
-### User outcomes
-- [Outcome — measurable]
-
-### Technical outcomes
-- [Outcome — measurable]
-
-### Success metrics
-| Metric | Baseline | Target | Measurement window |
-|--------|----------|--------|--------------------|
-| ...    | ...      | ...    | ...                |
+| Metric | Baseline | Target | Measurement window | Type (business / user / technical) |
+|--------|----------|--------|--------------------|------------------------------------|
+| …      | …        | …      | …                  | …                                  |
 
 ---
 
@@ -109,8 +113,13 @@ Why now?]
 
 ## Solution Summary
 
-[2–4 paragraphs. What will be built. How it addresses the problem.
-Key trade-offs.]
+[Lead with the chosen approach in 1–2 sentences; follow with
+what changes for the user / system at the highest level and the
+decisions that gate downstream sections (e.g. `spec_kind`, scope
+axes triggered). Trade-offs and alternatives belong in Risks &
+Mitigations / Alternatives Considered; per-FR reasoning belongs
+in each FR's *Rationale* line. Backstop: ~350 words, up to 3
+paragraphs. See §10 upper-section signal density.]
 
 ---
 
@@ -268,8 +277,16 @@ window.]
 
 ## Out of Scope
 
-- [Explicit non-goal 1]
-- [Explicit non-goal 2]
+<!--
+  Empty list is acceptable. Add a bullet only when surrounding
+  spec language would lead a reader to assume the item is in
+  scope. See spec-driven-prd-best-practices §7 (adjacency-by-
+  language test). Never list boilerplate "implementation details
+  are out of scope" items.
+-->
+
+- [Add one only if it passes the adjacency-by-language test;
+  otherwise leave the list empty.]
 
 ---
 

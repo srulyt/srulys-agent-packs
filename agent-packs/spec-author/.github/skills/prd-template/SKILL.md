@@ -48,11 +48,14 @@ user-approved overrides at Stop A; otherwise it stays neutral.
 | Functional Requirements | What the system does, written as **EARS shall-statements** (one `shall` per FR) — see [`spec-driven-prd-best-practices` §4a](../spec-driven-prd-best-practices/SKILL.md#4a-ears--easy-approach-to-requirements-syntax) for the pattern catalogue. ACs are nested under each FR as Given/When/Then scenarios. | `FR-NN`; ACs `AC-<FR>.<n>` |
 | Risks & Mitigations | Identified risks + mitigation per risk | `R-NN` |
 | Open Questions | Unresolved decisions; nothing silent | `OQ-NN` |
-| Out of Scope | Explicit non-goals (no boilerplate "implementation is out of scope" — it's redundant in product mode) | — |
+| Out of Scope | Explicit non-goals that pass the adjacency-by-language test in [`spec-driven-prd-best-practices` §7](../spec-driven-prd-best-practices/SKILL.md#7-out-of-scope-is-a-section-but-not-a-fishing-expedition). The section header is mandatory; the bullet list MAY be empty when no non-goal is load-bearing. Empty is preferred to fabricated negations. | — |
 
 A `mandatory` section is present in every spec. If content is
 genuinely unknown, the drafter writes `[TBD — <reason>]` and adds
-a corresponding `OQ-NN` entry to "Open Questions".
+a corresponding `OQ-NN` entry to "Open Questions". An empty
+Out-of-Scope list is NOT "genuinely unknown" — it is a deliberate
+signal that no negation passes the adjacency test. Do not write
+`[TBD]` there.
 
 **Acceptance Criteria are NOT a separate top-level section.** Each
 FR carries its own `#### Acceptance Criteria` sub-section with one

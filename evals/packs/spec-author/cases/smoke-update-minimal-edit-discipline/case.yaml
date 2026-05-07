@@ -26,12 +26,6 @@ workspace:
 teardown:
   policy: delete-on-pass
 
-scripted_user:
-  - on_phase: awaiting-output-location
-    reply: "output_path: docs/specs/digest.md, spec_kind: technical"
-  - on_phase: awaiting-structure-approval
-    reply: "APPROVE"
-
 expected:
   artifacts:
     - id: specification
@@ -69,16 +63,18 @@ expected:
           - 'all(e.reason in ["correctness","requested","missing","mechanics"] for e in edits)'
   artifact_content_assertions:
     - artifact: specification
-      must_match:
-        - "Updates:\\s*v1\\.0"
-        - "Changes since v1"
       # Bait spans MUST survive verbatim from the fixture: the user did
       # NOT ask for any change to these, so they must be preserved
       # byte-for-byte. If the drafter rewrites them, this case fails.
-      must_contain_verbatim:
-        - "Workspace members miss important changes across squads. Scrolling individual channels to find what matters takes too long."
-        - "Built on the existing `workspace-events` Kafka topic. No new datastore."
-        - "PM      | Daily summary across squads. | < 2 min to know what to follow up on. |"
+      # (Patterns are regex-escaped literals — `must_match` is the
+      # supported assertion key for verbatim survival; the harness
+      # has no `must_contain_verbatim` key.)
+      must_match:
+        - "Updates:\\s*v1\\.0"
+        - "Changes since v1"
+        - "Workspace members miss important changes across squads\\. Scrolling individual channels to find what matters takes too long\\."
+        - "Built on the existing `workspace-events` Kafka topic\\. No new datastore\\."
+        - "PM      \\| Daily summary across squads\\. \\| < 2 min to know what to follow up on\\. \\|"
     - artifact: changelog
       must_match:
         - "###\\s*Added"

@@ -30,20 +30,6 @@ teardown:
 # `awaiting-*` parks. The harness pops one entry per park.
 # Orchestrator parks twice at awaiting-interview-answers (initial + C5 retry)
 # and three times at awaiting-structure-approval (two ambiguous + one APPROVE).
-scripted_user:
-  - on_phase: awaiting-output-location
-    reply: "output_path: docs/specs/digest.md, spec_kind: product"
-  - on_phase: awaiting-interview-answers
-    reply_file: inputs/interview-answers-partial.md
-  - on_phase: awaiting-interview-answers
-    reply: "I don't have a good answer for the rollout-risk question, sorry. Skip it."
-  - on_phase: awaiting-structure-approval
-    reply: "looks fine"
-  - on_phase: awaiting-structure-approval
-    reply: "maybe?"
-  - on_phase: awaiting-structure-approval
-    reply: "APPROVE"
-
 expected:
   artifacts:
     - id: discovery

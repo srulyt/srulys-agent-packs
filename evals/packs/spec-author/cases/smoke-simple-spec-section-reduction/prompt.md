@@ -15,4 +15,12 @@ plus any complexity-gated section that is actually justified by the
 inputs. I expect a noticeably trimmed spec compared to a full
 cross-team feature.
 
-When you propose the structure at Stop A, I will reply `APPROVE`.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop 0 (output location):** `output_path: docs/specs/tweak.md, spec_kind: product`
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.

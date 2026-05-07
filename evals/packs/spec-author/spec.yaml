@@ -13,6 +13,17 @@ schema_version: 1
 pack: spec-author
 orchestrator: spec-author
 
+# Pack-level wall-clock + judge-call budgets. These caps apply to
+# spec-author specifically and override harness defaults via
+# min(spec, --max-* flag) inside run-pack._resolve_options.
+#
+# Wall-clock is bumped to accommodate case-level parallelism: 14 cases
+# x ~430s/case ≈ 6000s sequential. With --parallelism 4 the real
+# elapsed time is ~1500-1800s, well inside the 7200s/loop budget.
+budgets:
+  max_wall_clock_seconds_per_loop: 7200    # 2 hours per iteration
+  max_total_wall_clock_seconds: 21600      # 6 hours across iterations
+
 models:
   spec-author:        claude-sonnet-4.6
   context-detective:  claude-sonnet-4.6

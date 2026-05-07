@@ -10,6 +10,13 @@ Changes I want:
 
 Bump the version appropriately and produce a CHANGELOG.
 
-When you propose the structure at Stop A — including the proposed
-version bump and the planned `Updates:` header — I will reply
-`APPROVE`.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop 0 (output location):** `output_path: docs/specs/digest.md, spec_kind: technical`
+- **Stop A (structure approval):** `APPROVE` (first ask, even though
+  it includes the proposed version bump and `Updates:` header)
+
+Proceed end-to-end without waiting for further user input.

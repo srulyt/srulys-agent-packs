@@ -222,7 +222,11 @@ The orchestrator resolves a `spec_kind` axis at Stop 0:
   carries any implementation detail.
 
 Boilerplate "implementation is out of scope" non-goals are never
-auto-added; in product / mixed mode the boundary is implicit.
+auto-added; in product / mixed mode the boundary is implicit. The
+Out-of-Scope section header is mandatory but the bullet list MAY
+be empty — non-goals only earn their place when surrounding spec
+language would otherwise lead a reader to assume the item was in
+scope.
 
 ### Adaptive sectioning
 

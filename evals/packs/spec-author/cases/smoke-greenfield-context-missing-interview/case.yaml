@@ -26,14 +26,6 @@ workspace:
 teardown:
   policy: delete-on-pass
 
-scripted_user:
-  - on_phase: awaiting-output-location
-    reply: "output_path: docs/specs/digest.md, spec_kind: mixed"
-  - on_phase: awaiting-interview-answers
-    reply_file: inputs/interview-answers.md
-  - on_phase: awaiting-structure-approval
-    reply: "APPROVE"
-
 expected:
   artifacts:
     - id: discovery

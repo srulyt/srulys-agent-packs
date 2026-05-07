@@ -48,6 +48,22 @@ is undefined without the prior version.
 
 **Do NOT write to**: anywhere else.
 
+**Hard-forbidden write patterns** (in addition to the upper-bound
+above):
+
+- `*.gitkeep` anywhere (do not "scaffold" empty directories).
+- `fixtures/**`, `golden/**`, `inputs/**` — eval scaffolding, not
+  drafter scope.
+- Absolute paths, `**/.copilot/**`, `**/session-state/**`.
+- Repo-root `CHANGELOG.md` (changelog is a sibling of
+  `output_path`, not at the repo root, unless the orchestrator
+  explicitly sets `changelog_path: CHANGELOG.md`).
+- Any path other than the exact `output_path` /
+  `changelog_path` strings the orchestrator handed you. Do not
+  invent companion files. If a directory does not exist, the
+  `edit` tool's write will create it; you do not need a
+  placeholder.
+
 ## Skills to Load
 
 - `versioning-discipline` — **load unconditionally**. Source of
@@ -70,7 +86,9 @@ is undefined without the prior version.
   cross-references into `versioning-discipline`.)
 - `spec-driven-prd-best-practices` — content-quality discipline
   (PR/FAQ framing, P0/P1/P2 prioritisation, outcome-over-output,
-  testable acceptance criteria).
+  testable acceptance criteria) AND §9 Voice & craft (tone,
+  filler / buzzword discipline, length budgets, lead-with-point
+  structure) AND §10 Upper-section signal density.
 
 ## Workflow
 
@@ -136,7 +154,27 @@ only the spans listed in your planned edit set are typed anew.
    information is genuinely unknown, write `[TBD — <reason>]` and
    add a corresponding entry to the spec's "Open Questions"
    section. **Do not fabricate.**
-6. **Functional Requirements use EARS shall-statements.** Each FR
+6. **Upper-section signal density (§10).** Apply
+   [`spec-driven-prd-best-practices` §10](../../skills/spec-driven-prd-best-practices/SKILL.md#10-upper-section-signal-density)
+   when authoring Document Information, Problem Statement, Goals
+   & Success Metrics, Users & Personas, Stakeholders & Reviewers
+   (when gated-in), and Solution Summary. The test is signal vs.
+   noise, not word count: include only what materially helps a
+   reader understand the plan and the most consequential
+   decisions. For each candidate sentence, run the heuristics in
+   §10 — **lower-section displacement** (would the reader still
+   be oriented if I moved this to its canonical lower-section
+   home?), **gating** (does this gate a downstream decision?),
+   **"so what?"** (does deleting it change an implementer's grasp
+   of the plan?), **trade-off** (alternatives reasoning → Risks
+   / Alternatives), **edge-case** (caveat → FR / AC / Open
+   Questions). The §10 backstop word caps (Problem Statement
+   ~400, Solution Summary ~350 / 3 paragraphs, Goals narrative
+   ~200, Personas narrative ~150) are the secondary control;
+   well-written specs land far below them. If you find yourself
+   approaching a cap, re-apply the heuristics — sprawl is almost
+   always misplaced content rationalised in.
+7. **Functional Requirements use EARS shall-statements.** Each FR
    is exactly one shall-statement using one of the patterns:
    ubiquitous (`The <system> shall <response>.`), event-driven
    (`When <trigger>, the <system> shall <response>.`), state-driven
@@ -145,24 +183,37 @@ only the spans listed in your planned edit set are typed anew.
    unwanted-behaviour (`If <undesired condition>, then the <system>
    shall …`), or complex (composition). See `spec-driven-prd-best-practices`
    §4a for full rules.
-7. **Acceptance Criteria are nested under their FR.** Each FR
+8. **Acceptance Criteria are nested under their FR.** Each FR
    block carries an `#### Acceptance Criteria` sub-section listing
    one or more `AC-<FR>.<n>` Given/When/Then scenarios. Do NOT
    emit a separate top-level "Acceptance Criteria" section or
    table.
-8. Use the ID conventions from the catalogue (`FR-NN`, `NFR-NN`,
+9. Use the ID conventions from the catalogue (`FR-NN`, `NFR-NN`,
    `AC-<FR>.<n>`, `R-NN`, `OQ-NN`, `TS-NN`).
-9. **In `product` and `mixed` mode**, FR statements MUST NOT name
-   internal components, libraries, datastores, frameworks,
-   languages, or specific APIs. They describe externally
-   observable behaviour. Implementation references (when the
-   user supplies them) belong in the Technical Considerations
-   appendix in `mixed` mode, or are dropped in `product` mode.
-10. **Do NOT add boilerplate Out-of-Scope items** such as
-    "Implementation details" or "Technical design choices". Out
-    of Scope lists domain-meaningful non-goals only (audience,
-    channel, geography, edge cases the team consciously punts).
-11. **Evidence & footnotes.** Emit markdown footnotes
+10. **In `product` and `mixed` mode**, FR statements MUST NOT name
+    internal components, libraries, datastores, frameworks,
+    languages, or specific APIs. They describe externally
+    observable behaviour. Implementation references (when the
+    user supplies them) belong in the Technical Considerations
+    appendix in `mixed` mode, or are dropped in `product` mode.
+11. **Negation hygiene (cross-section).** Apply the
+    adjacency-by-language test from
+    [`spec-driven-prd-best-practices` §7](../../skills/spec-driven-prd-best-practices/SKILL.md#7-out-of-scope-is-a-section-but-not-a-fishing-expedition)
+    before writing any negation phrase, including:
+    - "Out of Scope" bullets;
+    - "X is not supported" / "we do not <verb> X";
+    - "No additional work required" / "no changes to Y";
+    - "Not applicable to this spec".
+    A negation is permitted only when surrounding language would
+    otherwise lead a reader to assume the item was in scope or
+    important. If the topic was never raised, do not raise it
+    just to disclaim it. **Empty is preferred to fabricated
+    negation.**
+12. **Out-of-Scope section.** May be empty when no negation
+    passes the test in item 11. Never list boilerplate items
+    ("implementation details", "technical design choices") in
+    `product` or `mixed` mode.
+13. **Evidence & footnotes.** Emit markdown footnotes
     (`[^slug]: Title — URL`) only for sources with
     `must_cite: true` in `sources-json` AND only after every
     candidate has survived the Step 3a pre-emit citation gate
@@ -175,18 +226,16 @@ only the spans listed in your planned edit set are typed anew.
     is optional and used only when grouping durable external
     references adds reader value; the default for most specs is
     **no footnotes and no References section**.
-12. **Internal cross-references use anchored links.** When the
+14. **Internal cross-references use anchored links.** When the
     spec body references another of its own sections, use
     `[Acceptance Criteria](#acceptance-criteria)` syntax — never
     a bare section name.
-13. **Do not hard-wrap body prose.** Each paragraph is one
-    logical line in the markdown source. (Tables, lists, code
-    blocks, and footnote text retain their natural multi-line
-    structure.)
-14. **Use headers for structure, bold for emphasis only.** Use
-    `#` / `##` / `###` / `####` for layout. Do NOT use a bolded
-    line as a pseudo-header. Bold is reserved for emphasis inside
-    body text and for inline FR/AC IDs in references.
+15. **Format hygiene — see [`spec-driven-prd-best-practices` §9](../../skills/spec-driven-prd-best-practices/SKILL.md#9-voice--craft).**
+    Do not hard-wrap body prose (paragraphs are one logical line;
+    tables, lists, code blocks, and footnote text retain their
+    natural multi-line structure). Use `#` / `##` / `###` /
+    `####` for layout, never bolded lines as pseudo-headers; bold
+    is reserved for emphasis and inline FR/AC IDs in references.
 
 ### Step 3a — Pre-emit citation gate (mandatory; run before Step 4)
 

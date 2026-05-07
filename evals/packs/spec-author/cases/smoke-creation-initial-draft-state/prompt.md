@@ -6,5 +6,13 @@ This is a brand-new spec. There is no existing spec at this path.
 Treat as a single-team UI addition: no datastore, no API surface, no
 security-surface change.
 
-When you propose the section set at Stop A, I will reply `APPROVE`
-on the first ask.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop 0 (output location):** `output_path: docs/specs/quick-toggle.md, spec_kind: product`
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end through detective → drafter → critic without
+waiting for further user input.

@@ -244,6 +244,10 @@ class CaseSpec:
     expected: CaseExpected
     case_dir: str = ""  # absolute path to the corpus case dir; filled by loader
     scripted_user: list[ScriptedUserStep] = field(default_factory=list)
+    # When False, this case is pulled out of the parallel batch and run
+    # sequentially (after the parallel batch completes). Defaults True
+    # since per-run workspaces are already filesystem-isolated.
+    parallel_safe: bool = True
 
 
 # ---------- Rubric -------------------------------------------------------

@@ -360,6 +360,11 @@ def cmd_run_pack(args: argparse.Namespace) -> int:
     cases_subset = None
     if args.cases:
         cases_subset = [c.strip() for c in args.cases.split(",") if c.strip()]
+    try:
+        parallelism = _parse_parallelism(args.parallelism)
+    except ValueError as exc:
+        print(f"error: --parallelism: {exc}", file=sys.stderr)
+        return 2
     options = pack_runner.PackRunOptions(
         pack=pack, evals_root=eval_root, out_path=out_path,
         cases_subset=cases_subset,
@@ -370,8 +375,33 @@ def cmd_run_pack(args: argparse.Namespace) -> int:
         fail_fast=args.fail_fast,
         sut_timeout_seconds=args.sut_timeout,
         judge_timeout_seconds=args.judge_timeout,
+        parallelism=parallelism,
     )
     return pack_runner.run_pack(options, repo_root=_repo_root())
+
+
+def _parse_parallelism(raw: str | int | None) -> int:
+    """Resolve the --parallelism flag value to a concrete worker count.
+
+    * ``None`` -> 1 (sequential, default).
+    * ``"auto"`` -> ``min(os.cpu_count() or 1, 4)``.
+    * Positive integer (or numeric string) -> that integer.
+    * Anything else -> ``ValueError``.
+    """
+    if raw is None:
+        return 1
+    if isinstance(raw, str) and raw.strip().lower() == "auto":
+        cpu = os.cpu_count() or 1
+        return max(1, min(cpu, 4))
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"value must be a positive integer or 'auto' (got {raw!r})"
+        )
+    if n < 1:
+        raise ValueError(f"value must be >= 1 (got {n})")
+    return n
 
 
 # ---------- promote ------------------------------------------------------
@@ -774,6 +804,17 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("--sut-timeout", type=float, default=1800.0)
     rp.add_argument("--judge-timeout", type=float, default=600.0)
     rp.add_argument("--fail-fast", action="store_true")
+    rp.add_argument(
+        "--parallelism", default="1",
+        help=(
+            "Case-level parallelism (default: 1, sequential). "
+            "Pass a positive integer N to run N cases concurrently with "
+            "a thread pool (per-case work is subprocess + judge HTTP, "
+            "so threads suffice). Pass 'auto' for min(cpu_count, 4). "
+            "Cases marked 'parallel_safe: false' in case.yaml are run "
+            "sequentially after the parallel batch."
+        ),
+    )
     rp.set_defaults(func=cmd_run_pack)
 
     args = p.parse_args(argv)

@@ -21,5 +21,12 @@ addition: no new datastore, no new public API, no security-surface
 change. Cross-team scope is **single team** (the Notifications
 team ships everything).
 
-When you propose the section set at Stop A, I will reply `APPROVE`
-on the first ask. Save the spec to `docs/specs/digest-evidence.md`.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop 0 (output location):** `output_path: docs/specs/digest-evidence.md, spec_kind: product`
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.

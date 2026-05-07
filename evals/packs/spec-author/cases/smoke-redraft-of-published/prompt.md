@@ -7,4 +7,11 @@ additive (no behaviour change to existing FRs). I'm on a feature
 branch, NOT trunk. No publish intent in this turn — please re-draft
 and we'll publish the bump in a follow-up turn.
 
-When you propose the structure at Stop A, reply `APPROVE`.
+## Pre-supplied answers (do not park; proceed straight through)
+
+This is a non-interactive run. Treat the following as already
+answered — do not pause at any `awaiting-*` park:
+
+- **Stop A (structure approval):** `APPROVE` (first ask)
+
+Proceed end-to-end without waiting for further user input.
