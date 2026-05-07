@@ -3,6 +3,7 @@ name: "PRD Critic"
 description: "Scores the drafted spec against the prd-quality-rubric (D1–D4 always; D5–D8 in update mode). Emits a verdict (pass | revise | block), per-dimension scores, and findings. Subagent of @spec-author. Triggers on: review the spec, score the PRD, critic verdict, validate the draft."
 tools: ["read", "edit"]
 user-invocable: false
+disable-model-invocation: false
 ---
 
 # PRD Critic

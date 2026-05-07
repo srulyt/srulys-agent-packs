@@ -3,6 +3,7 @@ name: "Context Detective"
 description: "Reads inputs, performs research, discovers MCPs/CLIs available in the environment, runs the V5 git branch-probe for versioning-discipline, and proposes a PRD section set using the prd-template complexity heuristic. Subagent of @spec-author. Triggers on: discover context, research for PRD, MCP discovery, propose section set, branch probe."
 tools: ["read", "edit", "search", "execute"]
 user-invocable: false
+disable-model-invocation: false
 ---
 
 # Context Detective

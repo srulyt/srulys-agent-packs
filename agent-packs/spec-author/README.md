@@ -40,9 +40,9 @@ user-facing messages, and `/agents` displays both. Sub-agents never call each ot
 or themselves. **PRD Interviewer** only runs on the
 context-missing path.
 
-## Three hard user-feedback stops
+## Four hard user-feedback stops (Stop 0, Stop V, Stop A, Stop B)
 
-The orchestrator enforces three stops in code paths (state-machine
+The orchestrator enforces four stops in code paths (state-machine
 gates), not just in prose:
 
 - **Stop 0 — Output location & spec kind.** Before any sub-agent
@@ -86,31 +86,29 @@ gates), not just in prose:
 
 The pack enforces a two-mode lifecycle for every spec, governed by
 the [`versioning-discipline`](.github/skills/versioning-discipline/SKILL.md)
-skill (rules V1–V18):
+skill (rules V1–V18 — the skill is the canonical source; consult it
+for the full rule set, severity levels, and edge cases). The three
+rules a *user of the pack* needs to know up-front:
 
-- **V2 — Initial state.** Every newly created spec lands at
-  `Status: draft`, `Version: 0.0.1-draft`. The drafter MUST emit
-  those values verbatim — no silent starter version, even if the
-  user prompt mentions one.
-- **V3 — Draft invariants.** Edits in draft do NOT bump the
-  version, and NO `CHANGELOG.md` entry is written until publish
-  (per user OQ-5). All edits accumulate under one draft tag.
-- **V8 — Publish transition.** Triggered ONLY by an explicit
-  user gesture (`PUBLISH <ver>`, "publish this", "ship it"). At
-  publish, the drafter strips `-draft`, freezes numbering, sets
-  `Status: published`, and writes the changelog entry (aggregate
-  `### Added` summary at initial publish per OQ-5; enumerated
-  Keep-a-Changelog categories on subsequent publishes).
-- **V9 — Post-publish stability.** Published IDs are immutable;
-  removals become `[Deprecated in vX.Y]` markers in place.
-- **V11 — Re-draft cycle.** Editing a published spec sets
-  `<next>-draft` as the working version; prior-published IDs stay
-  frozen (OQ-6 strict freeze); newly added items in the re-draft
-  window may be reordered until publish.
-- **V12 — Cross-reference integrity.** Every renumber/insert/
-  delete updates all internal references atomically; the drafter's
-  `cross-ref-audit-json` and the critic's `d6.cross-ref-integrity`
-  sub-rubric (blocker) enforce this.
+- **Drafts start at `0.0.1-draft`** (V2). Edits in draft do NOT bump
+  the version, and NO `CHANGELOG.md` entry is written until publish
+  (V3, OQ-5).
+- **Publish is always explicit** (V8). Triggered ONLY by a user
+  gesture (`PUBLISH <ver>`, "publish this", "ship it"). On publish
+  the spec strips `-draft`, freezes numbering, and gets a CHANGELOG
+  entry (aggregate `### Added` summary at initial publish per OQ-5;
+  enumerated Keep-a-Changelog categories thereafter).
+- **Published IDs are immutable** (V9, V11). Editing a published
+  spec opens a re-draft window with `<next>-draft`; previously
+  published IDs stay frozen, and removals become
+  `[Deprecated in vX.Y]` markers in place. Cross-references update
+  atomically (V12; enforced by the drafter's `cross-ref-audit-json`
+  and the critic's `d6.cross-ref-integrity` blocker rubric).
+
+The complete V1–V18 specification (mode-signal precedence, branch
+inference, V6 verbatim prompt, pre-merge reminder cadence,
+front-matter parsing, etc.) lives in the skill — do not paraphrase
+it here.
 
 ## Installation
 
@@ -289,8 +287,8 @@ does not restate the field list to avoid drift.
 ## Evals
 
 The companion eval pack lives at `evals/packs/spec-author/`.
-Thirteen smoke cases ship at this cut (8 original + 5 new for
-versioning-discipline):
+Fourteen smoke cases ship at this cut (8 original + 6 new for
+versioning-discipline and edit-minimalism):
 
 1. `smoke-greenfield-context-complete` — Stop A path only
    (`spec_kind: product`).
@@ -339,17 +337,24 @@ versioning-discipline):
     spec enters re-draft window with `<next>-draft`; published IDs
     remain frozen (OQ-6 strict); new IDs get next-available
     numbering; pre-merge reminder fires.
+14. `smoke-update-minimal-edit-discipline` — D10 edit-minimalism:
+    drafter MUST apply `prd-evolution` §0 minimal-edit posture and
+    emit `edit-audit-json` enumerating only the spans it changed;
+    critic MUST diff the revised spec against `prior_spec_path` and
+    score D10, blocking if the drafter rewrote unmodified spans or
+    omitted required entries from `edit-audit-json`.
 
 Together the cases cover all three `spec_kind` values (`product`,
 `technical`, `mixed`) and the full draft → publish → re-draft
 lifecycle.
 
-## Tool naming alias
+## Tool naming aliases
 
-Inside `.agent.md` frontmatter the write capability is named `edit`
-(GHCP CLI convention). Inside `evals/packs/spec-author/spec.yaml`
-the same capability is named `write` (eval-engine canonical name).
-These are two names for the same capability.
+Two capability names appear under different names in different
+files. They refer to the same underlying capabilities:
+
+- **`edit` (`.agent.md` frontmatter)** ↔ **`write` (`evals/packs/spec-author/spec.yaml`)** — the workspace-write capability. `edit` is the GHCP CLI convention; `write` is the eval-engine canonical name.
+- **`agent` (`.agent.md` frontmatter)** ↔ **`task` (prompt body, worked examples, README prose)** — the sub-agent delegation capability. `agent` is the canonical capability name in Copilot CLI frontmatter (every orchestrator across this repo's packs uses `tools: ["read", "edit", "search", "agent"]`); the user-facing tool surfaced inside the agent's runtime is named `task` and is invoked as `task(agent_type="…", …)`. The frontmatter capability `agent` grants access to the runtime `task` tool — they are two names for the same thing.
 
 ## License & provenance
 
