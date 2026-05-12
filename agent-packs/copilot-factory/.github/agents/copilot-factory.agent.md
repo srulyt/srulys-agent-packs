@@ -186,9 +186,12 @@ For the canonical `task(...)` shapes for `@factory-eval-runner`
 [delegation-templates reference](../skills/agent-builder/references/delegation-templates.md)
 sections "Eval Runner Delegation" and "Engineer Delegation (Fix Mode
 — eval-fix-loop)". Do not duplicate them here. The runner is the
-single source of truth for spec-derived `budgets:` /
-`loop_convergence:` values — the orchestrator does NOT read
-`evals/` directly (see §File Access Boundaries).
+single source of truth for the resolved
+`max_wall_clock_seconds_per_loop` budget. Pytest exit codes are
+deterministic (`0` = pass, `1` = fail, other = `harness-error`),
+so verdicts do not require a separate convergence model. The
+orchestrator does NOT read `evals/` directly (see §File Access
+Boundaries).
 
 ## File Access Boundaries
 
@@ -223,9 +226,9 @@ The orchestrator is forbidden from:
 - Bypassing the critic verdict in `review-arch` or `review-prompts`.
 - Re-requesting any specialist more than 2 times for the same artifact
   (see Iteration Caps). On the third failure, surface to the user and stop.
-- Silently changing the model pin for any sub-agent. Models are pinned in
-  `evals/packs/copilot-factory/spec.yaml` (`models:` block); deviating
-  requires updating that spec first.
+- Silently changing the model pin for any sub-agent. If you need to
+  override a model, surface to the user and document the override in
+  `context/decisions.md` (see §Model Pinning).
 - Inlining a sub-agent prompt's content. Pass file paths and section
   references; sub-agents read on demand.
 - Launching a fresh **background-mode** sub-agent for a scope when an
@@ -373,7 +376,8 @@ Use the built-in `ask_user` tool for every user-facing question (orchestrator-on
 3. Parse the engineer's output contract: `implementation-summary`,
    `files-created-json`, `files-modified-json`, `eval-artifacts-json`,
    `ready-for-review`. For full builds, `eval-artifacts-json` MUST
-   list a `spec` and at least one `cases` entry.
+   list at least one entry under `tests` (a `evals/packs/<pack>/test_*.py`
+   path) and a `readme` path. See [eval-authoring reference](../skills/agent-builder/references/eval-authoring.md).
 4. Verify all expected files created on disk.
 5. Update deliverables in state.
 
@@ -405,26 +409,24 @@ where `eval-artifacts-json` is `{}` (no eval changes), skip to
 Phase 8 with `eval_status: "skipped-incremental"`.
 
 **Actions**:
-1. Confirm the engineer's `eval-artifacts-json` listed a `spec` and
-   at least one `cases` entry. (You do NOT read the spec yourself —
-   `evals/` is outside your read allowlist; the runner owns spec
-   resolution.)
+1. Confirm the engineer's `eval-artifacts-json` listed at least one
+   entry under `tests` (a `evals/packs/<pack>/test_*.py` path). You
+   do NOT read those test files yourself — `evals/` is outside your
+   read allowlist; the runner invokes pytest against them.
 2. Delegate to `@factory-eval-runner` (sync) with `eval_run_index: 1`
-   and `cases_subset: all`. Pass NO guardrail overrides on the first
-   run — let the runner resolve `budgets:` / `loop_convergence:` from
-   the spec and report the resolved values back. (See the eval-runner
-   `task(...)` shape in
-   [delegation-templates.md](../skills/agent-builder/references/delegation-templates.md).)
+   and `tests_subset: all`. Pass NO guardrail overrides on the first
+   run — the runner resolves `max_wall_clock_seconds_per_loop` from
+   its own default (1800) and reports it back. Pytest exit codes
+   determine the verdict (`0`/`1`/other → `pass`/`fail`/
+   `harness-error`). See the eval-runner `task(...)` shape in
+   [delegation-templates.md](../skills/agent-builder/references/delegation-templates.md).
 3. Parse the runner's `eval-summary`, `eval-verdict`,
-   `failing-cases-json`, `resolved-budgets-json`,
-   `resolved-convergence-json`, `ready-for-orchestrator` blocks
-   verbatim.
+   `failing-tests-json`, `resolved-budgets-json`,
+   `ready-for-orchestrator` blocks verbatim.
 4. Persist `eval_runs[0]`, `last_eval_verdict`, and the resolved
-   budgets/convergence values (under
-   `state.eval_loop.guardrails` and `state.eval_loop.convergence`)
-   into `state.json`. These persisted values are the orchestrator's
-   only knowledge of spec-derived limits; subsequent fix-loop turns
-   reuse them without re-asking the runner.
+   wall-clock budget (under `state.eval_loop.guardrails`) into
+   `state.json`. Subsequent fix-loop turns reuse this without
+   re-asking the runner.
 5. Branch on `eval-verdict.status`:
    - `pass` → `phase: "complete"`, `eval_status: "pass"`.
    - `fail` → enter the Eval Loop Approval Gate (below).
@@ -433,7 +435,9 @@ Phase 8 with `eval_status: "skipped-incremental"`.
 
 **Eval Loop Approval Gate** (one-time, before first entry to Phase 7.6):
 
-Surface the cost summary as prose (failing-case counts, ~judge-call estimate, fix-iteration cap), then call `ask_user(question: "Approve automatic eval fixes?", choices: ["yes", "show-me-first", "stop"], allow_freeform: false)`. Persist the choice in `state.eval_loop.approved_by_user`. On `stop`, transition to Phase 8 with `eval_status: "fail"`.
+Surface the cost summary as prose (failing-test count from
+`tests_failed`+`tests_errored`, the fix-iteration cap of 3, and the
+resolved wall-clock budget per loop), then call `ask_user(question: "Approve automatic eval fixes?", choices: ["yes", "show-me-first", "stop"], allow_freeform: false)`. Persist the choice in `state.eval_loop.approved_by_user`. On `stop`, transition to Phase 8 with `eval_status: "fail"`.
 
 **State Update**: `phase: "eval-fix-loop"` (on yes) or `"complete"`.
 
@@ -448,16 +452,19 @@ Surface the cost summary as prose (failing-case counts, ~judge-call estimate, fi
 2. Increment `iteration_counts["eval-fix-loop"]` **before** the fix
    delegation (same pattern as `review-arch`).
 3. Delegate to `@factory-engineer` (sync) `mode: "fix"` with the
-   latest `eval-run-{n}.json` (see §Worked example — Engineer fix
-   turn). Engineer may only edit paths in each failure's `fixable_in[]`.
+   latest `eval-run-{n}.json` (see the Engineer Fix-Mode template in
+   [delegation-templates.md](../skills/agent-builder/references/delegation-templates.md)).
+   Engineer reads `failures[]` from that JSON and may only edit
+   paths listed in each failure's `fixable_in[]`.
 4. Parse `fix-summary`, `failures-addressed-json`,
    `failures-skipped-json`, `files-modified-json`, `ready-for-rerun`.
 5. If `ready-for-rerun: false` (engineer skipped everything):
    surface `failures-skipped-json` and stop the loop. This is the
-   safety valve against unfixable-rubric infinite loops.
+   safety valve against unfixable infinite loops.
 6. Re-delegate to `@factory-eval-runner` with `eval_run_index: n+1`,
-   optionally passing `cases_subset` from `failures-addressed-json`
-   for a fast re-run.
+   optionally passing `tests_subset` (space-separated pytest
+   nodeids) derived from `failures-addressed-json` for a fast
+   re-run.
 7. Loop until `pass` or cap hit.
 
 **State Update (success)**: `phase: "complete"`,
@@ -504,13 +511,18 @@ Key fields for orchestrator decisions:
 - `mode` — `creation` or `improvement`
 - `improvement_strategy` — `incremental`, `rebuild`, or `null`
 - `user_approved` — gate for build phase
-- `eval_runs[]` — append-only list of per-iteration eval results
-  (`run_index`, `results_path`, `status`, `cases_total/passed/failed`,
-  `harness_error`, `fix_attempt_for_run_index`)
+- `eval_runs[]` — append-only list of per-iteration eval results,
+  populated from the runner's `eval-summary` block
+  (`run_index`, `results_path`, `report_log_path`, `status`,
+  `tests_collected`, `tests_passed`, `tests_failed`, `tests_errored`,
+  `tests_skipped`, `wall_clock_seconds`, `harness_error`,
+  `fix_attempt_for_run_index`)
 - `last_eval_verdict` — `{status, run_index}`; latest verdict from
-  `@factory-eval-runner`
+  `@factory-eval-runner` (`status ∈ pass | fail | harness-error`)
 - `eval_loop` — `{approved_by_user, max_iterations, guardrails}`
-  (guardrails track `judge_calls_used`, `wall_clock_used_seconds`)
+  (guardrails track `max_wall_clock_seconds_per_loop` and
+  `wall_clock_used_seconds`; the pytest framework has no judge-call
+  budget at the loop level and no `convergence` subobject)
 - `eval_status` — `pass | fail | failed-override |
   skipped-incremental | error` (terminal status at Phase 8)
 - `iteration_counts.eval-fix-loop` — fix-loop counter (cap=3)
@@ -581,12 +593,11 @@ Rules:
 
 ## Model Pinning
 
-The factory's per-agent models are pinned in
-`evals/packs/copilot-factory/spec.yaml` under `models:`. When you launch
-a sub-agent via `task`, do NOT pass a `model` override unless the user
-explicitly requested one for that turn. Silent model drift breaks the
-eval-harness drift detection (`L3-tools` / model assertions) and
-invalidates rubric thresholds.
+When you launch a sub-agent via `task`, do NOT pass a `model`
+override unless the user explicitly requested one for that turn.
+Silent model drift makes eval results non-comparable across runs
+and changes per-agent behavior characteristics the rest of the
+pipeline assumes.
 
 If a sub-agent fails repeatedly and you want to retry on a stronger
 model:

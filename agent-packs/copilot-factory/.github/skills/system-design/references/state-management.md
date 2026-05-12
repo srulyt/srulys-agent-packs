@@ -121,18 +121,18 @@ Generation:
   an existing pack), `"rebuild"` (full architecture redesign), or
   `null` (creation mode).
 - `eval_runs[]` — append-only list of per-iteration eval results.
-  Each entry: `{run_index, results_path, status, cases_total,
-  cases_passed, cases_failed, harness_error, started_at,
+  Each entry: `{run_index, results_path, report_log_path, status,
+  tests_collected, tests_passed, tests_failed, tests_errored,
+  tests_skipped, wall_clock_seconds, harness_error, started_at,
   completed_at, fix_attempt_for_run_index?}`. Path points to
   `.copilot-factory/sessions/{id}/artifacts/eval-run-{n}.json`.
 - `last_eval_verdict` — `{status: "pass"|"fail"|"harness-error",
   run_index: <int>}`. Mirror of the latest verdict from
   `@factory-eval-runner` for fast orchestrator branching.
 - `eval_loop` — `{approved_by_user, max_iterations, started_at,
-  completed_at, guardrails: {max_judge_calls,
-  max_wall_clock_seconds, judge_calls_used,
-  wall_clock_used_seconds}}`. The runtime mirror of the spec's
-  `budgets:` block, accumulated across all iterations.
+  completed_at, guardrails: {max_wall_clock_seconds_per_loop,
+  wall_clock_used_seconds}}`. The runtime mirror of the runner's
+  resolved budget, accumulated across all iterations.
 - `eval_status` — terminal status set when transitioning to
   `complete`: `"pass"`, `"fail"`, `"failed-override"` (user chose
   force-complete after cap-hit), `"skipped-incremental"` (no eval

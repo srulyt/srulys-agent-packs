@@ -184,7 +184,7 @@ task(
 
 If `ready-for-rerun: false` (engineer skipped every failure), the
 orchestrator must surface `failures-skipped-json` to the user and
-stop the loop — this is the safety valve against unfixable-rubric
+stop the loop — this is the safety valve against unfixable
 infinite loops.
 
 ## Critic Delegation (Implementation)

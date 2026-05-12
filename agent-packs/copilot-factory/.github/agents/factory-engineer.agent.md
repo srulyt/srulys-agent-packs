@@ -391,7 +391,7 @@ When invoked with `Mode: fix` and an `Eval run path:` referencing
 `.copilot-factory/sessions/{id}/artifacts/eval-run-{n}.json`:
 
 #### Step 1: Read inputs
-1. Read the eval-run JSON; parse the `cases[].failures[]` array.
+1. Read the eval-run JSON; parse the `failures[]` array.
 2. Read `state.json` to confirm `phase == "eval-fix-loop"` AND
    `iteration_counts["eval-fix-loop"] >= 1` (orchestrator increments
    before delegating). If gate fails, return control to
@@ -405,7 +405,7 @@ When invoked with `Mode: fix` and an `Eval run path:` referencing
 2. For each failure, classify as:
    - **fixable**: addressable within `fixable_in[]` and within scope
      of an additive edit.
-   - **structural**: rubric threshold below 0.5 OR architecture-level
+   - **structural**: judge `threshold` below 0.5 OR architecture-level
      OR requires a rebuild. Mark as **skipped**; do NOT attempt a
      partial rebuild from a fix turn.
 
@@ -532,7 +532,7 @@ loop_iteration: <m>          # state.iteration_counts["eval-fix-loop"]
   {
     "case_id": "...",
     "failure_id": "format-compliance",
-    "reason": "rubric threshold (0.7) requires architecture rewrite — out of fix-loop scope; flag for user"
+    "reason": "judge threshold (0.7) requires architecture rewrite — out of fix-loop scope; flag for user"
   }
 ]
 ```

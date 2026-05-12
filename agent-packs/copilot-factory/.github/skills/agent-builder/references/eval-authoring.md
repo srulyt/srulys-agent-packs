@@ -15,9 +15,8 @@ An eval is a pytest test. It:
 4. **Optionally** calls a tiny `judge(...)` helper for LLM-as-judge
    semantic scoring.
 
-That's it. No spec.yaml, no case.yaml, no fixture extraction, no
-manifest manual-paste loop. Each `test_*.py` is self-contained and
-readable top-to-bottom.
+That's it. Each `test_*.py` is self-contained and readable
+top-to-bottom.
 
 ## Required directory shape per generated pack
 
