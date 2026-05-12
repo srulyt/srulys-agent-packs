@@ -116,20 +116,19 @@ Resolution order:
    path, default `output_path` to that same path; write the revised
    spec in place, and `CHANGELOG.md` as a sibling
    (`state.json:changelog_path`).
-3. **Otherwise — prompt the user. Verbatim:**
+3. **Otherwise — ask the user via `ask_user`.** Call:
 
-   > Where should I save the final spec inside this workspace?
-   > Examples:
-   >   - `docs/specs/<feature>.md`
-   >   - `specs/<feature>/spec.md`
-   >   - `<existing-path>` (overwrite an existing draft)
-   >
-   > Reply with the relative path. I'll also write a `CHANGELOG.md`
-   > next to it in update mode. The session working files
-   > (research, review, transcripts) stay under `.spec-author/`.
+   ```
+   ask_user(
+     question: "Where should I save the final spec inside this workspace? Reply with a repo-relative path ending in `.md` (e.g. `docs/specs/<feature>.md`, `specs/<feature>/spec.md`). The path MUST NOT begin with `.spec-author/` (that's session scope). In update mode I'll also write `CHANGELOG.md` next to it at publish-time only.",
+     allow_freeform: true
+   )
+   ```
 
-   Park `phase: awaiting-output-location` until the user replies.
+   Park `phase: awaiting-output-location` until `ask_user` returns.
    Do not invoke `@context-detective` until `output_path` is set.
+   See `## How to Ask the User` below for the conventions used by
+   all `ask_user` calls in this orchestrator.
 
 Validation:
 
@@ -159,13 +158,21 @@ Determination:
    Question at Stop A.
 
 If the user did not signal at all and the prompt is genuinely
-ambiguous, ask Stop 0 verbatim:
+ambiguous, ask Stop 0 via `ask_user`:
 
-> Is this a **product** spec (PRD-style — user problem, outcomes,
-> behaviour), a **technical** spec (engineering / design — data
-> model, API contract, capacity), or **mixed** (product-led with
-> a separate Technical Considerations appendix)?
-> Reply with `KIND: product`, `KIND: technical`, or `KIND: mixed`.
+```
+ask_user(
+  question: "Is this a product spec (PRD-style — user problem, outcomes, behaviour), a technical spec (engineering / design — data model, API contract, capacity), or mixed (product-led with a separate Technical Considerations appendix)?",
+  choices: ["product", "technical", "mixed"],
+  allow_freeform: false
+)
+```
+
+Map the returned choice directly to `state.json:spec_kind`. (The
+prior `KIND: product` / `KIND: technical` / `KIND: mixed` text
+syntax is still accepted in the same turn for backward
+compatibility — if the user typed one of those tokens in the
+original prompt, parse it and skip `ask_user`.)
 
 Once accepted, record:
 
@@ -207,25 +214,33 @@ When Stop V does run, implement `versioning-discipline`
    (V2: `Status: draft`, `Version: 0.0.1-draft`).
 
 If `branch_kind == trunk` AND `spec_status == draft` AND no explicit
-statement → park `phase: awaiting-mode-decision` and present the
-**V6 verbatim prompt** (copied here from `versioning-discipline` §V6;
-the skill is the source of truth — do not paraphrase):
+statement → park `phase: awaiting-mode-decision` and surface the
+**V6 prompt** via `ask_user`. Build the question text by
+substituting `<output_path>`, `<current>`, and `<branch_name>` into
+the explanatory paragraph below (copied from `versioning-discipline`
+§V6 — the skill is the source of truth, do not paraphrase the
+mechanics), then call:
 
-> The spec at `<output_path>` is currently `Status: draft`
-> (`Version: <current>`), but the working branch is `<branch_name>`
-> (looks like a trunk/release branch). Drafts on trunk are unusual —
-> please tell me how to proceed:
->
-> - **PUBLISH `<proposed-version>`** — drop the `-draft` suffix,
->   freeze numbering, write a CHANGELOG entry. (Default proposed
->   version: `0.1.0` from `0.0.1-draft`; otherwise the smallest bump
->   matching your changes.)
-> - **KEEP-DRAFT** — acknowledge the risk and continue editing in
->   draft on this branch. I will repeat this prompt on every future
->   turn that detects the same condition.
-> - **ABORT** — make no further edits this turn.
->
-> Reply with one of: `PUBLISH <version>`, `KEEP-DRAFT`, or `ABORT`.
+```
+ask_user(
+  question: "The spec at <output_path> is currently Status: draft (Version: <current>), but the working branch is <branch_name> (looks like a trunk/release branch). Drafts on trunk are unusual — please tell me how to proceed:\n\n- PUBLISH <proposed-version> — drop the -draft suffix, freeze numbering, write a CHANGELOG entry. (Initial-publish offers BOTH `0.1.0` (default) and `1.0.0` explicitly per V6.1/OQ-1.)\n- KEEP-DRAFT — acknowledge the risk and continue editing in draft on this branch. I will repeat this prompt on every future turn that detects the same condition.\n- ABORT — make no further edits this turn.",
+  choices: [
+    "PUBLISH 0.1.0",
+    "PUBLISH 1.0.0",
+    "KEEP-DRAFT",
+    "ABORT"
+  ],
+  allow_freeform: true
+)
+```
+
+The `PUBLISH 0.1.0` and `PUBLISH 1.0.0` choices are surfaced only
+when `current == 0.0.1-draft` (V6.1). For other current versions,
+present only `KEEP-DRAFT` / `ABORT` as fixed choices and rely on
+`allow_freeform: true` for the user to type
+`PUBLISH <smallest-bump>` (the proposed value from V10
+classification). `allow_freeform: true` also accepts
+`PUBLISH <other-ver>` as a typed override.
 
 Reply handling (V6):
 
@@ -564,7 +579,9 @@ The Stop A message MUST contain, in this order:
      auto-classified V10 bump (e.g. `0.1.0 → 0.1.1`), the resulting
      working version (`0.1.1-draft`), and the planned `Updates: vN.M`
      header. Note that NO `CHANGELOG.md` will be written until publish
-     (V3 / OQ-5).
+     (V3 / OQ-5). NO `## Changes since vN` preamble or `[Changed in
+     vX.Y]` markers will appear in the draft body — git is the
+     history source during the draft phase (`prd-evolution` §5).
    - **Initial publish or re-draft publish** (publish intent
      detected): show the full publish plan — target version (initial
      publish: offer **both** `0.1.0` (default) and `1.0.0` per OQ-1;
@@ -585,33 +602,45 @@ The Stop A message MUST contain, in this order:
 
    > Planned edits to docs/specs/digest.md:
    >   - FR-29 (new)                       — add        — requested
-   >   - FR-07 heading                     — deprecate  — requested
+   >   - FR-07                              — delete    — requested
    >   - Document Information.Updates      — modify     — mechanics
-   >   - § Changes since v1.0              — add        — mechanics
    >
    > Everything else in the prior spec will be preserved verbatim.
+   > FR-07 was a prior-published ID; its `[Deprecated in vX.Y]`
+   > marker will be re-materialised in the published artefact at
+   > the next publish (V8 step 4a). The draft body itself will
+   > not carry that marker, and there will be no `## Changes
+   > since` preamble (`prd-evolution` §5).
    > If you want additional edits, reply `EDIT: ...`.
 
    This is the user's chance to ask for additional changes (or to
    confirm that no, they really do want only those edits). After
    APPROVE, the drafter is bound to this list — any deviation must
    appear in `edit-audit-json` with a justifying reason.
-8. **The binary reply template** (verbatim):
+8. **Surface the decision via `ask_user`.** After emitting the
+   structured Stop A summary above (mode / kind / output path /
+   section set / open questions / bump-line / planned edit set),
+   call:
 
-   > Please respond with either:
-   > - **APPROVE** — proceed to drafting with the structure above, or
-   > - **EDIT:** followed by the changes you want.
-   > (Optional: also flip the mode by including `MODE: creation` or
-   > `MODE: update`, or the spec kind via `KIND: product|technical|mixed`,
-   > in your reply.)
+   ```
+   ask_user(
+     question: "<the Stop A summary above, ending with: 'How would you like to proceed? Reply APPROVE to draft with the structure above, or EDIT: <describe changes> to amend. You may also include MODE: creation|update or KIND: product|technical|mixed.'>",
+     choices: ["APPROVE"],
+     allow_freeform: true
+   )
+   ```
+
+   `EDIT: ...` is a freeform reply (the user fills in the
+   changes). `APPROVE` is the only fixed choice. The C4
+   disambiguation loop below handles malformed returns.
 
 ### Disambiguation loop (C4)
 
-If the user reply does not match `^\s*APPROVE\b` or
+If the `ask_user` return value does not match `^\s*APPROVE\b` or
 `^\s*EDIT:\s*\S` (case-insensitive), increment
-`state.json:stop_a_disambiguation_attempts` and re-prompt with the
-binary template **unchanged**. Loop until a match. No third
-interpretation is allowed.
+`state.json:stop_a_disambiguation_attempts` and re-call `ask_user`
+with the same parameters **unchanged**. Loop until a match. No
+third interpretation is allowed.
 
 If the user replies `EDIT: ...`, record the changes in
 `state.json:structure_overrides`, regenerate the proposed structure
@@ -630,9 +659,14 @@ When the detective's `gaps-json.must_fill` is non-empty:
    `interview_required: true`.
 2. Delegate to `@prd-interviewer`. Pass the `gaps-json` block
    verbatim.
-3. Read the interviewer's `interview-md` fence and present it to the
-   user verbatim, prefixed with a one-line message
-   ("I need a few clarifications before I can draft a useful spec.").
+3. For each question in the interviewer's `interview-md`, call
+   `ask_user(question=<text>, allow_freeform=true)` one question
+   at a time per the conventions in `## How to Ask the User`
+   below. Prefix the first call with a one-line context line
+   ("I need a few clarifications before I can draft a useful
+   spec."). Collect each answer and append it to
+   `context/interview-answers.md` in the same order as the
+   interview produced the questions.
 4. Park. **Do not call any further sub-agent until the user
    replies.**
 5. When the user replies, write their answers to
@@ -680,6 +714,40 @@ awaiting-structure-approval     ← Stop A blocks here
               ├── pass     → complete
               └── revise   → drafting (max 2 revise loops, then surface to user)
 ```
+
+## How to Ask the User (`ask_user` conventions)
+
+All user-facing prompts in this orchestrator (Stop 0, Stop V,
+Stop A, Stop B) are surfaced through the Copilot CLI built-in
+`ask_user` tool. `ask_user` is available to every agent without
+declaration; no edit to `tools:` frontmatter is required.
+
+Local conventions:
+
+- **One question at a time.** For Stop B's interview list, call
+  `ask_user` once per question and append the reply to
+  `context/interview-answers.md` before the next call. Do NOT
+  concatenate questions.
+- **`choices` for finite answer spaces.** When the answer is a
+  closed set (`product` / `technical` / `mixed`; `APPROVE`;
+  `PUBLISH 0.1.0` / `PUBLISH 1.0.0` / `KEEP-DRAFT` / `ABORT`),
+  pass them in `choices: [...]`. Use `allow_freeform: true` when
+  the user may also type an open value (a custom version, a
+  describe-your-edit string, a freeform path); set
+  `allow_freeform: false` only when the choice set is genuinely
+  exhaustive.
+- **No `tools:` change.** `ask_user` is built-in. The orchestrator
+  ships with `tools: ["read", "edit", "search", "agent"]` and
+  that list is unchanged — `ask_user` is implicitly available.
+- **Park `phase` while awaiting return.** Every `ask_user` call
+  is a hard stop. Record the matching `awaiting-*` phase in
+  `state.json` before the call returns, so a session resumed mid-
+  flight surfaces the same phase.
+- **Verbatim spec text.** When the underlying skill prescribes
+  verbatim prompt text (V6 in `versioning-discipline`, the binary
+  reply template for Stop A), inline that text into the `question`
+  parameter unchanged. Do not paraphrase the rule into your own
+  wording.
 
 ## Retry Bounds
 
@@ -757,6 +825,13 @@ call.
   `kind != none-still-draft`.
 - **Write or mutate `CHANGELOG.md` while the spec is `Status: draft`**
   (per OQ-5 / V3 / V17). Changelog is a publish-time artefact only.
+- **Forward an instruction to the drafter that adds a `## Changes
+  since vN` preamble, `[Changed in vX.Y]` inline marker,
+  "Revision History" / "Changelog" / "What's Changed" section, or
+  any other in-spec change-tracking artefact while the spec is in
+  draft.** Git is the history source during the draft phase
+  (`prd-evolution` §5). The critic blocks on
+  `d7.draft-no-change-tracking`.
 - **Acquire the `execute` tool.** Branch detection delegates to
   `@context-detective` (`probe: branch-only`). The orchestrator MUST
   NOT shell out to `git` itself.

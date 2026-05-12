@@ -62,11 +62,14 @@ section names, vocabulary, or rules.
 - **Updates**: [vN.M]   <!-- update mode only; RFC-style -->
 - **Obsoletes**: [vN.M] <!-- update mode, full replacement only -->
 
----
-
-## Changes since vN  <!-- update mode only -->
-
-- [One-line summary per change visible in this revision.]
+<!--
+Drafts (initial OR re-draft) MUST NOT carry any in-spec
+change-tracking artefact — no `## Changes since vN` preamble, no
+`Revision History` / `Changelog` section, no inline
+`[Changed in vX.Y]` markers. See `prd-evolution` §5 and the critic
+sub-rubric `d7.draft-no-change-tracking`. Git is the history source
+during the draft phase; `CHANGELOG.md` is written at publish only.
+-->
 
 ---
 

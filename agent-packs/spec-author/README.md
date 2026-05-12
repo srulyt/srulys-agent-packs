@@ -7,9 +7,9 @@ product specifications** (PRDs) end-to-end.
   transcripts, supporting docs, links, and any locally available
   MCPs / CLIs.
 - **Update mode** — evolve an existing spec with first-class
-  versioning, change-log, ID stability, and naming-evolution
-  discipline (semver-for-specs + RFC-style headers + ADR deprecation +
-  Keep-a-Changelog categories).
+  versioning, publish-time changelog, ID stability, and naming-
+  evolution discipline (semver-for-specs + RFC-style headers + ADR
+  deprecation + Keep-a-Changelog categories).
 
 The pack is **fully domain-agnostic**. It ships no industry-specific
 templates, names, or rules. Domain framing (regulated workloads,
@@ -43,7 +43,13 @@ context-missing path.
 ## Four hard user-feedback stops (Stop 0, Stop V, Stop A, Stop B)
 
 The orchestrator enforces four stops in code paths (state-machine
-gates), not just in prose:
+gates), not just in prose. **All four are surfaced via the
+Copilot CLI built-in `ask_user` tool** (`choices` for finite
+answer spaces, `allow_freeform: true` for open clarifications and
+typed overrides like `PUBLISH <other-ver>` / `EDIT: <changes>` /
+custom paths). Replies are parsed identically to the prior
+verbatim-prose prompts; see `## How to Ask the User` in
+`spec-author.agent.md` for the local conventions.
 
 - **Stop 0 — Output location & spec kind.** Before any sub-agent
   is invoked, the orchestrator resolves the workspace path where
@@ -92,7 +98,11 @@ rules a *user of the pack* needs to know up-front:
 
 - **Drafts start at `0.0.1-draft`** (V2). Edits in draft do NOT bump
   the version, and NO `CHANGELOG.md` entry is written until publish
-  (V3, OQ-5).
+  (V3, OQ-5). **No `## Changes since vN` preamble, `[Changed in
+  vX.Y]` inline markers, or "Revision History" / "Changelog"
+  sections appear in the draft body — git is the history source
+  during the draft phase** (`prd-evolution` §5; critic blocker
+  sub-rubric `d7.draft-no-change-tracking`).
 - **Publish is always explicit** (V8). Triggered ONLY by a user
   gesture (`PUBLISH <ver>`, "publish this", "ship it"). On publish
   the spec strips `-draft`, freezes numbering, and gets a CHANGELOG
@@ -100,8 +110,12 @@ rules a *user of the pack* needs to know up-front:
   enumerated Keep-a-Changelog categories thereafter).
 - **Published IDs are immutable** (V9, V11). Editing a published
   spec opens a re-draft window with `<next>-draft`; previously
-  published IDs stay frozen, and removals become
-  `[Deprecated in vX.Y]` markers in place. Cross-references update
+  published IDs stay frozen (no renumber) but MAY be deleted from
+  the working draft body. Deletions of prior-published IDs are
+  queued in `state.json:pending_published_id_deletions` and
+  re-materialised as `[Deprecated in vX.Y]` markers in the
+  **published** artefact only at the next publish transition (V8
+  step 4a; `prd-evolution` §3b). Cross-references update
   atomically (V12; enforced by the drafter's `cross-ref-audit-json`
   and the critic's `d6.cross-ref-integrity` blocker rubric).
 
@@ -287,15 +301,22 @@ does not restate the field list to avoid drift.
 ## Evals
 
 The companion eval pack lives at `evals/packs/spec-author/`.
-Fourteen smoke cases ship at this cut (8 original + 6 new for
-versioning-discipline and edit-minimalism):
+Nineteen smoke cases ship at this cut (14 prior + 5 new for
+draft-no-change-tracking, interpretation-(a) FR removal, and
+`ask_user` adoption):
 
 1. `smoke-greenfield-context-complete` — Stop A path only
    (`spec_kind: product`).
 2. `smoke-greenfield-context-missing-interview` — Stop B → Stop A
    (`spec_kind: mixed`).
-3. `smoke-update-existing-spec` — full update-mode round trip
-   (`spec_kind: technical`).
+3. `smoke-update-existing-spec` — re-draft flow over a published
+   prior spec with no publish intent: working version flips to
+   `<next>-draft`, removed prior-published FR-07 is **deleted
+   from the working body** (no `[Deprecated]` marker, no
+   `Changes since` preamble), CHANGELOG.md is NOT mutated.
+   Covers req #1 ("no change-tracking in draft") and req #2
+   ("removed FRs are deleted, not annotated") under
+   interpretation (a). `spec_kind: technical`.
 4. `smoke-simple-spec-section-reduction` — adaptive sectioning
    (`spec_kind: product`).
 5. `smoke-mcp-cli-graceful-degradation` — degrades cleanly when
@@ -343,6 +364,32 @@ versioning-discipline and edit-minimalism):
     critic MUST diff the revised spec against `prior_spec_path` and
     score D10, blocking if the drafter rewrote unmodified spans or
     omitted required entries from `edit-audit-json`.
+15. `smoke-no-changetracking-creation` — req #1 (new draft mode):
+    a greenfield draft MUST NOT contain `## Changes since`,
+    `## Revision History`, `## Changelog`, `## What's Changed`,
+    or any inline `[Changed in v...]` marker. No `CHANGELOG.md`
+    is created. Exercises the new
+    `d7.draft-no-change-tracking` blocker sub-rubric.
+16. `smoke-no-changetracking-redraft` — req #1 (update / re-draft
+    mode): a re-draft of a published spec MUST NOT add any
+    in-spec change-tracking artefact in the working body AND
+    MUST NOT mutate the prior `CHANGELOG.md`.
+17. `smoke-redraft-remove-inwindow-fr` — req #2 inside a re-draft
+    window for items added during the same window: removed FR
+    is deleted outright with no marker, no Open-Question stub,
+    no historical mention.
+18. `smoke-redraft-remove-published-fr-no-marker` — req #2 +
+    interpretation (a): removed prior-published FR is **deleted
+    from the working draft body** (no `[Deprecated]` marker in
+    draft body) AND queued in
+    `state.json:pending_published_id_deletions` for publish-time
+    re-materialisation. Covers `prd-evolution` §3b /
+    `versioning-discipline` V8 step 4a draft-side behaviour.
+19. `smoke-uses-ask-user-for-clarification` — req #3: the
+    orchestrator's user-facing prompts (Stop 0 / Stop V / Stop
+    A / Stop B) are surfaced via `ask_user` rather than
+    verbatim prose. (Harness-dependent — skipped if the
+    eval-engine does not expose tool-call traces.)
 
 Together the cases cover all three `spec_kind` values (`product`,
 `technical`, `mixed`) and the full draft → publish → re-draft

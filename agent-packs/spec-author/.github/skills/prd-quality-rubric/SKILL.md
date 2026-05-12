@@ -140,11 +140,18 @@ Considerations" appendix (mixed) or omitted entirely (product)?
 In `spec_kind: technical`, D9 is reported as `null` (not 0) — the
 dimension does not apply.
 
-### D5 — changelog-completeness  (update mode only)
+### D5 — changelog-completeness  (publish-transition turns only)
 
-**Question:** Does `CHANGELOG.md` exist, use the
+**Question:** When the spec transitioned `Status: draft → published`
+this turn (V8 — `version-bump-json.kind ∈ {publish-initial,
+publish-redraft}`), does `CHANGELOG.md` exist, use the
 Keep-a-Changelog categories, and account for every change visible
 between prior and revised?
+
+**Scope:** D5 applies **only** on publish-transition turns. On any
+turn where `Status: draft` at end-of-turn (initial draft OR
+re-draft window edit without publish intent), D5 is reported as
+`null`, not `0` — drafts produce no CHANGELOG (V3 / V17 / OQ-5).
 
 **Scoring:** any diff that does not appear in at least one
 category deducts. Wrong category placement is a minor deduction.
@@ -158,22 +165,35 @@ OQ-, TS-) still resolve in the revised spec?
 Renumbering is a **blocker** finding.
 
 **Sub-rubric `d6.removal-by-status`** (severity: blocker; defined
-by `prd-evolution` §3):
+by `prd-evolution` §3 + `versioning-discipline` §V9):
 
-- In `Status: draft` (initial or re-draft scope per V11): a
-  removed item that was NOT renumbered out of the successor
-  sequence (i.e. a gap appears in the FR/NFR/R/OQ/TS numbering)
-  is a **blocker** finding.
-- In `Status: draft` (initial or re-draft scope): a removed item
-  that left a `[Deprecated]` / `[Removed]` stub instead of being
-  deleted cleanly is a **major** finding (the spec is over-
-  cautious; deprecation-in-place is for published).
-- In `Status: published` (or prior-published ID in re-draft): a
-  deleted item with no `[Deprecated]` / `[Removed]` marker AND
-  no preserved heading is a **blocker** finding (V9 violation).
-- In `Status: published` (or prior-published ID in re-draft): a
-  renumbered prior-published item is a **blocker** finding (V9
-  violation).
+- In `Status: draft` (initial OR re-draft window — applies to any
+  item removed regardless of whether it was newly added in-window
+  or carried over from a prior published version): a removed
+  item that left a `[Deprecated]` / `[Removed]` stub heading, or
+  any prose narrating the removal ("formerly FR-07…", "removed
+  in this revision…"), in the **draft body** is a **blocker**
+  finding. Drafts delete cleanly per `prd-evolution` §3a / §3b
+  (interpretation (a)).
+- In `Status: draft` (any flavour): a removed in-window FR/NFR/R/
+  OQ/TS that did NOT trigger renumbering of successors (leaving a
+  numbering gap) is a **blocker** finding. Prior-published IDs
+  are NOT renumbered (V9 over the ID is permanent) — gaps in the
+  prior-published number space are expected and not a finding.
+- In `Status: draft` (re-draft window): a removed prior-published
+  ID for which `state.json:pending_published_id_deletions` does
+  NOT contain a matching entry is a **blocker** finding. The
+  drafter must queue the deletion for publish-time
+  re-materialisation; silent drops break V9 at the next publish.
+- In `Status: published` end-of-turn (publish-transition turns
+  only): a deleted prior-published item with no `[Deprecated]` /
+  `[Removed]` stub heading in the *published* artefact is a
+  **blocker** finding (V9 published-contract violation). At
+  publish, every entry that was in
+  `pending_published_id_deletions` MUST have been re-materialised
+  in the published artefact body (V8 step 4a).
+- In `Status: published` end-of-turn: a renumbered prior-published
+  item is a **blocker** finding (V9 numbering immutability).
 
 ### D7 — versioning-correctness  (update mode only)
 
@@ -182,6 +202,31 @@ rule (MAJOR/MINOR/PATCH)? Is the `Updates:` / `Obsoletes:` header
 present?
 
 **Scoring:** wrong bump or missing header is a **major** finding.
+
+**Sub-rubric `d7.draft-no-change-tracking`** (severity: blocker;
+defined by `prd-evolution` §5):
+
+Applies in any turn where the spec ends `Status: draft` (initial
+draft OR re-draft window with no publish intent). The drafted
+spec body MUST NOT contain ANY of:
+
+- A `## Changes since` heading (any version suffix or "since vN"
+  variant).
+- A `## Revision History`, `## Changelog`, or `## What's Changed`
+  heading.
+- An inline `[Changed in v...]` marker (anywhere — heading, list
+  item, or paragraph).
+- An HTML / markdown comment narrating what changed
+  (`<!-- changed: ... -->`, `<!-- added in v... -->`).
+- Prose narration of revision history ("Added in this revision",
+  "Removed since v1.0", inline parenthetical "(updated)" tags).
+- A `CHANGELOG.md` mutation this turn (overlap with
+  `d7.publish-changelog` — re-stated here so the rubric is
+  self-contained when the critic runs against a draft turn).
+
+Any single occurrence is a **blocker** finding. The verdict
+escalates to `block` regardless of weighted score. The fix is
+to delete the offending construct (not move it, not rename it).
 
 ### D8 — section-stability  (update mode only)
 

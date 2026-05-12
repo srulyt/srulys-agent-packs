@@ -50,10 +50,14 @@ minimum, preserve the rest.
    in the original prompt or in the Stop A reply.
 3. **Genuinely missing context** — Context Detective surfaced new
    material information AND the user approved adding it at Stop A.
-4. **ID-stability mechanics** — `Updates:` header, `## Changes since vN`
-   preamble, deprecation markers, `[Changed in vX.Y]` tags, alias rows.
-   These are bookkeeping for edits already justified by reasons 1–3;
-   they do NOT independently authorise touching new sections.
+4. **ID-stability mechanics** — `Updates:` header, alias rows, and (at
+   the **publish transition only**) deprecation markers re-materialised
+   from `pending_published_id_deletions`. These are bookkeeping for
+   edits already justified by reasons 1–3; they do NOT independently
+   authorise touching new sections. **In-spec change-tracking
+   artefacts (`## Changes since vN` preamble, `[Changed in vX.Y]`
+   inline markers, "Revision History" / "Changelog" sections) are
+   NEVER legitimate in any draft body** — see §5 below.
 
 #### Insufficient reasons (do NOT edit)
 
@@ -105,13 +109,21 @@ User request: "Add an FR for keyboard shortcuts and deprecate FR-07."
 Legitimate edits:
 
 - Add FR-29 (reason: requested).
-- Mark FR-07 `[Deprecated in v1.1, superseded by FR-29]` (reason:
-  requested + mechanics).
-- Bump version to v1.1, add `Updates: v1.0` header, add `## Changes
-  since v1.0` preamble, add CHANGELOG.md entries (reason: mechanics,
-  follow-on to the two edits above).
-- Add `[Changed in v1.1]` next to the FR list heading because FR-29
-  and the FR-07 deprecation marker now live there (reason: mechanics).
+- Mark FR-07 as removed in the draft body — delete the FR outright
+  per §3a (reason: requested). If FR-07 was a prior-published ID,
+  record it in `state.json:pending_published_id_deletions` so the
+  drafter can re-materialise a `[Deprecated in vX.Y]` marker **in
+  the published artefact only** at the next publish transition
+  (§3b; `versioning-discipline` §V9 published-artefact contract).
+- Bump version to v1.1 and add `Updates: v1.0` header (reason:
+  mechanics, follow-on to the two edits above). CHANGELOG.md is
+  NOT mutated during the draft window — it is written only at the
+  publish transition (V3 / V17).
+
+The draft body MUST NOT carry a `## Changes since v1.0` preamble,
+a `[Changed in v1.1]` marker, a "Revision History" section, or any
+other in-spec change-tracking artefact. Git is the history during
+the draft phase.
 
 Not legitimate (must be dropped):
 
@@ -151,8 +163,10 @@ arguably better.
 3. If the planned edit set for the turn contains zero upper-section
    edits, that is the **expected** outcome. Most update turns
    should touch only Functional Requirements, Acceptance Criteria,
-   CHANGELOG.md, and mechanics (`Updates:` header, `## Changes
-   since vN` preamble, deprecation markers).
+   and mechanics (`Updates:` header, alias rows). CHANGELOG.md
+   is publish-time only; in-spec change-tracking artefacts (the
+   `## Changes since vN` preamble and `[Changed in vX.Y]` markers)
+   are FORBIDDEN in any draft body (§5).
 4. Section reorders, heading renames, and table-layout changes in
    upper sections are forbidden unless the user explicitly asked
    for them. `prd-evolution` §4 (alias mechanism) is the only
@@ -171,8 +185,9 @@ The revised `Document Information` block carries one of:
 - `Obsoletes: vN.M` — the revised spec fully replaces the prior
   version. Use only when the prior is no longer to be referenced.
 
-Sections that materially changed carry an inline marker:
-`[Changed in vX.Y]` next to the heading.
+These are version-metadata fields. They are NOT change-tracking
+artefacts. The forbidden in-spec change-tracking constructs are
+enumerated in §5.
 
 ### 3. FR removal — semantics by spec status
 
@@ -182,17 +197,36 @@ the spec's **current** status as resolved by the orchestrator at
 Stop V (`Status: draft` vs. `Status: published`) per
 [`versioning-discipline` §V1 / §V9 / §V11 / §V13](../versioning-discipline/SKILL.md).
 
-#### 3a. Draft mode (`Status: draft`, initial or re-draft for newly-added items only)
+#### 3a. Draft mode (`Status: draft`, any item — newly added OR prior-published)
 
-For items eligible under V13 (which excludes prior-published IDs
-inside a re-draft window per V11):
+The drafter applies the same deletion semantics to every item in
+the draft working body, regardless of whether the item was added
+inside the current draft window or was carried over from a prior
+published version. (Interpretation (a) of the user-facing rule
+"during draft, removed FRs are deleted outright": prior-published
+IDs are deleted too, with the V9 published-artefact contract
+honoured at the publish boundary — see §3b.)
+
+For any item the user asks to remove while `Status: draft`:
 
 1. **Delete the item.** Remove the heading and body verbatim from
-   the spec; do not leave a deprecation stub.
-2. **Renumber successors to stay contiguous.** If FR-05 is removed
-   and FR-06..FR-12 exist, they become FR-05..FR-11. Same rule
-   for `NFR-NN`, `R-NN`, `OQ-NN`, `TS-NN`. AC sub-IDs follow their
-   parent FR's new number.
+   the spec; do not leave a deprecation stub. Do NOT add an Open
+   Question entry noting the removal, do NOT add a "Removed in
+   this draft" aside in any section, do NOT mention the removed
+   FR's name in Risks / Mitigations as historical context. The
+   removal must leave **no trace whatsoever** in the spec body.
+   Git is the audit trail.
+2. **Renumber in-window successors to stay contiguous.** If
+   FR-05 (newly added in this draft window) is removed and
+   FR-06..FR-12 (also added in-window) exist, they become
+   FR-05..FR-11. Same rule for `NFR-NN`, `R-NN`, `OQ-NN`,
+   `TS-NN`. AC sub-IDs follow their parent FR's new number.
+   **Prior-published IDs are NEVER renumbered** (V9 immutability
+   over the ID is permanent). If a removed item was a
+   prior-published ID, the gap stays in the prior-published
+   number space — successors keep their published IDs. See §3b
+   for the publish-time re-materialisation that satisfies V9's
+   cross-reference guarantee for those deletions.
 3. **Update all cross-references atomically** per V12. Every
    inline mention, anchored link, and "see FR-N" prose reference
    to a renumbered ID MUST update in the same edit.
@@ -201,41 +235,62 @@ inside a re-draft window per V11):
    for each shifted successor. `orphaned_references` MUST be
    empty at end-of-turn.
 5. **No CHANGELOG.md entry** is written (V3 — drafts do not log).
+   No CHANGELOG.md entry is staged or queued for the next publish
+   either — the deletion was a draft-window operation and is
+   invisible by design. At publish, the diff between the prior
+   published version and the now-publishing draft will surface
+   the removal automatically (V17).
 
-#### 3b. Published mode (`Status: published`) and prior-published IDs in a re-draft window
+#### 3b. Prior-published IDs in a re-draft window — publish-time re-materialisation
 
-Per V9 (immutability) and V11 (re-draft window with prior-published frozen):
+When the item being removed had an ID that was frozen at the prior
+publish (V9), the §3a delete-from-draft-body posture still applies
+**inside the draft body** — there is to be NO `[Deprecated]` marker
+and NO residual heading in the working draft. To preserve V9's
+external-contract guarantee (cross-references to a deprecated ID
+must still resolve in the **published** artefact), the drafter
+records the deletion in `state.json:pending_published_id_deletions`
+and re-materialises the marker only at the publish transition:
 
-1. **Do NOT delete the heading or its ID.** The ID stays.
-2. **Mark the item in place** with one of:
-   - `### FR-07 [Deprecated in vX.Y, superseded by FR-NN]`
-   - `### FR-07 [Deprecated in vX.Y]` (no successor)
-   - `### FR-07 [Removed in vX.Y]` — only after at least one
-     MINOR cycle of being `[Deprecated]`.
-3. **Body MAY be replaced** with a one-line pointer
-   (e.g. *"Superseded by FR-29; see [FR-29](#fr-29)."*). Do not
-   leave the original body in place if it is now contradicted.
-4. **Do NOT renumber** any other item, even if "natural slots"
-   open up.
-5. **Cross-references continue to resolve** — anchored links to
-   `#fr-07` MUST still land at a heading bearing the ID.
-6. **CHANGELOG.md** carries a `### Deprecated` entry (publish-only;
-   for re-draft, the entry is staged and written at the publish
-   transition per V17).
+1. **Draft body:** delete the item per §3a. The draft body MUST
+   NOT carry `[Deprecated in vX.Y]`, `[Removed in vX.Y]`, a stub
+   heading, or any prose mentioning the removed ID.
+2. **State:** append the deleted ID, its kind, and the prior
+   published version to
+   `state.json:pending_published_id_deletions: [{ "id": "FR-07",
+   "kind": "FR", "prior_published_version": "v0.1.0",
+   "successor": "FR-29" | null, "removed_in_draft_at":
+   "<ISO-8601>" }]`. The field persists across the entire
+   draft window (subsequent edit turns; multiple removals queue
+   up). It is cleared at the publish transition (step 5 below).
+3. **Cross-references within the working draft:** every inline
+   mention, anchored link, and "see FR-N" prose pointing at the
+   removed ID is rewritten or removed in the same edit, per V12.
+   The draft body MUST have zero unresolved references to the
+   deleted ID.
+4. **No CHANGELOG.md entry, no draft-body marker.** During the
+   draft window the deletion is invisible.
+5. **At the publish transition** (V8): the drafter walks
+   `pending_published_id_deletions` and emits, **in the published
+   artefact only**, a stub heading bearing the deleted ID with a
+   `[Deprecated in <publish-version>]` (or
+   `[Deprecated in <publish-version>, superseded by <successor>]`
+   if `successor` is set) marker plus a one-line pointer body.
+   The published artefact thereby satisfies V9 (cross-references
+   to the deleted ID still resolve). The state field is cleared.
+   The CHANGELOG entry written this publish turn carries the same
+   removal under `### Deprecated` / `### Removed` per V17.
 
-#### 3c. Mixed cases (re-draft window)
+The drafter MUST NOT proceed with publish if
+`pending_published_id_deletions` is non-empty AND the publish step
+5 above has not been applied — that is a V9 violation by omission.
 
-In a re-draft window (V11) the spec contains both prior-published
-IDs (frozen) AND newly-added items inside the window (fluid).
-When the user asks to remove an item in this state:
+#### 3c. (deleted — collapsed into §3a + §3b)
 
-- If the item is prior-published → §3b (deprecate-in-place).
-- If the item was added inside the re-draft window and has not
-  yet shipped → §3a (delete + renumber, scoped to in-window items
-  only).
-
-The drafter MUST refuse a request to delete a prior-published ID
-in a re-draft window with a structured error that cites V9.
+Under interpretation (a) the "mixed cases" branch of the legacy
+§3c no longer exists. Both in-window items and prior-published
+items follow §3a in the draft body; prior-published items also
+queue a publish-time re-materialisation per §3b.
 
 ### 4. Naming evolution & aliases
 
@@ -253,17 +308,37 @@ When a feature, persona, or section is renamed:
   commonly, just record the rename in the alias appendix and
   update the section heading).
 
-### 5. Living-document preamble
+### 5. No change-tracking artefacts during draft phase
 
-Every revised spec carries a `## Changes since vN` block at the
-top, immediately under `Document Information`. One line per change
-visible in this revision. This is for human readers; the
-machine-readable form is `CHANGELOG.md`.
+Drafts (initial OR re-draft) MUST NOT carry any in-spec
+change-tracking artefact. Specifically forbidden:
 
-### 6. CHANGELOG.md (Keep-a-Changelog)
+- `## Changes since vN` (or any synonym: "Revision History",
+  "Changelog", "What's Changed").
+- Inline `[Changed in vX.Y]` markers next to headings or list
+  items.
+- HTML / markdown comments (`<!-- changed: ... -->`) noting what
+  moved.
+- Prose narration of what changed since the prior version
+  ("Added in this revision…", "Removed since v1.0…", inline
+  parenthetical "(updated)" tags).
+- `CHANGELOG.md` mutations (already enforced by V3 / V17 — restated
+  here for completeness).
 
-Emit `CHANGELOG.md` alongside the revised spec. Use these
-categories, in this order, omit empty ones:
+Git is the source of truth for spec history during the draft
+window. The published artefact's history is captured by
+`CHANGELOG.md` at publish-time only (V8 / V17). The critic enforces
+this via the blocker sub-rubric `d7.draft-no-change-tracking`
+(`prd-quality-rubric` §D7).
+
+### 6. CHANGELOG.md (Keep-a-Changelog) — publish-time only
+
+**Publish-time only.** `CHANGELOG.md` is never written, appended,
+or otherwise mutated during a draft window (V3 / V17). The
+format reference below applies only to the publish transition.
+
+Emit `CHANGELOG.md` alongside the revised spec **at publish**. Use
+these categories, in this order, omit empty ones:
 
 ```
 ## [vX.Y] - YYYY-MM-DD
@@ -345,12 +420,16 @@ The critic uses these dimensions in update mode:
 - [ ] `Updates:` or `Obsoletes:` header present in
       `Document Information`.
 - [ ] Version bump matches the rules above.
-- [ ] `## Changes since vN` preamble at top of revised spec.
-- [ ] Every prior requirement ID resolves (deprecated IDs preserved
-      with status marker).
+- [ ] The spec body contains NO `## Changes since vN` /
+      `Revision History` / `Changelog` / `What's Changed` section
+      and NO inline `[Changed in vX.Y]` markers (per §5).
+- [ ] Every prior requirement ID either appears in the working
+      draft (if retained) OR is queued in
+      `state.json:pending_published_id_deletions` (if removed in
+      this draft window); none is silently dropped.
 - [ ] Renames recorded in "Appendix: Aliases & Deprecations".
-- [ ] `CHANGELOG.md` emitted, using Keep-a-Changelog categories,
-      with every diff accounted for.
+- [ ] `CHANGELOG.md` emitted **at publish only**, using
+      Keep-a-Changelog categories, with every diff accounted for.
 - [ ] No silently removed gated section.
 - [ ] Every edit in `edit-audit-json` has a reason in
       {correctness, requested, missing, mechanics} (per §0).

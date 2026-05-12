@@ -317,12 +317,17 @@ span of the prior spec, an edit MUST satisfy at least one of:
 3. **Genuinely missing context** — Context Detective surfaced new
    information that the prior spec materially lacks AND that the user
    approved adding at Stop A.
-4. **ID-stability mechanics** — deprecation markers, alias rows, the
-   `Updates:` / `Obsoletes:` header, the `## Changes since vN` preamble,
-   and `[Changed in vX.Y]` markers on sections you ALREADY had to touch
-   for reasons 1–3. These are bookkeeping for edits you justified by
-   another reason; they are NOT a reason in their own right to touch a
-   section you would otherwise leave alone.
+4. **ID-stability mechanics** — deprecation markers (in the
+   published artefact only — see FR-removal branch below),
+   alias rows, and the `Updates:` / `Obsoletes:` header, on
+   sections you ALREADY had to touch for reasons 1–3. These are
+   bookkeeping for edits you justified by another reason; they
+   are NOT a reason in their own right to touch a section you
+   would otherwise leave alone. **In-spec change-tracking
+   artefacts (`## Changes since vN` preamble, `[Changed in vX.Y]`
+   markers, "Revision History" sections) are FORBIDDEN in any
+   draft body** per `prd-evolution` §5 — do not author them, and
+   if the prior spec carried them, delete them in this draft.
 
 If an edit clears none of (1)–(4), **do not make it**. Stylistic
 improvement, prose tightening, reordering for "flow", consistent
@@ -391,18 +396,34 @@ sub-sentence stylistic drift.
    - **FR removal — branch on status** (per
      [`prd-evolution` §3](../../skills/prd-evolution/SKILL.md#3-fr-removal--semantics-by-spec-status)
      and [`versioning-discipline` §V9 / §V11 / §V13](../../skills/versioning-discipline/SKILL.md)):
-     - `Status: draft` (initial OR re-draft of an item added inside
-       the window): **delete** the item, **renumber** successors to
-       stay contiguous, **update all cross-references atomically**
-       (V12). Record in `cross-ref-audit-json` with `deletes` and
-       `renumbers`. No CHANGELOG entry.
-     - `Status: published` OR prior-published ID in a re-draft
-       window: **deprecate in place**. Mark with
-       `[Deprecated in vX.Y, superseded by FR-NN]` (or simpler
-       variants — see §3b). IDs do not move. CHANGELOG `### Deprecated`
-       entry at publish.
-     - Refuse with a V9 structured error if the user asks to delete
-       a prior-published ID.
+     - `Status: draft` (any item — newly added in-window OR
+       prior-published, per §3a): **delete** the item from the
+       working draft body, **renumber** in-window successors to
+       stay contiguous (prior-published IDs are NOT renumbered —
+       V9 over the ID is permanent), **update all cross-references
+       atomically** (V12). Record in `cross-ref-audit-json` with
+       `deletes` and `renumbers`. No `[Deprecated]` / `[Removed]`
+       marker in the draft body. No CHANGELOG entry.
+     - If the removed item's ID was frozen at a prior publish
+       (re-draft window over a previously-published spec): in
+       addition to the above, append an entry to
+       `state.json:pending_published_id_deletions` with
+       `{ "id", "kind", "prior_published_version", "successor",
+       "removed_in_draft_at" }` per `prd-evolution` §3b. The
+       draft body itself remains marker-free.
+     - **At publish (V8 step 4a):** walk
+       `pending_published_id_deletions` and materialise a stub
+       heading bearing each deleted ID with
+       `[Deprecated in <publish-version>]` (or
+       `[Deprecated in <publish-version>, superseded by <successor>]`)
+       and a one-line pointer body **in the published artefact
+       only**. The published spec thereby satisfies V9; the
+       draft body never carries the marker. Clear the field.
+       Emit corresponding `### Deprecated` / `### Removed`
+       CHANGELOG entries (V17).
+     - Direct `Status: published` edits (no re-draft window
+       opening): refuse with a V9 structured error and instruct
+       the orchestrator to open a re-draft window per V11.
    - **Renames carry aliases.** `Feature X (formerly "Feature Y")`.
      Maintain an "Aliases & Deprecations" appendix table.
    - **Evidence cleanup is permitted on update.** Citation IDs
@@ -415,15 +436,28 @@ sub-sentence stylistic drift.
      `Removed: legacy "Citations" appendix; see evidence-discipline
      policy in spec-driven-prd-best-practices §8`). Do NOT
      re-create the bad form for "consistency with v1".
-   - **"Changes since vN" preamble.** Add a short preamble at the
-     top of the revised spec listing what changed at a glance.
-   - **Inline change markers.** Sections that materially changed
-     carry `[Changed in vX.Y]`.
-3. Write `CHANGELOG.md` using the Keep-a-Changelog categories:
-   `### Added`, `### Changed`, `### Deprecated`, `### Removed`,
-   `### Fixed`, `### Security`. Every diff visible between the
-   prior spec and the revised spec must be reflected in at least
-   one category.
+   - **No in-spec change-tracking artefacts.** During any draft
+     window (initial or re-draft), the revised spec body MUST
+     NOT carry a `## Changes since vN` preamble, a "Revision
+     History" / "Changelog" section, or inline `[Changed in vX.Y]`
+     markers (`prd-evolution` §5). If the prior spec body carried
+     such artefacts, delete them in this draft (this is a
+     mechanics edit per §0 reason 4). Git is the history during
+     the draft phase; CHANGELOG.md is publish-only.
+3. **Publish-time only — CHANGELOG.md.** Write `CHANGELOG.md`
+   ONLY when the orchestrator forwards explicit publish intent
+   (`PUBLISH <ver>` in the user gesture; see
+   `versioning-discipline` §V8). During a re-draft window with no
+   publish intent, do NOT mutate `CHANGELOG.md`. When publish
+   intent IS forwarded, write the Keep-a-Changelog categories
+   below: `### Added`, `### Changed`, `### Deprecated`,
+   `### Removed`, `### Fixed`, `### Security`. Every diff visible
+   between the prior published spec and the now-publishing
+   draft must be reflected in at least one category. The
+   publish-time draft body re-materialisation of
+   `pending_published_id_deletions` (V8 step 4a; §3b step 5)
+   produces the matching `### Deprecated` / `### Removed`
+   entries here.
 4. Do not silently remove a `complexity-gated` section that was
    present in the prior version. If you remove one, document the
    rationale in the changelog and keep the ID-resolution stub.

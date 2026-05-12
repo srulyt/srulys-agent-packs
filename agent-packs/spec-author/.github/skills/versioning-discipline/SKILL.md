@@ -62,8 +62,10 @@ While `Status: draft`:
   to a changelog file even on user request; if the user asks for a
   changelog mid-draft, the orchestrator surfaces an Open Question
   ("changelog will be written at publish") and proceeds.
-- The `## Changes since vN` preamble is NOT used in initial drafts
-  (there is no prior version). It IS used in re-draft windows (V11).
+- The `## Changes since vN` preamble is **NEVER used** during any
+  draft window — initial OR re-draft. Drafts carry no in-spec
+  change-tracking artefact (`prd-evolution` §5). Git is the
+  history source during the draft phase.
 
 ### V4 — Mode-signal precedence
 
@@ -215,6 +217,17 @@ Mechanics performed atomically by the drafter:
      Invalid input → re-prompt with V6 template.
 3. Set `Status: published`.
 4. Freeze numbering (V9 takes effect from this point).
+4a. **Re-materialise pending deletions.** Walk
+    `state.json:pending_published_id_deletions` (queued during the
+    draft window per `prd-evolution` §3b). For each entry, insert
+    a stub heading bearing the deleted ID in the published artefact
+    body with a `[Deprecated in <publishing-version>]` (or
+    `[Deprecated in <publishing-version>, superseded by <successor>]`
+    if `successor` is set) marker and a one-line pointer body. The
+    stub honours V9's cross-reference guarantee at the published
+    boundary. Clear the field once all entries are materialised.
+    The draft body itself never carried these markers — they exist
+    only in the published artefact.
 5. Write a `CHANGELOG.md` entry (V17). For initial publish (kind
    `publish-initial`) the entry is an **aggregate summary** by
    default ("12 FRs, 8 NFRs, 34 ACs added"); for re-draft publish
@@ -234,15 +247,26 @@ Once `Status: published`:
 - New items get the **next available** ID after the highest current
   ID for that kind (e.g. if FR-29 is highest, the next added FR is
   FR-30 — even if FR-12 was deprecated and a "natural" slot exists).
-- **Deletions are forbidden.** Items that should disappear are
-  marked **in place** with one of:
+- **Deletions are forbidden in the published artefact.** Items
+  that should disappear are marked **in place** in the *published*
+  artefact with one of:
   - `[Deprecated in vX.Y]`
   - `[Deprecated in vX.Y, superseded by FR-NN]`
   - `[Removed in vX.Y]` — only after at least one MINOR cycle of
     deprecation.
+
+  During a draft window, items MAY be deleted from the working
+  spec body per `prd-evolution` §3a / §3b. Prior-published IDs
+  that are deleted in-window are recorded in
+  `state.json:pending_published_id_deletions` and re-materialised
+  as `[Deprecated in vX.Y]` / `[Removed in vX.Y]` markers **in
+  the published artefact only** at the publish transition (V8 step
+  4a — added by `prd-evolution` §3b). The draft body itself never
+  carries the marker.
 - Cross-references to deprecated/removed IDs MUST still resolve
-  (the heading remains; only the body may be replaced by a brief
-  pointer).
+  **in the published artefact** (the stub heading remains there;
+  only the body is a brief pointer). Cross-references in the
+  draft body are scrubbed at deletion time per V12.
 
 ### V10 — Post-publish version bumps
 
@@ -276,25 +300,30 @@ spec, the drafter enters a **re-draft window**:
 2. Set the spec's working version to `<next>-draft` (e.g.
    `0.1.1-draft`).
 3. Set `Status: draft`.
-4. The `## Changes since v<prior>` preamble is created or extended
-   with a one-liner per visible change.
-5. The session is now in re-draft. V3 invariants apply (in-window
+4. The session is now in re-draft. V3 invariants apply (in-window
    edits do NOT bump the working version further; no mid-window
-   changelog writes).
-6. Pre-merge reminder (V7) fires again every edit turn.
-7. Publishing this re-draft uses V8 with `kind: publish-redraft`.
+   changelog writes; no in-spec change-tracking artefacts per
+   `prd-evolution` §5).
+5. Pre-merge reminder (V7) fires again every edit turn.
+6. Publishing this re-draft uses V8 with `kind: publish-redraft`.
    The `-draft` suffix drops; changelog entries are written under
    `[<next>] - YYYY-MM-DD` using enumerated Keep-a-Changelog
    categories per V17.
 
-**Strict freeze on prior-published IDs (OQ-6 resolution).** IDs
-that existed in the prior published version are STILL frozen
-(V9 is permanent for those). Newly added items inside the re-draft
-window MAY be renumbered **among themselves** until publish — they
-have not yet been published, so their IDs are not yet a contract.
+**Prior-published IDs inside a re-draft window (OQ-6 resolution,
+revised).** Prior-published IDs MAY be deleted from the working
+draft body per `prd-evolution` §3a / §3b. They MUST NOT be
+**renumbered** — V9 immutability over the ID itself is permanent.
+If a prior-published item is removed in-window, the drafter
+queues a publish-time re-materialisation in
+`state.json:pending_published_id_deletions` so V9's
+published-artefact cross-reference guarantee is honoured at
+publish (§3b). Newly added items inside the re-draft window MAY
+be renumbered **among themselves** until publish — they have not
+yet been published, so their IDs are not yet a contract.
 Practically: if the user adds FR-30, then later inserts a more-
 logical FR before it, the new pair MAY be reordered as `FR-30` and
-`FR-31` either way, provided that no published ID is touched.
+`FR-31` either way, provided that no published ID is *renumbered*.
 Cross-references inside the re-draft window MUST still update
 atomically (V12).
 
@@ -316,8 +345,6 @@ Eligible references the drafter MUST scan and update:
 - Anchored links: `[FR-3](#fr-3)`, `[See AC-7.2](#ac-72)`.
 - "depends on FR-N" / "see FR-N" / "supersedes FR-N" prose.
 - Acceptance Criteria sub-IDs (`AC-<FR>.<n>`) where `<FR>` shifted.
-- Change-log and `## Changes since v...` lines that name IDs (in
-  re-draft).
 
 The drafter MUST emit a `cross-ref-audit-json` fenced block on
 every turn that touches IDs, enumerating every reference it
@@ -439,6 +466,17 @@ Add to the critic's checklist (D6/D7 sub-rubrics):
 - [ ] On publish, `CHANGELOG.md` entry exists and accounts for
       every diff (or, for `publish-initial`, contains the aggregate
       summary).
+- [ ] If `Status: draft`, the spec body MUST NOT contain a
+      `## Changes since`, `## Changelog`, `## Revision History`,
+      or `## What's Changed` heading, and MUST NOT contain inline
+      `[Changed in vX.Y]` markers or prose narrating what changed
+      since the prior version (per `prd-evolution` §5;
+      `d7.draft-no-change-tracking`).
+- [ ] On publish, every entry queued in
+      `state.json:pending_published_id_deletions` was
+      re-materialised as a `[Deprecated in <ver>]` /
+      `[Removed in <ver>]` stub in the published artefact (V9
+      published-contract preserved; `prd-evolution` §3b step 5).
 - [ ] On the V6 prompt path, the user replied with `PUBLISH ...`,
       `KEEP-DRAFT`, or `ABORT` — never silently transitioned.
 
@@ -498,6 +536,7 @@ These fields are added to `prd-template/references/state-schema.md`
 | `awaiting_mode_decision` | true while V6 prompt is parked. |
 | `last_publish_version` | helps re-draft compute `<next>-draft`. |
 | `mutated_this_turn` | gates V7 reminder cadence. |
+| `pending_published_id_deletions` | array of prior-published IDs deleted from the working draft during a re-draft window; re-materialised as deprecation markers in the published artefact at V8 step 4a (`prd-evolution` §3b). Cleared at publish. |
 
 ## Cross-references
 
