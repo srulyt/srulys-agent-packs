@@ -134,4 +134,6 @@ On completion, return:
 
 **Error**: What failed, why it blocks progress, recommended recovery action.
 
-**Clarification needed**: Specific questions, context for why they matter, default assumptions if unanswered.
+**Clarification needed**:
+- **Orchestrators / user-facing agents**: ask the user directly via the built-in `ask_user` tool — one question per call, prefer `choices=[...]` when the answer space is enumerable, set `allow_freeform: false` for critical gates. See the `agent-builder` skill's [User Interaction reference](../../references/user-interaction.md).
+- **Sub-agents (delegation-only)**: do NOT call `ask_user`. Emit an `open-questions` fenced block listing each question, why it matters, and a default assumption if unanswered. The orchestrator will surface each question to the user.

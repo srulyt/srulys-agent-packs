@@ -102,6 +102,9 @@ Instructions (max 5,000 words)
 | `vision` | Analyze images/diagrams |
 | `agent` | Invoke other agents |
 
+**Built-in tools** (always available, do NOT declare in `tools:`):
+- `ask_user` — present a structured question to the user with optional `choices[]`. See [User Interaction](references/user-interaction.md) for the canonical policy on when to use it.
+
 ### Additional Copilot Artifacts
 
 **.prompt.md** (reusable workflow templates):
@@ -176,6 +179,13 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
       [Task Tool Mechanics](references/task-tool-mechanics.md), and
       `tools:` is narrowest possible (no `["*"]`, no unjustified
       `execute`)
+- [ ] User-facing questions with an enumerable answer set use
+      `ask_user(choices=[...])` rather than prose-and-wait-for-reply;
+      critical / irreversible gates set `allow_freeform: false`; no
+      `"Other"` choice strings; one question per `ask_user` call;
+      sub-agents do not call `ask_user` (they emit `open-questions`
+      fenced blocks for the orchestrator to surface). See
+      [User Interaction](references/user-interaction.md).
 
 ## Common Patterns
 
@@ -277,6 +287,9 @@ Every agent must have explicit path-scoped read/write boundaries. Add a "File Ac
 | No iteration protocol in orchestrator | No path for user feedback | Add iteration and retry sections |
 | No file access boundaries | Agents write outside scope, crash silently | Add File Access Boundaries section per agent |
 | README drift from implementation | Misleading documentation | Verify README matches actual artifacts |
+| Prose question + wait for free-text reply | Loses structured UI, brittle parsing of user input | Call `ask_user(question=..., choices=[...])`; see [User Interaction](references/user-interaction.md) |
+| Sub-agent calling `ask_user` directly | Breaks orchestrator-only-talks-to-user delegation model | Sub-agent emits `open-questions` fenced block; orchestrator surfaces via `ask_user` |
+| Including `"Other"` in `ask_user` choices | UI auto-adds freeform when `allow_freeform=true`; duplicates affordance | Omit `"Other"`; rely on `allow_freeform` |
 
 ## References
 
@@ -284,3 +297,4 @@ Every agent must have explicit path-scoped read/write boundaries. Add a "File Ac
 - [Delegation Templates](references/delegation-templates.md) - Orchestrator delegation patterns
 - [Eval Authoring](references/eval-authoring.md) - Eval spec + case scaffolding for generated packs
 - [Task Tool Mechanics](references/task-tool-mechanics.md) - Required orchestrator delegation sections + worked-example shapes
+- [User Interaction](references/user-interaction.md) - `ask_user` tool policy: when to use structured choices vs freeform, anti-patterns, sub-agent boundary

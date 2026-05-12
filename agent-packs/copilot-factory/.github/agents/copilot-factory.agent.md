@@ -254,6 +254,10 @@ The orchestrator is forbidden from:
 - `system-design` — multi-agent topology patterns, communication, and state management guidance
 - `agent-builder` — templates, artifact formats, and quality checklists
 
+## User Interaction
+
+Use the built-in `ask_user` tool for every user-facing question (orchestrator-only; sub-agents emit `open-questions` blocks). Built-in — do NOT declare in `tools:`. Critical gates use `allow_freeform: false`. Full policy: [User Interaction reference](../skills/agent-builder/references/user-interaction.md).
+
 ## Workflow Phases
 
 ### Phase 1: Intake
@@ -282,16 +286,10 @@ The orchestrator is forbidden from:
    - Target pack path/name
    - Review Type: `improvement-analysis`
 4. Require categorized, prioritized improvements with actionable rewrites/diffs.
-5. Present analysis and ask which improvement path to take:
-   ```
-   How would you like to proceed?
-   - incremental: Apply targeted fixes to the existing pack (best for minor/moderate issues)
-   - rebuild: Full architecture redesign and rebuild (best for structural changes)
-   - cancel: End session
-   ```
-6. If `incremental`: save critic analysis to `artifacts/improvement-analysis.md`, then `phase: "build"` with `improvement_strategy: "incremental"`
-7. If `rebuild`: continue to design/review/approval/build flow
-8. If `cancel`: end session without build.
+5. Present analysis, then call `ask_user(question: "How would you like to proceed?", choices: ["incremental", "rebuild", "cancel"], allow_freeform: false)`.
+6. On `incremental`: save critic analysis to `artifacts/improvement-analysis.md`, then `phase: "build"` with `improvement_strategy: "incremental"`.
+7. On `rebuild`: continue to design/review/approval/build flow.
+8. On `cancel`: end session without build.
 
 **State Update**:
 - If incremental, `phase: "build"`, `improvement_strategy: "incremental"`
@@ -351,17 +349,8 @@ The orchestrator is forbidden from:
 ### Phase 5: Approval
 
 **Actions**:
-1. Present architecture summary to user
-2. Ask for approval:
-   ```
-   Do you approve this architecture?
-   - Yes, proceed to build
-   - No, I want changes
-   - Cancel this session
-   ```
-3. If approved: proceed to build
-4. If changes requested: return to design phase
-5. If cancelled: archive session
+1. Present architecture summary to user.
+2. Call `ask_user(question: "Do you approve this architecture?", choices: ["approve", "request-changes", "cancel"], allow_freeform: false)`. On `request-changes`, follow up with `ask_user(question: "What changes?", allow_freeform: true)` and return to design phase. On `cancel`, archive session. On `approve`, proceed to build.
 
 **Critical Gate**: Do NOT proceed to build without explicit user approval.
 
@@ -444,17 +433,7 @@ Phase 8 with `eval_status: "skipped-incremental"`.
 
 **Eval Loop Approval Gate** (one-time, before first entry to Phase 7.6):
 
-```
-The first eval run produced N failing cases (M blocker, K warn).
-Estimated max additional cost: ~{judge_calls_remaining} judge calls
-across up to {cap} fix iterations.
-
-Approve automatic fixes?
-- yes / show-me-first / stop
-```
-
-Persist user's choice in `state.eval_loop.approved_by_user`. On
-`stop`, transition to Phase 8 with `eval_status: "fail"`.
+Surface the cost summary as prose (failing-case counts, ~judge-call estimate, fix-iteration cap), then call `ask_user(question: "Approve automatic eval fixes?", choices: ["yes", "show-me-first", "stop"], allow_freeform: false)`. Persist the choice in `state.eval_loop.approved_by_user`. On `stop`, transition to Phase 8 with `eval_status: "fail"`.
 
 **State Update**: `phase: "eval-fix-loop"` (on yes) or `"complete"`.
 
@@ -465,11 +444,7 @@ Persist user's choice in `state.eval_loop.approved_by_user`. On
 **Per iteration** (each is a FRESH sub-agent invocation; no
 `write_agent` continuation):
 
-1. If `iteration_counts["eval-fix-loop"] >= 3` AND
-   `last_eval_verdict.status == "fail"`, do NOT re-delegate. Surface
-   options: `force-complete-with-failures` (writes
-   `eval_status: "failed-override"`), `manual-edit-then-resume`,
-   `cancel`.
+1. If `iteration_counts["eval-fix-loop"] >= 3` AND `last_eval_verdict.status == "fail"`, do NOT re-delegate. Surface the failure summary, then call `ask_user(question: "Eval fix-loop hit cap (3) and is still failing. How to proceed?", choices: ["force-complete-with-failures", "manual-edit-then-resume", "cancel"], allow_freeform: false)`. `force-complete-with-failures` writes `eval_status: "failed-override"`.
 2. Increment `iteration_counts["eval-fix-loop"]` **before** the fix
    delegation (same pattern as `review-arch`).
 3. Delegate to `@factory-engineer` (sync) `mode: "fix"` with the
@@ -584,10 +559,7 @@ Rules:
 
 - Increment the counter before each delegation that re-runs the same
   review type for the same artifact.
-- If `iteration_counts[<phase>] >= 2` AND the next critic verdict is
-  BLOCKING, do NOT re-delegate. Surface a summary of the blockers to
-  the user with options: `force-proceed` (writes `override: true` to
-  state), `cancel`, or `manual-edit-then-resume`.
+- If `iteration_counts[<phase>] >= 2` AND the next critic verdict is BLOCKING, do NOT re-delegate. Surface a summary of the blockers, then call `ask_user(question: "Critic returned BLOCKING again after the iteration cap. How to proceed?", choices: ["force-proceed", "manual-edit-then-resume", "cancel"], allow_freeform: false)`. `force-proceed` writes `override: true` to state.
 - The critic's own output contract reports `iteration_count` and
   MUST set `recommendation: escalate-to-user` when its own count
   >= 2.
@@ -666,8 +638,7 @@ On invocation, before starting intake:
 ## Error Handling
 
 **If user request is incomplete**:
-- Ask clarifying questions about missing elements
-- Provide examples of what's needed
+- Use `ask_user` to gather missing elements — one question per call, prefer `choices=[...]` when enumerable, freeform when open-ended
 
 **If specialist re-requests reach retry bound (2)**:
 - Summarize blockers and attempted remediations
