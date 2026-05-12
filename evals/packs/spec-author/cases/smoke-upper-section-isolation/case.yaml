@@ -1,0 +1,72 @@
+id: smoke-upper-section-isolation
+pack: spec-author
+description: "F1 regression guard: per-section isolation contract for upper sections. Prompt deliberately mixes problem-narrative, solution direction, ownership, and rollout in one paragraph; the drafter must split them into the correct upper sections and the critic's D4 'upper-section isolation' sub-rubric must NOT fire (drafter behaves correctly post-F1). The negative-control assertion is on the produced spec: Solution Summary MUST NOT contain problem-narrative phrases; Problem Statement MUST NOT name owners; Goals MUST NOT name owners or describe rollout. If F1 regresses, the drafter will leak content cross-sections, the must_not_match patterns will fire, and the critic's findings-json will contain a D4 isolation finding."
+
+prompt_file: prompt.md
+
+mode_kind: creation
+spec_kind: technical
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/sla-dashboard\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 1 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  artifact_content_assertions:
+    - artifact: specification
+      # Section-scoped assertions: Solution Summary (text between
+      # "## Solution Summary" and the next "## ") MUST NOT restate
+      # the problem ("drowning", "12 hours/week", "no single view")
+      # nor name owners (Maya / Devon / platform PM / platform EM).
+      # Problem Statement MUST NOT preempt the solution
+      # ("dashboard", "drill-down") nor name owners. Goals MUST NOT
+      # name owners or describe rollout ("flag", "two weeks").
+      must_not_match_in_section:
+        - section: "Solution Summary"
+          patterns:
+            - "(?i)drowning|12 hours/week|no single view"
+            - "(?i)Maya|Devon|platform PM|platform EM"
+        - section: "Problem Statement"
+          patterns:
+            - "(?i)dashboard|drill-down"
+            - "(?i)Maya|Devon"
+        - section: "Goals & Success Metrics"
+          patterns:
+            - "(?i)Maya|Devon|platform PM|platform EM"
+            - "(?i)behind a flag|two weeks later"
+  agent_output_overrides:
+    prd-critic:
+      json_block_assertions:
+        findings-json:
+          # D4 isolation sub-rubric must NOT have fired (drafter
+          # behaved correctly). If it did fire, the drafter
+          # regressed against F1.
+          - 'not any("isolation" in (f.get("issue","") + f.get("rubric","")).lower() for f in findings)'
+  rubric_targets:
+    "artifact:specification": "^docs/specs/sla-dashboard\\.md$"
+  rubric_overrides:
+    content-quality: { severity: warn, threshold: 0.7 }

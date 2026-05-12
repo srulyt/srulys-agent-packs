@@ -69,12 +69,27 @@ minimum, preserve the rest.
   not exist when the prior spec was approved. (Template drift is not a
   user request.)
 
-#### Pre-edit gate (drafter)
+#### Pre-edit gate (drafter) — per-statement granularity
 
-Before mutating any span, the drafter classifies the planned edit
-against reasons 1–4. If none fits, the edit is dropped and the prior
-text is preserved verbatim. The classification is recorded in
-`edit-audit-json` (see drafter Output Contract).
+Before emitting any span in the revised spec, the drafter walks the
+prior spec sentence-by-sentence and classifies the *intended*
+output sentence against the prior sentence at the same position:
+
+| Comparison | Action |
+|---|---|
+| Output sentence is byte-identical to the prior sentence | Emit verbatim. |
+| Output sentence differs, AND the difference is justified by reasons 1–4 above | Emit the new sentence; record an `edit-audit-json` entry whose `locator` names the sentence (e.g. `"§Solution Summary ¶2 sentence 3"` or `"FR-29 (new)"`) and whose `reason` ∈ {correctness, requested, missing, mechanics}. |
+| Output sentence differs, AND the difference is NOT justified by reasons 1–4 (stylistic polish, whitespace, capitalisation, punctuation, grammar normalisation, `&` → `and`, comma fixes, paragraph re-flow) | **REVERT.** Re-emit the prior sentence byte-for-byte. Do NOT record an `edit-audit-json` entry (there is no edit). Do NOT keep the polish "because it's already drafted". |
+
+**Default disposition for any non-essential change is REVERT,
+not keep.** The drafter's posture is "I am editing surgically;
+when in doubt I copy". A judgement call between "this is requested"
+and "this is just polish" resolves to REVERT.
+
+The classification table is exhaustive for the third row: business
+phrasing tweaks, minor grammar fixes, stylistic edits, whitespace-
+only changes, and punctuation normalisation are **all** REVERT,
+regardless of whether the new wording is technically better.
 
 #### Post-edit audit (critic)
 
@@ -107,6 +122,42 @@ Not legitimate (must be dropped):
   newer template default.
 - Reformatting Acceptance Criteria tables to bullet lists.
 
+### 0.1 Upper-section edits are extra-scrutinised
+
+The minimal-edit prime directive in §0 applies to the whole spec.
+**It applies extra strictly to the upper sections** (Document
+Information apart from the version-mechanic fields, Problem
+Statement, Goals & Success Metrics, Users & Personas, Stakeholders
+& Reviewers, Solution Summary).
+
+These sections describe the **frame** of the spec. Once a spec has
+been reviewed once, a downstream reader has *cached* the framing.
+Re-shaping the framing on every revision turn destroys reader trust
+faster than re-wording a single FR, even when the new prose is
+arguably better.
+
+**Heightened rules for any edit above the FRs:**
+
+1. The pre-edit gate in §0 still applies (one of: correctness,
+   requested, missing, mechanics). For upper-section edits, the
+   drafter MUST cite the specific user sentence or Stop-A line
+   that requested the change in `edit-audit-json.justification`.
+   "Implied by the user's request" is NOT sufficient.
+2. The smallest-viable-diff posture is strict: if a single phrase
+   in a paragraph satisfies the gate, the rest of the paragraph
+   stays byte-for-byte. Do NOT re-shape surrounding sentences for
+   "flow" — even sentences in the same paragraph as the requested
+   change.
+3. If the planned edit set for the turn contains zero upper-section
+   edits, that is the **expected** outcome. Most update turns
+   should touch only Functional Requirements, Acceptance Criteria,
+   CHANGELOG.md, and mechanics (`Updates:` header, `## Changes
+   since vN` preamble, deprecation markers).
+4. Section reorders, heading renames, and table-layout changes in
+   upper sections are forbidden unless the user explicitly asked
+   for them. `prd-evolution` §4 (alias mechanism) is the only
+   route for a rename.
+
 ### 1. Semver-for-specs (version bump)
 
 See `versioning-discipline` §V10 for post-publish bump classification, pre-1.0.0 nuance (OQ-3), and user-override rules.
@@ -123,27 +174,68 @@ The revised `Document Information` block carries one of:
 Sections that materially changed carry an inline marker:
 `[Changed in vX.Y]` next to the heading.
 
-### 3. ID stability (ADR-style deprecation)
+### 3. FR removal — semantics by spec status
 
-> **Applies when `Status: published`.** Inside an active draft window
-> (initial draft or re-draft), renumbering of eligible items is
-> permitted per `versioning-discipline` §V11 / §V13. The rule below
-> governs published specs only. On any conflict between this section
-> and `versioning-discipline`, the latter wins.
+When the user asks to remove a requirement (`FR-NN`, `NFR-NN`,
+`AC-<FR>.<n>`, `R-NN`, `OQ-NN`, `TS-NN`), the drafter branches on
+the spec's **current** status as resolved by the orchestrator at
+Stop V (`Status: draft` vs. `Status: published`) per
+[`versioning-discipline` §V1 / §V9 / §V11 / §V13](../versioning-discipline/SKILL.md).
 
-- Existing requirement IDs (FR-, NFR-, AC-, R-, OQ-, TS-) **keep
-  their numbers** once the spec is published. Renumbering is forbidden.
-- Removed requirements are **not deleted**. They become:
+#### 3a. Draft mode (`Status: draft`, initial or re-draft for newly-added items only)
 
-  ```
-  ### FR-07 [Deprecated in v1.1, superseded by FR-29]
-  Mouse-only quick actions.
-  ```
+For items eligible under V13 (which excludes prior-published IDs
+inside a re-draft window per V11):
 
-  After two MAJOR versions you may move them to an "Appendix:
-  Historical Requirements". Never silently delete.
-- Status markers: `[Deprecated in vX.Y]`, `[Superseded by FR-NN]`,
-  `[Removed in vX.Y]` (only after deprecation cycle).
+1. **Delete the item.** Remove the heading and body verbatim from
+   the spec; do not leave a deprecation stub.
+2. **Renumber successors to stay contiguous.** If FR-05 is removed
+   and FR-06..FR-12 exist, they become FR-05..FR-11. Same rule
+   for `NFR-NN`, `R-NN`, `OQ-NN`, `TS-NN`. AC sub-IDs follow their
+   parent FR's new number.
+3. **Update all cross-references atomically** per V12. Every
+   inline mention, anchored link, and "see FR-N" prose reference
+   to a renumbered ID MUST update in the same edit.
+4. **Record the operation in `cross-ref-audit-json`** with a
+   `deletes` entry naming the removed ID and `renumbers` entries
+   for each shifted successor. `orphaned_references` MUST be
+   empty at end-of-turn.
+5. **No CHANGELOG.md entry** is written (V3 — drafts do not log).
+
+#### 3b. Published mode (`Status: published`) and prior-published IDs in a re-draft window
+
+Per V9 (immutability) and V11 (re-draft window with prior-published frozen):
+
+1. **Do NOT delete the heading or its ID.** The ID stays.
+2. **Mark the item in place** with one of:
+   - `### FR-07 [Deprecated in vX.Y, superseded by FR-NN]`
+   - `### FR-07 [Deprecated in vX.Y]` (no successor)
+   - `### FR-07 [Removed in vX.Y]` — only after at least one
+     MINOR cycle of being `[Deprecated]`.
+3. **Body MAY be replaced** with a one-line pointer
+   (e.g. *"Superseded by FR-29; see [FR-29](#fr-29)."*). Do not
+   leave the original body in place if it is now contradicted.
+4. **Do NOT renumber** any other item, even if "natural slots"
+   open up.
+5. **Cross-references continue to resolve** — anchored links to
+   `#fr-07` MUST still land at a heading bearing the ID.
+6. **CHANGELOG.md** carries a `### Deprecated` entry (publish-only;
+   for re-draft, the entry is staged and written at the publish
+   transition per V17).
+
+#### 3c. Mixed cases (re-draft window)
+
+In a re-draft window (V11) the spec contains both prior-published
+IDs (frozen) AND newly-added items inside the window (fluid).
+When the user asks to remove an item in this state:
+
+- If the item is prior-published → §3b (deprecate-in-place).
+- If the item was added inside the re-draft window and has not
+  yet shipped → §3a (delete + renumber, scoped to in-window items
+  only).
+
+The drafter MUST refuse a request to delete a prior-published ID
+in a re-draft window with a structured error that cites V9.
 
 ### 4. Naming evolution & aliases
 

@@ -98,6 +98,10 @@ Boundaries if you need the full enumeration.
 Extract from the orchestrator's `task` prompt:
 
 - `mode` — `creation` or `update`. Must be present.
+- `spec_status` — `draft` | `published`. Required in update mode
+  (creation mode is always `draft` per V2). Drives the FR-removal
+  branch in Step 3 (`prd-evolution` §3) and the upper-section
+  edit ratchet (`prd-evolution` §0.1).
 - `spec_kind` — `product` | `technical` | `mixed`. Must be present.
 - `output_path` — repo-relative `.md` path where the final spec
   must be written. Must be present, must not start with
@@ -113,8 +117,9 @@ Extract from the orchestrator's `task` prompt:
 - `interview_answers` path (if any) — `context/interview-answers.md`.
 
 Refuse if `mode`, `spec_kind`, or `output_path` is missing. In
-update mode also refuse if `changelog_path` or `existing_spec_path`
-is missing. Same posture as the existing `mode` check.
+update mode also refuse if `changelog_path`, `existing_spec_path`,
+or `spec_status` is missing. Same posture as the existing `mode`
+check.
 
 ### Step 2: Load inputs
 
@@ -155,26 +160,18 @@ only the spans listed in your planned edit set are typed anew.
    information is genuinely unknown, write `[TBD — <reason>]` and
    add a corresponding entry to the spec's "Open Questions"
    section. **Do not fabricate.**
-6. **Upper-section signal density (§10).** Apply
+6. **Upper-section signal density AND isolation.** Apply
    [`spec-driven-prd-best-practices` §10](../../skills/spec-driven-prd-best-practices/SKILL.md#10-upper-section-signal-density)
-   when authoring Document Information, Problem Statement, Goals
-   & Success Metrics, Users & Personas, Stakeholders & Reviewers
-   (when gated-in), and Solution Summary. The test is signal vs.
-   noise, not word count: include only what materially helps a
-   reader understand the plan and the most consequential
-   decisions. For each candidate sentence, run the heuristics in
-   §10 — **lower-section displacement** (would the reader still
-   be oriented if I moved this to its canonical lower-section
-   home?), **gating** (does this gate a downstream decision?),
-   **"so what?"** (does deleting it change an implementer's grasp
-   of the plan?), **trade-off** (alternatives reasoning → Risks
-   / Alternatives), **edge-case** (caveat → FR / AC / Open
-   Questions). The §10 backstop word caps (Problem Statement
-   ~400, Solution Summary ~350 / 3 paragraphs, Goals narrative
-   ~200, Personas narrative ~150) are the secondary control;
-   well-written specs land far below them. If you find yourself
-   approaching a cap, re-apply the heuristics — sprawl is almost
-   always misplaced content rationalised in.
+   AND the per-section isolation contract in
+   [`prd-template` §"Per-section isolation contract"](../../skills/prd-template/SKILL.md#per-section-isolation-contract-upper-sections).
+   Before writing any sentence into Document Information,
+   Problem Statement, Goals & Success Metrics, Users & Personas,
+   Stakeholders & Reviewers, or Solution Summary, run the
+   isolation test (which-job-does-this-sentence-do); if the
+   sentence's primary job does not match the heading it sits
+   under, move it or drop it. The §10 heuristics (lower-section
+   displacement, gating, "so what?", trade-off, edge-case) and
+   §10 backstop word caps continue to apply.
 7. **Functional Requirements use EARS shall-statements.** Each FR
    is exactly one shall-statement using one of the patterns:
    ubiquitous (`The <system> shall <response>.`), event-driven
@@ -333,6 +330,22 @@ capitalisation, switching `&` to `and`, re-grouping bullet lists, and
 "while I'm here" cleanups are explicitly NOT sufficient justification.
 Leave them.
 
+**Upper-section edit ratchet.** Edits to Document Information
+(except version-mechanic fields), Problem Statement, Goals &
+Success Metrics, Users & Personas, Stakeholders & Reviewers, or
+Solution Summary clear the gate in §0 above AND each
+`edit-audit-json` entry whose `locator` resolves to an upper
+section MUST carry a `justification` that quotes or directly
+paraphrases the user sentence requesting the change. A
+justification of `"implied by FR-29 add"` is not enough — the
+upper-section change must trace to an explicit user ask. If you
+cannot point at the request line, do not make the edit. See
+[`prd-evolution` §0.1](../../skills/prd-evolution/SKILL.md#01-upper-section-edits-are-extra-scrutinised).
+
+**Expected outcome.** Most update turns produce zero upper-section
+edits. The default upper-section disposition in update mode is
+**preserve verbatim**.
+
 **Preservation defaults.** Unless an edit clears the gate above:
 
 - Original wording is preserved verbatim.
@@ -345,10 +358,26 @@ Leave them.
 - Existing footnote slugs are preserved (subject to the citation gate's
   delete-bad-citations rule, which is correctness, not style).
 
-**Workflow.** Begin by reading the prior spec into memory. Plan your
-edits as a list of `(span, reason ∈ {correctness, requested, missing,
-mechanics})` entries. Only then write. Each entry will appear in
-`edit-audit-json` (Output Contract).
+**Workflow.** Read the prior spec into memory. Walk it
+sentence-by-sentence and decide, for each sentence, whether the
+revision is (a) byte-identical (emit verbatim), (b) a justified
+change (emit new + record in `edit-audit-json` at sentence
+granularity), or (c) an unjustified delta (**REVERT** — re-emit
+the prior sentence byte-for-byte; do not record an edit).
+
+The REVERT case is the default for any change that does not
+clear the per-statement value gate in
+[`prd-evolution` §0 "Pre-edit gate (drafter)"](../../skills/prd-evolution/SKILL.md#pre-edit-gate-drafter--per-statement-granularity).
+Business-statement polish, minor grammar fixes, capitalisation
+normalisation, whitespace-only changes, and stylistic prose
+tightening all REVERT by default. Do not keep them on grounds of
+"already drafted" or "more readable".
+
+`edit-audit-json` entries use **sentence-level locators** in
+update mode (e.g. `"§Solution Summary ¶2 sentence 3"`,
+`"FR-07 deprecation marker"`, `"AC-12.1 trigger clause"`).
+Paragraph-level locators are insufficient because they hide
+sub-sentence stylistic drift.
 
 1. Read the prior spec; identify its current version and section IDs.
 2. Apply the `prd-evolution` rules:
@@ -359,10 +388,21 @@ mechanics})` entries. Only then write. Each entry will appear in
      Record the bump in `version-bump-json`.
    - **ID stability.** Existing requirement IDs (FR-, NFR-, AC-,
      R-, OQ-, TS-) keep their numbers. **Do not renumber.**
-   - **Deprecation, not deletion.** Removed requirements become
-     `FR-NN [Deprecated in vX.Y, superseded by FR-MM]`. After two
-     MAJOR versions you may move them to "Appendix: Historical
-     Requirements".
+   - **FR removal — branch on status** (per
+     [`prd-evolution` §3](../../skills/prd-evolution/SKILL.md#3-fr-removal--semantics-by-spec-status)
+     and [`versioning-discipline` §V9 / §V11 / §V13](../../skills/versioning-discipline/SKILL.md)):
+     - `Status: draft` (initial OR re-draft of an item added inside
+       the window): **delete** the item, **renumber** successors to
+       stay contiguous, **update all cross-references atomically**
+       (V12). Record in `cross-ref-audit-json` with `deletes` and
+       `renumbers`. No CHANGELOG entry.
+     - `Status: published` OR prior-published ID in a re-draft
+       window: **deprecate in place**. Mark with
+       `[Deprecated in vX.Y, superseded by FR-NN]` (or simpler
+       variants — see §3b). IDs do not move. CHANGELOG `### Deprecated`
+       entry at publish.
+     - Refuse with a V9 structured error if the user asks to delete
+       a prior-published ID.
    - **Renames carry aliases.** `Feature X (formerly "Feature Y")`.
      Maintain an "Aliases & Deprecations" appendix table.
    - **Evidence cleanup is permitted on update.** Citation IDs
@@ -494,7 +534,7 @@ Rules for `cross-ref-audit-json` (V12):
   "prior_spec_path": "<existing_spec_path>",
   "edits": [
     {
-      "locator": "FR-29 (new)" | "FR-07 heading" | "NFR-04 latency target" | "§Solution Summary ¶2",
+      "locator": "FR-29 (new)" | "FR-07 heading" | "NFR-04 latency target sentence" | "§Solution Summary ¶2 sentence 3" | "AC-12.1 trigger clause",
       "kind":    "add" | "modify" | "delete" | "deprecate" | "rename" | "reorder" | "mechanics",
       "reason":  "correctness" | "requested" | "missing" | "mechanics",
       "justification": "<one line, points at the user request, the Stop A approved change, the detective gap, or the prior factual error>"
@@ -515,6 +555,11 @@ Rules for `edit-audit-json` (update mode only):
   `kind: modify` or `kind: reorder` entry has `reason: ""` or a reason
   that paraphrases "style" / "flow" / "clarity" without a user request
   pointer.
+- Locators are **sentence-level** in update mode. A locator that
+  resolves to a paragraph or section without naming a specific
+  sentence is insufficient when the modified content is sub-
+  paragraph — the critic's D10 per-statement scoring will fail
+  the entry.
 
 ```ready-for-review
 true | false

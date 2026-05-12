@@ -1,0 +1,91 @@
+id: smoke-update-upper-section-stability
+pack: spec-author
+description: "F2 regression guard: upper-section edit ratchet. User asks for one FR addition; drafter MUST leave Document Information (excluding version-mechanic fields), Problem Statement, Goals & Success Metrics, Users & Personas, and Solution Summary byte-identical to the prior spec. Asserts: every upper-section bait sentence survives verbatim; edit-audit-json.preserved_unchanged_sections includes all five upper sections; critic D10 >= 0.9 with zero findings whose locator falls in upper sections."
+
+prompt_file: prompt.md
+
+mode_kind: update
+spec_kind: technical
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/digest\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^docs/specs/CHANGELOG\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  invocations:
+    context-detective: { min: 1, max: 2 }
+    prd-interviewer:   { min: 0, max: 1 }
+    prd-drafter:       { min: 1, max: 2 }
+    prd-critic:        { min: 1, max: 2 }
+  agent_output_overrides:
+    prd-drafter:
+      must_contain_sections:
+        - draft-summary
+        - section-decisions-json
+        - spec-path
+        - changelog-path
+        - version-bump-json
+        - edit-audit-json
+        - ready-for-review
+      json_block_assertions:
+        edit-audit-json:
+          - 'counts.add >= 1'
+          - 'counts.modify <= 1'
+          - 'counts.reorder == 0'
+          - 'counts.rename == 0'
+          # Upper sections appear in preserved_unchanged_sections.
+          - '"Problem Statement" in preserved_unchanged_sections'
+          - '"Goals & Success Metrics" in preserved_unchanged_sections'
+          - '"Users & Personas" in preserved_unchanged_sections'
+          - '"Solution Summary" in preserved_unchanged_sections'
+          # No edit's locator falls in an upper section.
+          - 'not any(any(s in e.locator for s in ["Problem Statement","Goals & Success Metrics","Users & Personas","Solution Summary","Document Information"]) for e in edits if e.reason != "mechanics")'
+    prd-critic:
+      json_block_assertions:
+        findings-json:
+          # No D10 / upper-section-edit-ratchet finding fired.
+          - 'not any("upper-section" in (f.get("issue","") + f.get("rubric","")).lower() for f in findings)'
+  artifact_content_assertions:
+    - artifact: specification
+      # Bait spans from the prior spec's upper sections MUST survive
+      # byte-for-byte. Same idiom as smoke-update-minimal-edit-discipline.
+      must_match:
+        - "Workspace members miss important changes across squads\\. Scrolling individual channels to find what matters takes too long\\."
+        - "Built on the existing `workspace-events` Kafka topic\\. No new datastore\\."
+        - "Reduce median time-to-first-action on a flagged change from"
+        - "PM      \\| Daily summary across squads\\. \\| < 2 min to know what to follow up on\\. \\|"
+    - artifact: changelog
+      must_match:
+        - "###\\s*Added"
+  rubric_targets:
+    "artifact:specification": "^docs/specs/digest\\.md$"
+    "artifact:changelog":     "^docs/specs/CHANGELOG\\.md$"
+  rubric_overrides:
+    edit-minimalism:
+      severity: warn
+      threshold: 0.9

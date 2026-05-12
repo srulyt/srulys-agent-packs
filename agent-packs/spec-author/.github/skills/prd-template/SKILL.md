@@ -62,6 +62,39 @@ FR carries its own `#### Acceptance Criteria` sub-section with one
 or more `AC-<FR>.<n>` Given/When/Then scenarios. This eliminates
 the FR↔AC traceability mismatch that arises from a flat AC table.
 
+### Per-section isolation contract (upper sections)
+
+The mandatory upper sections form a **shoulder** of the spec.
+Each carries a single, focused job. Cross-pollination — restating
+the problem inside the solution, smuggling ownership into goals,
+discussing implementation inside the problem — is the leading
+defect on revision turn 2+ and dilutes every section's signal.
+
+| Section | MUST contain | MUST NOT contain |
+|---|---|---|
+| Document Information | Status, version, owners, reviewers, last-updated, `Updates:` / `Obsoletes:` header (update mode), `## Changes since vN` preamble (re-draft only). | Problem narrative, goals, solution mechanics, ownership rationale, rollout plan. |
+| Problem Statement | What is broken today, who feels it, evidence (numbers / quotes / telemetry). | Solution direction ("we will…"), goals ("the goal is to…"), ownership ("the X team owns…"), rollout, FR-level detail. |
+| Goals & Success Metrics | Outcomes (baseline + target + window) the work is judged against. | Problem restatement, solution mechanics, FRs in disguise, ownership, rollout. |
+| Users & Personas | Primary users, their context, their expected outcome. | Solution mechanics ("they will use feature X"), ownership, success metrics. |
+| Stakeholders & Reviewers (gated) | Named accountable parties and their decision rights. | Problem restatement, goals, FRs, rollout plan. |
+| Solution Summary | The chosen approach at the highest level — what we are building, in one short paragraph. | Problem restatement, goals restatement, ownership, FR enumeration, AC detail, trade-off / alternatives reasoning (→ Risks & Mitigations / Alternatives), per-FR rationale (→ FR `*Rationale*` line), rollout / migration detail (→ Rollout Plan). |
+| Out of Scope | Explicit, load-bearing non-goals that pass the §7 adjacency test. | Boilerplate negations; restatements of "we will" claims from Solution Summary. |
+
+**The isolation test the drafter and critic both apply.** For each
+candidate sentence in an upper section:
+
+1. Read the sentence in isolation.
+2. Ask: *"Which of the seven upper-section jobs does this sentence
+   primarily do?"* If the answer is not the heading of the section
+   the sentence currently sits under, the sentence is misplaced.
+3. Move it to its correct home, or drop it if no home exists and
+   §10's lower-section displacement test does not place it.
+
+This rule operates **alongside** §10's lower-section displacement
+heuristic. §10 catches "this belongs in an FR rationale / risk /
+OQ"; this rule catches "this belongs in a different upper section".
+Both apply on every authoring and review pass.
+
 ### Complexity-gated sections (include only when an axis triggers)
 
 | Section | Triggering axis | Requires `spec_kind` | ID convention |

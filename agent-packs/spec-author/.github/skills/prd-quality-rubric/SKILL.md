@@ -107,6 +107,20 @@ discipline upheld; is format hygiene upheld?
 - **Format-hygiene violations:** hard-wrapped body paragraphs;
   bold-as-header; structure carried by bolded lines instead of
   `###`/`####` headers.
+- **Upper-section isolation violations** (per
+  `prd-template` §"Per-section isolation contract"):
+  - Solution Summary restates problem narrative, or names owners
+    / metrics / FRs / rollout detail → **major** per offending
+    section.
+  - Goals restates the problem, or names owners, or describes
+    solution mechanics → **major** per offending section.
+  - Problem Statement preempts the solution ("we will add…"),
+    or names owners, or pre-states goals → **major** per
+    offending section.
+  - Ownership / stakeholder content surfacing in any non-Ownership
+    upper section → **major**.
+  - Repeat offence across three or more upper sections → escalate
+    one finding to **blocker**.
 
 ### D9 — scope-discipline  (both modes when `spec_kind` is `product` or `mixed`; `null` otherwise)
 
@@ -142,6 +156,24 @@ OQ-, TS-) still resolve in the revised spec?
 
 **Scoring:** silent deletion of an ID is a **blocker** finding.
 Renumbering is a **blocker** finding.
+
+**Sub-rubric `d6.removal-by-status`** (severity: blocker; defined
+by `prd-evolution` §3):
+
+- In `Status: draft` (initial or re-draft scope per V11): a
+  removed item that was NOT renumbered out of the successor
+  sequence (i.e. a gap appears in the FR/NFR/R/OQ/TS numbering)
+  is a **blocker** finding.
+- In `Status: draft` (initial or re-draft scope): a removed item
+  that left a `[Deprecated]` / `[Removed]` stub instead of being
+  deleted cleanly is a **major** finding (the spec is over-
+  cautious; deprecation-in-place is for published).
+- In `Status: published` (or prior-published ID in re-draft): a
+  deleted item with no `[Deprecated]` / `[Removed]` marker AND
+  no preserved heading is a **blocker** finding (V9 violation).
+- In `Status: published` (or prior-published ID in re-draft): a
+  renumbered prior-published item is a **blocker** finding (V9
+  violation).
 
 ### D7 — versioning-correctness  (update mode only)
 
@@ -187,6 +219,35 @@ not need an external diff tool).
   or more such edits are present, escalate ONE finding to `blocker`.
 - If the drafter omitted `edit-audit-json` entirely in update mode:
   emit a single `blocker` finding and score D10 = 0.
+- **Upper-section edit ratchet.** Any modified or reordered span
+  whose location is in Document Information (excluding version
+  mechanics), Problem Statement, Goals & Success Metrics, Users
+  & Personas, Stakeholders & Reviewers, or Solution Summary
+  carries a 2× weight against D10. An upper-section edit whose
+  `justification` does not quote / directly paraphrase a user
+  request: deduct 0.4 (not 0.2) and emit a `major` finding.
+  Two or more such edits in one turn: escalate ONE finding to
+  `blocker`. Rationale: the user explicitly named upper-section
+  stability as a hard discipline; D10's standard schedule
+  under-weights it.
+- **Per-statement scoring.** D10 evaluates sentence-level diffs,
+  not span-level diffs. For each sentence that differs between
+  `prior_spec_path` and `spec_path`:
+  - If listed as a sentence-level entry in `edit-audit-json` with
+    a surviving reason → no deduction.
+  - If not listed, OR listed only at paragraph/section
+    granularity → deduct 0.2 and emit `major`.
+  - If the only difference is whitespace, punctuation,
+    capitalisation, grammar, or stylistic word-substitution
+    (i.e. the kind of change §0's per-statement gate routes to
+    REVERT) → deduct 0.3 and emit `major`. Three or more such
+    sentences → escalate ONE finding to `blocker`.
+- **Default disposition in findings.** D10 findings whose
+  recommended `fix` would normally be "drop / re-justify the edit"
+  MUST instead read "revert the sentence to the prior wording at
+  `<prior_spec_path>:<line>`". The fix wording matters: it tells
+  the next drafter pass that REVERT — not re-edit — is the
+  required remediation.
 
 **Common deductions:** rewording the Problem Statement when the user
 asked only to change one FR; reordering Goals; renaming a section that

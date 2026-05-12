@@ -1,0 +1,96 @@
+id: smoke-published-fr-removal-deprecate
+pack: spec-author
+description: "F4 published-branch regression guard: remove FR-03 from a Status:published v1.2.0 spec. Drafter MUST mark FR-03 with '[Deprecated in v1.3, ...]', keep ALL FR IDs frozen (V9), keep FR-04/FR-05 unchanged, and write a CHANGELOG '### Deprecated' entry under v1.3.0. Asserts: FR-03 heading present and bears a Deprecated marker; FR-04 and FR-05 headings unchanged; cross-references to #fr-03 still resolve; CHANGELOG.md gains a v1.3.0 ### Deprecated entry citing FR-03; critic d6.removal-by-status MUST NOT fire."
+
+prompt_file: prompt.md
+
+mode_kind: update
+spec_kind: product
+
+workspace:
+  isolation: copy-tree
+  inputs_dir: inputs/
+  golden_dir: golden/
+  steps:
+    - kind: git_init
+    - kind: copy_tree
+      src: inputs/
+      dest: .
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/agents
+      dest: .github/agents
+    - kind: copy_tree
+      src: ../../../../../agent-packs/spec-author/.github/skills
+      dest: .github/skills
+
+teardown:
+  policy: delete-on-pass
+
+expected:
+  artifacts:
+    - id: specification
+      path_pattern: "^docs/specs/notif-prefs\\.md$"
+      required: true
+    - id: changelog
+      path_pattern: "^docs/specs/CHANGELOG\\.md$"
+      required: true
+    - id: spec-review
+      path_pattern: "^\\.spec-author/sessions/[^/]+/artifacts/spec-review\\.md$"
+      required: true
+  invocations:
+    prd-drafter: { min: 1, max: 2 }
+    prd-critic:  { min: 1, max: 2 }
+  artifact_content_assertions:
+    - artifact: specification
+      must_match:
+        # FR-03 still present, marked Deprecated.
+        - "###\\s+FR-03\\s+\\[Deprecated in v1\\.3"
+        # FR-04 and FR-05 IDs frozen — not renumbered.
+        - "###\\s+FR-04\\s+— Quiet-hours window"
+        - "###\\s+FR-05\\s+— Test-notification button"
+        # AC IDs frozen.
+        - "\\*\\*AC-04\\.1\\*\\*"
+        - "\\*\\*AC-05\\.1\\*\\*"
+        # Version bumped to 1.3.0.
+        - "Version\\*\\*:\\s*1\\.3\\.0"
+      must_not_match:
+        # FR-03 must NOT be deleted.
+        - "(?s)## Functional Requirements[\\s\\S]{0,2000}### FR-04 — Quiet-hours window[^#]"
+        # No silent renumber.
+        - "###\\s+FR-04\\s+— Test-notification button"
+    - artifact: changelog
+      must_match:
+        - "##\\s*v1\\.3\\.0"
+        - "###\\s*Deprecated"
+        - "FR-03"
+  agent_output_overrides:
+    prd-drafter:
+      must_contain_sections:
+        - draft-summary
+        - section-decisions-json
+        - spec-path
+        - changelog-path
+        - version-bump-json
+        - edit-audit-json
+        - ready-for-review
+      json_block_assertions:
+        edit-audit-json:
+          # Modify on FR-03 (the deprecation marker), no deletes.
+          - 'counts.delete == 0 if "delete" in counts else True'
+          - 'counts.modify >= 1'
+          # FR-04 and FR-05 NOT in edits (frozen).
+          - 'not any("FR-04" in e.locator or "FR-05" in e.locator for e in edits)'
+        version-bump-json:
+          - 'new_version == "1.3.0"'
+    prd-critic:
+      json_block_assertions:
+        findings-json:
+          - 'not any("d6.removal-by-status" in f.get("rubric","").lower() or "removal-by-status" in f.get("issue","").lower() for f in findings)'
+  rubric_targets:
+    "artifact:specification": "^docs/specs/notif-prefs\\.md$"
+    "artifact:changelog":     "^docs/specs/CHANGELOG\\.md$"
+  rubric_overrides:
+    id-stability:           { severity: error }
+    published-id-freeze:    { severity: error }
+    versioning-correctness: { severity: error }
+    changelog-completeness: { severity: warn }
