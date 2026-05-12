@@ -67,18 +67,14 @@ node_modules/
 
 # ===========================================
 # Eval framework working directories
-# Engine code in eval_engine/ is committed.
-# Long-term memory IS committed: spec.yaml, cases/, README.md,
-# and promoted runs under evals/packs/*/results/.
-# Per-run scratch output is ignored (it contains absolute paths
-# tied to this checkout and accumulates one entry per run):
+# Tests live under evals/packs/<pack>/test_*.py and evals/skills/<skill>/test_*.py.
+# Per-test scratch (pytest tmpdirs, judge logs, wrapper run artifacts) is ignored:
 # ===========================================
-evals/packs/*/workspaces/
-evals/packs/*/results-local/
-evals/packs/*/reports/
-evals/packs/*/fixtures/
-evals/data/
 __pycache__/
 *.pyc
 .pytest_cache/
+evals/_judge_cache/
+evals/.report.jsonl
+evals/_runs/
+.smoke-logs/
 

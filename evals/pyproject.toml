@@ -1,0 +1,29 @@
+[tool.pytest.ini_options]
+# pytest config for the new evals framework. Run with `pytest evals/` from repo root.
+minversion = "8.0"
+testpaths = ["packs", "skills", "static"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Skip legacy harness scratch dirs and committed run artefacts so pytest
+# doesn't walk into them (they're slow and full of irrelevant .py files).
+norecursedirs = [
+    "workspaces", "fixtures", "results", "results-local", "reports",
+    "data", "__pycache__", ".pytest_cache",
+]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--tb=short",
+    "-p", "no:cacheprovider",
+]
+markers = [
+    "slow: marks evals that take > 60s (deselect with '-m \"not slow\"')",
+    "judge: marks evals that invoke the LLM judge",
+    "skill: marks evals that exercise a skill in isolation",
+    "pack: marks evals that exercise a full agent pack",
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+log_cli_date_format = "%H:%M:%S"

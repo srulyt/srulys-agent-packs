@@ -132,29 +132,32 @@ PASS verdict from `review-prompts`, and again after each
 task(
   agent_type: "Factory Eval Runner",
   name: "run-evals",
-  description: "Execute the pack's eval suite",
+  description: "Execute the pack's pytest eval suite",
   mode: "sync",
   prompt: "You are being invoked as @factory-eval-runner.\n" +
           "Session: {session-id}\nPack: {pack-name}\n" +
           "Eval run index: {n}\n" +
           "Output path: .copilot-factory/sessions/{session-id}/artifacts/eval-run-{n}.json\n" +
-          "Spec path: evals/packs/{pack-name}/spec.yaml\n" +
-          "cases_subset: {all|case-id-1,case-id-2}\n\n" +
-          "Read the spec to resolve `budgets:` and `loop_convergence:` " +
+          "Report-log path: .copilot-factory/sessions/{session-id}/artifacts/eval-run-{n}.report.jsonl\n" +
+          "Tests path: evals/packs/{pack-name}/\n" +
+          "Guardrails:\n" +
+          "  max_wall_clock_seconds_per_loop: {S}\n" +
+          "  tests_subset: {all|<space-list-of-pytest-nodeids>}\n\n" +
+          "Run pytest non-interactively, parse the report-log JSONL " +
           "yourself (the orchestrator does not have read access to " +
           "`evals/`). Emit `eval-summary`, `eval-verdict`, " +
-          "`failing-cases-json`, `resolved-budgets-json`, " +
-          "`resolved-convergence-json`, `ready-for-orchestrator`."
+          "`failing-tests-json`, `resolved-budgets-json`, " +
+          "`ready-for-orchestrator`."
 )
 ```
 
 Parse `eval-verdict.status` (`pass` | `fail` | `harness-error`). On
 `harness-error`, escalate per the orchestrator's Iteration Caps; do
 NOT loop. The orchestrator MUST trust the runner's
-`resolved-budgets-json` / `resolved-convergence-json` blocks and
-persist them into `state.eval_loop.guardrails` — the orchestrator's
-own File Access Boundaries do not include `evals/`, so the runner is
-the single source of truth for spec-derived values.
+`resolved-budgets-json` block and persist it into
+`state.eval_loop.guardrails` — the orchestrator's own File Access
+Boundaries do not include `evals/`, so the runner is the single
+source of truth for resolved guardrail values.
 
 ## Engineer Delegation (Fix Mode — eval-fix-loop)
 

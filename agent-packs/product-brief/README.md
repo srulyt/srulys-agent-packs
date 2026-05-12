@@ -85,15 +85,15 @@ Decision needed: whether to fund and prioritize in the next planning cycle.
 
 ## Evals
 
-This pack ships an eval suite under `evals/packs/product-brief/`. The suite encodes the same contracts the agents declare in their `.agent.md` files: per-role model pinning, agent-flow ordering, per-agent tool/scope allow-lists, output-contract fences, and prompt-required sections. Cases under `cases/` cover happy paths (late-stage decision ask, early-stage summary) and negative paths (orchestrator direct source-read, missing fence, iteration-cap breach, orchestrator paraphrase, model drift, evidence STM source leak).
+This pack ships pytest-based evals under `evals/packs/product-brief/`. Cases cover happy paths (late-stage decision ask, early-stage summary) and negatives (orchestrator paraphrase, evidence STM source leak).
 
 To run the suite from the monorepo:
 
 ```bash
-python -m eval_engine.harness.run_pack --pack product-brief
+pytest evals/packs/product-brief/ -v
 ```
 
-All rubrics are pinned at `severity: info` for the first iteration. Promote to `warn` / `blocker` only after at least three baseline runs.
+See [`evals/README.md`](../../evals/README.md) for framework details.
 
 ## Notes
 

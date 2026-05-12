@@ -97,10 +97,11 @@ instructs you to run multiple workflow phases yourself.
 - **Machine-parseable output contract per agent**: each sub-agent must
   declare named fenced sections in its final response (see the
   `agent-builder` skill's eval-authoring reference for examples).
-- **Eval artifacts**: the architecture must list the planned
-  `evals/packs/<pack>/spec.yaml` and at least one
-  `evals/packs/<pack>/cases/smoke-*/` case scenario, including the
-  prompt summary, expected artifacts, and expected invocations.
+- **Eval artifacts**: the architecture must list at least one planned
+  pytest test under `evals/packs/<pack>/test_smoke_<scenario>.py` per
+  pack-level scenario, including the prompt summary, expected
+  artifacts the SUT will produce, and the judge criteria (if any).
+  Skill-only deliverables get `evals/skills/<skill>/test_<scenario>.py`.
 - **Failure modes**: a `## Failure Modes` section enumerating **at
   least three** concrete failure modes the pack can encounter
   (sub-agent stalls, contract violations, malformed inputs, rate
@@ -202,12 +203,13 @@ section of that reference for the orthogonal-flag explanation.
 
 ```eval-plan-json
 {
-  "spec_path": "evals/packs/<pack>/spec.yaml",
-  "cases": [
-    {"id": "smoke-<happy-path>",
+  "tests": [
+    {"path": "evals/packs/<pack>/test_smoke_<scenario>.py",
+     "scenario": "smoke-<happy-path>",
+     "scope": "pack",
      "prompt_summary": "<one sentence>",
-     "expected_artifacts": ["<regex>", "..."],
-     "expected_invocations": {"<agent>": {"min": 1, "max": 2}}}
+     "expected_artifacts": ["<glob>", "..."],
+     "judge_criteria": "<one-paragraph definition of 'good'>"}
   ]
 }
 ```

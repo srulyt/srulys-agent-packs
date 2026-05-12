@@ -162,8 +162,9 @@ For detailed specs on all artifact types, see [references/copilot-artifacts.md](
       transitioning phase
 - [ ] Orchestrator surfaces hard iteration caps (max 2 re-requests
       per artifact per review type) and persists counters in state
-- [ ] Generated pack ships with `evals/packs/<pack>/spec.yaml` and at
-      least one case at `evals/packs/<pack>/cases/smoke-*/`
+- [ ] Generated pack ships with at least one
+      `evals/packs/<pack>/test_smoke_<scenario>.py` (pytest test) and
+      a one-paragraph `evals/packs/<pack>/README.md`
       (see [Eval Authoring](references/eval-authoring.md))
 - [ ] Engineer build manifest lists eval artifacts under
       `files_created` / `files_modified` and `evals_created`

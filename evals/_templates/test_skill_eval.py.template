@@ -1,0 +1,45 @@
+"""TEMPLATE: pytest eval for a skill in isolation.
+
+Copy this file to ``evals/skills/<skill-name>/test_<scenario>.py`` and
+customise. Replace ``__SKILL_NAME__``, ``__SCENARIO__``, and the prompt.
+
+The fixtures used here (``copilot_skill``, ``judge``) come from
+``evals/conftest.py``. No imports needed.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+
+PROMPT = """\
+__REPLACE_ME__: a small task that exercises just this skill, with no
+dependency on any agent pack. Be specific about expected output.
+"""
+
+
+@pytest.mark.skill
+@pytest.mark.slow
+@pytest.mark.judge
+def test___SCENARIO__(copilot_skill, judge):
+    """One-line description of what this skill eval verifies."""
+    ws = copilot_skill("__SKILL_NAME__")
+
+    result = ws.run_skill(
+        skill="__SKILL_NAME__",
+        prompt=PROMPT,
+        timeout=300,
+    )
+    assert result.ok, f"copilot exited {result.returncode}; see {result.log_path}"
+
+    verdict = judge(
+        artifact=result.stdout,
+        criteria=(
+            "Describe what a correct skill output looks like, in concrete "
+            "terms. Be strict; score 1.0 only if all criteria are met."
+        ),
+        threshold=0.7,
+    )
+    assert verdict.passed, (
+        f"Judge rejected (score={verdict.score:.2f}): {verdict.reasoning}"
+    )

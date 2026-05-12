@@ -1,0 +1,53 @@
+"""TEMPLATE: pytest eval for an agent pack.
+
+Copy this file to ``evals/packs/<pack-name>/test_<scenario>.py`` and
+customise. Replace ``__PACK_NAME__``, ``__AGENT_NAME__``, ``__SCENARIO__``,
+and the prompt + assertions.
+
+The fixtures used here (``copilot_pack``, ``judge``) come from
+``evals/conftest.py``. No imports needed.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+
+PROMPT = """\
+__REPLACE_ME__: write the user prompt that exercises the scenario.
+Be specific about what the agent must produce and where.
+"""
+
+
+@pytest.mark.pack
+@pytest.mark.slow
+@pytest.mark.judge
+def test___SCENARIO__(copilot_pack, judge):
+    """One-line description of what this eval verifies."""
+    ws = copilot_pack("__PACK_NAME__")
+
+    result = ws.run_agent(
+        prompt=PROMPT,
+        agent="__AGENT_NAME__",
+        timeout=600,
+    )
+    assert result.ok, f"agent exited {result.returncode}; see {result.log_path}"
+
+    # 1) Structural assertions -- artifact paths, file counts, etc.
+    # Replace these with your scenario's expected outputs.
+    artifacts = ws.glob("__GLOB_PATTERN__")
+    assert artifacts, "expected at least one artifact"
+
+    # 2) Optional LLM-as-judge check on artifact contents.
+    artifact = artifacts[0].read_text(encoding="utf-8")
+    verdict = judge(
+        artifact=artifact,
+        criteria=(
+            "Describe what 'good' looks like in concrete terms. "
+            "Score 1.0 only if all criteria are met. Be strict."
+        ),
+        threshold=0.7,
+    )
+    assert verdict.passed, (
+        f"Judge rejected (score={verdict.score:.2f}): {verdict.reasoning}"
+    )

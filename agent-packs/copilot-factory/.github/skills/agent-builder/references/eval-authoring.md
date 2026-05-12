@@ -1,198 +1,187 @@
-# Eval Authoring (cross-cutting reference)
+# Eval Authoring (pytest framework)
 
-This file documents the eval authoring rules every generated pack
-must satisfy. When the pack is deployed standalone, this reference
-is authoritative. When this pack ships inside the
-`srulyt/srulys-agent-packs` monorepo, the in-repo
-`evals/docs/authoring-guide.md` provides additional examples but does
-not override anything stated here.
+This is the cross-cutting reference for authoring evals against the
+**pytest-based eval framework** that lives in `evals/`. Read it once;
+then copy a template and fill in the blanks.
+
+## Mental model
+
+An eval is a pytest test. It:
+
+1. **Stages** a workspace (a tmpdir with the pack or skill copied in).
+2. **Runs** the system-under-test by shelling out to `copilot -p ...`.
+3. **Asserts** on artifacts the SUT produced (file existence, counts,
+   content).
+4. **Optionally** calls a tiny `judge(...)` helper for LLM-as-judge
+   semantic scoring.
+
+That's it. No spec.yaml, no case.yaml, no fixture extraction, no
+manifest manual-paste loop. Each `test_*.py` is self-contained and
+readable top-to-bottom.
 
 ## Required directory shape per generated pack
 
 ```
 evals/packs/<pack>/
-├── spec.yaml
-└── cases/
-    └── smoke-<happy-path>/
-        ├── case.yaml
-        ├── prompt.md
-        ├── inputs/
-        │   └── README.md
-        └── golden/
-            └── README.md
+├── README.md                          # what these evals cover
+└── test_smoke_<happy-path>.py         # at least one smoke eval per pack
 ```
 
-Every directory must be tracked by git — keep a `README.md` placeholder
-in `inputs/` and `golden/` even when empty.
+For skill evals (no pack required):
 
-## `spec.yaml` skeleton
-
-```yaml
-schema_version: 1
-pack: <pack-name>             # MUST equal directory name
-orchestrator: <orchestrator>  # usually same as pack name
-
-models:
-  <pack-name>: claude-sonnet-4.6
-  <sub-agent-1>: claude-sonnet-4.6
-  judge: claude-opus-4.7      # judge >= strongest SUT agent
-
-loops:
-  max_orchestrator_turns: 60
-
-flow:
-  ordering:
-    - [<sub-agent-1>, <sub-agent-2>]
-  no_unexpected_agents: true
-
-agents:
-  - name: <sub-agent-1>
-    invocations: { min: 1, max: 3, must_complete: true }
-    allowed_tools: [read, search, write]   # canonical names only
-    write_scope_allow:
-      - "^path/regex/.*"
-    read_scope_allow:
-      - "^path/regex/.*"
-    scope_deny:
-      - "^_eval/"
-      - "^\\.git/"
-    prompt_contract:
-      required_sections: ["Context"]
-      required_fields: ["session-id"]
-    output_contract:
-      must_contain_sections: ["<fence-label-1>", "<fence-label-2>"]
-    token_budget_max: 80000
-    no_subagent_reinvocation: true
-
-rubrics:
-  - id: coherence
-    apply_to: artifact:<artifact-id>
-    severity: info              # always start at info
+```
+evals/skills/<skill>/
+└── test_<scenario>.py
 ```
 
-Source: see authoring-guide §2.1.
+## Pack eval template
 
-### Translating an `.agent.md` into the spec
+Copy from `evals/_templates/test_pack_eval.py.template`. Skeleton:
 
-1. `tools:` front-matter → `allowed_tools`. The eval spec uses
-   internal canonical names (`read`, `search`, `write`, `execute`,
-   `agent`, `mcp`, `mcp:<server>`); map agent-profile aliases via
-   this table:
+```python
+import pytest
 
-   | `.agent.md` `tools:` (Copilot CLI alias) | `spec.yaml` `allowed_tools` (eval canonical) |
-   |---|---|
-   | `read` | `read` |
-   | `edit` (covers `Write`, `Edit`, `MultiEdit`, `NotebookEdit`) | `write` |
-   | `search` | `search` |
-   | `execute` (covers `shell`, `Bash`, `powershell`) | `execute` |
-   | `agent` (covers `Task`, `custom-agent`) | `agent` |
-   | `web` | `web` |
-   | `vision` | `vision` |
-   | `<server>/<tool>` (MCP) | `mcp:<server>` |
+PROMPT = """\
+... user prompt that exercises the scenario ...
+"""
 
-   Source: [Copilot docs — Custom agents configuration: Tool aliases](https://docs.github.com/en/copilot/reference/custom-agents-configuration#tool-aliases).
-2. `## File Access Boundaries` table → `write_scope_allow` and
-   `read_scope_allow` as anchored regexes (start with `^`,
-   double-escape backslashes).
-3. Always include `scope_deny: ["^_eval/", "^\\.git/"]` — the
-   `^_eval/` deny stops the workspace canary trap; without it the
-   harness cannot detect scope escapes.
-4. Each agent's `## Output Contract` fenced block labels go into
-   `output_contract.must_contain_sections`.
+@pytest.mark.pack
+@pytest.mark.slow
+@pytest.mark.judge
+def test_<scenario>(copilot_pack, judge):
+    ws = copilot_pack("<pack-name>")
 
-## `case.yaml` skeleton
+    result = ws.run_agent(
+        prompt=PROMPT,
+        agent="<orchestrator-name>",
+        timeout=900,
+    )
+    assert result.ok, f"see {result.log_path}"
 
-```yaml
-id: <case-id>                 # MUST equal directory name; kebab-case
-pack: <pack-name>
-description: |
-  One paragraph: what the case asks the pack to do, and what it
-  proves if it passes.
+    # 1) Structural assertions
+    artifacts = ws.glob("<glob-pattern>")
+    assert artifacts, "expected at least one artifact"
 
-prompt_file: prompt.md
-
-prompt_template_vars:
-  feature: "<value>"
-
-workspace:
-  isolation: copy-tree
-  inputs_dir: inputs/
-  golden_dir: golden/
-  steps:
-    - kind: git_init
-    - kind: copy_tree
-      src: inputs/
-      dest: .
-    # Stage the SUT's own agents/skills so Copilot CLI discovers them:
-    - kind: copy_tree
-      src: ../../../../../agent-packs/<pack>/.github/agents
-      dest: .github/agents
-    - kind: copy_tree
-      src: ../../../../../.github/skills
-      dest: .github/skills
-    # Stage the @eval-judge agent so the harness's run-judge
-    # subcommand can subprocess-invoke it. Without this step the
-    # judge agent is absent from the case workspace and judge calls
-    # fail with "Unknown agent_type: eval-judge". This is required
-    # for ALL packs, not just copilot-factory.
-    - kind: copy_tree
-      src: ../../../../../agent-packs/copilot-factory/.github/agents/eval-judge.agent.md
-      dest: .github/agents/eval-judge.agent.md
-
-teardown:
-  policy: delete-on-pass
-
-expected:
-  artifacts:
-    - id: <artifact-id>
-      path_pattern: "^path/regex/.*\\.md$"
-      required: true
-  invocations:
-    <agent-name>: { min: 1, max: 2 }
-  rubric_targets:
-    "artifact:<artifact-id>": "^path/regex/.*\\.md$"
+    # 2) Optional LLM judge
+    verdict = judge(
+        artifact=artifacts[0].read_text(encoding="utf-8"),
+        criteria="<concrete description of what 'good' looks like>",
+        threshold=0.7,
+    )
+    assert verdict.passed, verdict.reasoning
 ```
 
-Source: see authoring-guide §2.2.
+## Skill eval template
+
+Copy from `evals/_templates/test_skill_eval.py.template`. Skeleton:
+
+```python
+import pytest
+
+PROMPT = """\
+... small task that exercises the skill ...
+"""
+
+@pytest.mark.skill
+@pytest.mark.slow
+@pytest.mark.judge
+def test_<scenario>(copilot_skill, judge):
+    ws = copilot_skill("<skill-name>")
+    result = ws.run_skill(skill="<skill-name>", prompt=PROMPT, timeout=300)
+    assert result.ok, f"see {result.log_path}"
+
+    verdict = judge(
+        artifact=result.stdout,
+        criteria="<what correct skill output looks like>",
+        threshold=0.7,
+    )
+    assert verdict.passed, verdict.reasoning
+```
+
+## Fixtures available (provided by `evals/conftest.py`)
+
+| Fixture | Returns | Use for |
+|---|---|---|
+| `workspace` | bare `Workspace` | custom staging |
+| `copilot_pack(name)` | `Workspace` with the pack staged | pack evals |
+| `copilot_skill(name)` | `Workspace` with one skill staged | skill evals |
+| `judge` | `judge(artifact=, criteria=, threshold=)` callable | LLM-as-judge |
+
+`Workspace` exposes `run_agent`, `run_skill`, `glob`, `find_one`,
+`read`, `stage_files`. Logs land under `<workspace>/_logs/<name>.log`
+and the path is on `result.log_path`.
+
+## Markers
+
+| Marker | Meaning |
+|---|---|
+| `pack` | exercises a full agent pack |
+| `skill` | exercises a single skill in isolation |
+| `judge` | invokes the LLM-as-judge (slower, costs LLM tokens) |
+| `slow` | takes > 60s; CI runs them, locals can `pytest -m "not slow"` |
+
+Always tag pack/skill evals with `pack`/`skill`. Tag with `judge` if
+the test calls the `judge` fixture. Tag with `slow` if it shells out
+to `copilot` (almost always true for `pack` and `skill` evals).
 
 ## Hard rules (do not violate)
 
-- `id` MUST equal the case directory name; `pack` MUST equal the
-  parent pack directory name.
-- All scope regexes are **anchored** with `^`. Un-anchored regexes
-  silently let the SUT write outside its sandbox.
-- All YAML `description` values are **double-quoted**. Bare strings
-  containing `:` cause "Nested mappings are not allowed" parse errors.
-- Every rubric starts at `severity: info`. Promote to `warn` or
-  `blocker` (with `threshold: 0..1`) only after ≥3 baseline runs.
-- Never put golden material under `inputs/` — that leaks the answer
-  to the SUT.
-- Always include `^_eval/` and `^\\.git/` in `scope_deny`.
+- One eval per `test_<scenario>` function. Don't bundle multiple
+  scenarios in one test -- make them separate tests so failures isolate.
+- Always include `result.log_path` in failure messages. Operators
+  inspect it to debug.
+- Never put expected-answer text in the user prompt. The whole point
+  of judging is that the SUT had to figure it out.
+- Be **strict** in `criteria`. A loose criteria string = a useless
+  judge call. Score 1.0 only when ALL criteria are met; explicit
+  partial-credit anchors at 0.5/0.6 are recommended.
+- Always quote YAML `description` fields in any agent files you
+  generate alongside the eval (the agent-builder rule).
 
-## Quick checklist for the engineer
+## Running locally
 
-- [ ] `evals/packs/<pack>/spec.yaml` created with all sub-agents
-      listed under `agents:`
-- [ ] `pack:` equals the directory name
-- [ ] Models pinned for orchestrator + every sub-agent + `judge`
-- [ ] At least one `cases/smoke-<happy-path>/` directory with
-      `case.yaml`, `prompt.md`, `inputs/README.md`, `golden/README.md`
-- [ ] All scope regexes anchored
-- [ ] All rubrics at `severity: info`
-- [ ] All YAML `description` values quoted
-- [ ] Eval files appear under `files_created` and `evals_created` in
-      the build manifest
-- [ ] **`@eval-judge` is staged into the case workspace** via a
-      `copy_tree` step that brings in
-      `agent-packs/copilot-factory/.github/agents/eval-judge.agent.md`.
-      The harness's `run-judge` subcommand subprocess-invokes this
-      agent non-interactively; if it is not in the case workspace,
-      every judge call fails with `Unknown agent_type`. This is
-      required for ALL packs, not just `copilot-factory`.
+```powershell
+pip install -r evals/requirements.txt
+
+pytest evals/                                 # everything
+pytest evals/packs/<pack>/                    # one pack
+pytest evals/skills/<skill>/                  # one skill
+pytest evals/ -k <substring>                  # by name
+pytest evals/ -m "not slow"                   # skip LLM-driven
+pytest evals/ -n auto                         # parallel
+```
+
+## Running for the factory fix-loop
+
+The factory invokes pytest with `--report-log` so it can parse the
+verdict programmatically:
+
+```powershell
+pytest evals/packs/<pack>/ --report-log=<out>.jsonl -v
+```
+
+Exit codes: `0` = pass, `1` = at least one test failed, `>1` =
+collection or harness error. `<out>.jsonl` contains one JSON line per
+event (collection, test start, test result) with full `longrepr`
+failure traces.
+
+## Hard checklist for the Factory Engineer
+
+- [ ] `evals/packs/<pack>/test_smoke_<happy-path>.py` exists.
+- [ ] At least one structural `assert` (artifact exists, count matches).
+- [ ] At least one `judge(...)` call (unless the eval is purely
+      structural and that is appropriate for the scenario).
+- [ ] Every assertion that can fail mentions `result.log_path` so
+      operators can find the log.
+- [ ] Markers applied: `@pytest.mark.pack` (or `skill`), plus `slow`
+      and `judge` if applicable.
+- [ ] Eval file appears under `files_created` and `evals_created.tests`
+      in the build manifest.
+- [ ] `pytest --collect-only evals/packs/<pack>/` succeeds.
 
 ## Source of truth
 
-When run inside the `srulys-agent-packs` monorepo, the in-repo
-`evals/docs/authoring-guide.md` is the harness's authoritative spec
-and supersedes this reference. When this pack is deployed standalone,
-this reference is authoritative.
+When this pack is deployed standalone, this reference is authoritative.
+When it ships inside the `srulyt/srulys-agent-packs` monorepo, the
+in-repo `evals/README.md` is the runtime source of truth (it documents
+environment variables, fixture internals, and CI integration).

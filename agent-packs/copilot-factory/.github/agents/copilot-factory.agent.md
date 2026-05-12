@@ -606,7 +606,7 @@ Never paper over a model-induced failure by silently switching models.
 | Improve-Analysis | `@factory-critic` | target pack path | improvement-analysis.md |
 | Build | `@factory-engineer` | architecture.md or improvement-analysis.md | agent pack files |
 | Review-Prompts | `@factory-critic` | build-manifest.json, architecture.md | PASS/BLOCKING |
-| Eval-Execute | `@factory-eval-runner` | spec.yaml, build-manifest.json | eval-run-{n}.json + verdict |
+| Eval-Execute | `@factory-eval-runner` | `evals/packs/{pack}/test_*.py`, build-manifest.json | eval-run-{n}.json + report-log + verdict |
 | Eval-Fix-Loop | `@factory-engineer` (mode=fix) → `@factory-eval-runner` | eval-run-{n}.json | modified files + eval-run-{n+1}.json |
 
 ## Quality Standards

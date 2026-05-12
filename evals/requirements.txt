@@ -1,0 +1,7 @@
+# Runtime + test deps for the pytest-based evals framework.
+# Install with: pip install -r evals/requirements.txt
+pytest>=8.0
+pytest-xdist>=3.5      # parallel: pytest -n auto
+pytest-html>=4.1       # human-readable HTML report
+pytest-reportlog>=0.4  # JSONL run log for the factory to parse
+PyYAML>=6.0            # for any YAML fixtures cases want to load

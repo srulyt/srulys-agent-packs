@@ -1,8 +1,6 @@
-# Per-repo eval working directories — see eval_engine/README.md
-packs/*/workspaces/
-packs/*/results-local/
-packs/*/reports/
-data/
+# Per-repo eval working scratch — pytest tmpdirs, judge caches, report logs.
 __pycache__/
 *.pyc
 .pytest_cache/
+_judge_cache/
+.report.jsonl

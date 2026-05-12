@@ -81,8 +81,8 @@ for /d %%D in ("%ROOT%agent-packs\copilot-factory\.github\*") do (
     )
 )
 
-:: Also install eval-framework agents so @eval-judge / @eval-runner are
-:: discoverable for the eval harness (evals/ workflow). The eval-framework
+:: Also install eval-framework agents so @eval-judge is discoverable
+:: for the pytest eval framework (evals/ workflow). The eval-framework
 :: pack only contributes agents; it has no skills/prompts/instructions.
 if exist "%ROOT%agent-packs\eval-framework\.github\agents" (
     for %%F in ("%ROOT%agent-packs\eval-framework\.github\agents\*.agent.md") do (

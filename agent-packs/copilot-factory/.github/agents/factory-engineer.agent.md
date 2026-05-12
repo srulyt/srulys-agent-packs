@@ -52,10 +52,10 @@ instructs you to run multiple workflow phases yourself.
 
 | Permission | Allowed Paths |
 |------------|---------------|
-| **Read** | `.copilot-factory/sessions/{session-id}/` (architecture, context, state), `.github/skills/` (skill references, templates), `evals/docs/` (authoring guide), `evals/packs/copilot-factory/` (spec template + smoke case template) |
-| **Write** | `agent-packs/{pack-name}/` (output artifacts), `evals/packs/{pack-name}/` (eval spec + cases for the generated pack), `.copilot-factory/sessions/{session-id}/artifacts/` (build manifest) |
+| **Read** | `.copilot-factory/sessions/{session-id}/` (architecture, context, state), `.github/skills/` (skill references, templates), `evals/PYTEST.md` (authoring guide), `evals/_templates/` (test file templates), `evals/packs/copilot-factory/` (worked-example test) |
+| **Write** | `agent-packs/{pack-name}/` (output artifacts), `evals/packs/{pack-name}/` (pytest test files for the generated pack), `.copilot-factory/sessions/{session-id}/artifacts/` (build manifest) |
 
-**Do NOT write to**: `eval_engine/`, `agent-packs/eval-framework/`,
+**Do NOT write to**: `agent-packs/eval-framework/`,
 other `agent-packs/` directories, other `evals/packs/` directories,
 `.github/agents/`, `.github/skills/`, `.local/`, or any path outside
 the designated output and session directories. If you need a file
@@ -69,7 +69,7 @@ request.
   `.copilot-factory/sessions/{session-id}/artifacts/`.
 - Modify other packs under `agent-packs/` or other pack specs under
   `evals/packs/`.
-- Modify `eval_engine/`, `agent-packs/eval-framework/`, `.local/`, or
+- Modify `agent-packs/eval-framework/`, `.local/`, or
   this factory's own files (`agent-packs/copilot-factory/`) — the
   factory cannot self-modify during a normal build. Self-modification
   only happens via the `improvement` mode targeting this pack.
@@ -294,24 +294,35 @@ Using the architect's `eval-plan-json` block and the
 [`agent-builder/references/eval-authoring.md`](../skills/agent-builder/references/eval-authoring.md)
 reference:
 
-1. Create `evals/packs/<pack>/spec.yaml` mirroring the structure of
-   `evals/packs/copilot-factory/spec.yaml`. Translate each agent's
-   `tools:` and File Access Boundaries verbatim into `allowed_tools`
-   / `write_scope_allow` / `read_scope_allow` (anchored regexes,
-   double-escaped backslashes). Always include
-   `scope_deny: ["^_eval/", "^\\.git/"]`.
-2. Create at least one case at
-   `evals/packs/<pack>/cases/smoke-<happy-path>/` with
-   `case.yaml`, `prompt.md`, `inputs/README.md`, `golden/README.md`.
-   The case structure mirrors
-   `evals/packs/copilot-factory/cases/smoke-create-issue-triage-pack/`.
-3. Pin all rubrics at `severity: info` for the first iteration. Do
-   NOT promote to `warn`/`blocker` — that requires baseline runs.
-4. Verify YAML quoting (no bare strings containing `:` in
-   `description`).
+1. For each scenario in the eval plan, copy
+   `evals/_templates/test_pack_eval.py.template` to
+   `evals/packs/<pack>/test_<scenario>.py` (kebab-case → snake_case).
+   Replace placeholders (`__PACK_NAME__`, `__AGENT_NAME__`,
+   `__SCENARIO__`, `__GLOB_PATTERN__`, `__REPLACE_ME__`) with concrete
+   values. The orchestrator's prompt goes into the `PROMPT` constant
+   verbatim — do **not** include the expected answer in the prompt.
+2. Each test must:
+   - Be marked `@pytest.mark.pack`, `@pytest.mark.slow`, and
+     `@pytest.mark.judge` (drop `judge` if no LLM call).
+   - Make at least one structural `assert` (artifact existence, count,
+     etc.) before invoking the judge.
+   - Reference `result.log_path` in the failure message of the SUT-run
+     assertion so operators can find the log.
+   - Use a strict `criteria` string for `judge(...)` — describe what
+     the artifact MUST contain, not what it MIGHT contain.
+3. Create `evals/packs/<pack>/README.md` (one paragraph: what these
+   evals cover, plus `pytest evals/packs/<pack>/` to run them).
+4. Verify the test collects:
+   `pytest --collect-only evals/packs/<pack>/`. The exit code must be
+   `0`. Do NOT execute the test (that requires the `copilot` CLI and
+   real LLM tokens; CI runs it).
+5. If `improvement_strategy: "incremental"`, skip this step UNLESS the
+   improvement analysis explicitly flags eval changes.
 
-If `improvement_strategy: "incremental"`, skip this step UNLESS the
-improvement analysis explicitly flags eval changes.
+For skill evals (when the architecture introduces a reusable skill),
+mirror the above using
+`evals/_templates/test_skill_eval.py.template` →
+`evals/skills/<skill>/test_<scenario>.py`.
 
 #### Step 5: Update Build Manifest
 ```json
@@ -324,15 +335,17 @@ improvement analysis explicitly flags eval changes.
   "agents_created": [{"slug": "x", "name": "X"}],
   "skills_created": [{"name": "x", "location": "path"}],
   "evals_created": {
-    "spec": "evals/packs/{pack-name}/spec.yaml",
-    "cases": ["evals/packs/{pack-name}/cases/smoke-foo/case.yaml"]
+    "tests": [
+      "evals/packs/{pack-name}/test_smoke_{scenario}.py"
+    ],
+    "readme": "evals/packs/{pack-name}/README.md"
   }
 }
 ```
 
-`evals_created` must be present (may be empty `{}` only for incremental
-builds that don't touch evals). The eval files MUST also appear under
-`files_created`.
+`evals_created` must be present (may be `{"tests": [], "readme": null}`
+only for incremental builds that don't touch evals). All listed paths
+MUST also appear under `files_created`.
 
 ### Incremental Improvement Process
 
@@ -413,9 +426,10 @@ When invoked with `Mode: fix` and an `Eval run path:` referencing
   Access Boundaries.
 - Create new agents, skills, or eval cases (those need an architect
   + full build).
-- Modify `evals/packs/{pack}/spec.yaml` unless an explicit failure
-  lists it in its `fixable_in[]` (rare; usually means a rubric
-  threshold change is the fix).
+- Modify `evals/packs/{pack}/test_*.py` (or `evals/_lib/`,
+  `evals/conftest.py`) unless an explicit failure lists the test file
+  in its `fixable_in[]` (rare; usually means a judge `criteria` was
+  too loose or a structural assertion was wrong).
 - Re-run the eval harness yourself. The orchestrator will re-delegate
   to `@factory-eval-runner` after parsing your contract.
 
@@ -433,9 +447,10 @@ Apply the full quality checklist from the `agent-builder` skill before reporting
 - [ ] README matches actual artifacts (counts, names, descriptions)
 - [ ] Build manifest is complete and accurate
 - [ ] Every modified agent prompt is < 30,000 chars
-- [ ] For full builds: `evals/packs/<pack>/spec.yaml` and at least one
-      case under `evals/packs/<pack>/cases/smoke-*/` exist and are
-      listed under `evals_created` in the manifest
+- [ ] For full builds: at least one
+      `evals/packs/<pack>/test_smoke_<scenario>.py` exists and is
+      listed under `evals_created.tests` in the manifest; the test
+      collects via `pytest --collect-only evals/packs/<pack>/`.
 
 ## Error Handling
 
@@ -469,8 +484,8 @@ manifest_path: .copilot-factory/sessions/<session-id>/artifacts/build-manifest.j
 ```
 
 ```eval-artifacts-json
-{"spec": "evals/packs/<pack>/spec.yaml",
- "cases": ["evals/packs/<pack>/cases/smoke-<...>/case.yaml"]}
+{"tests": ["evals/packs/<pack>/test_smoke_<scenario>.py"],
+ "readme": "evals/packs/<pack>/README.md"}
 ```
 
 ```ready-for-review

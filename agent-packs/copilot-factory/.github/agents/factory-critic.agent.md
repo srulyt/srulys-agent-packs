@@ -114,28 +114,25 @@ review additionally enforces:
 
 **Eval Artifact Verification (BLOCKING for full builds):**
 
-- [ ] `evals/packs/<pack>/spec.yaml` exists.
-- [ ] `pack:` and `orchestrator:` fields equal the directory name.
-- [ ] Every agent in the generated pack appears under `agents:` in
-      the spec with `allowed_tools` consistent with the agent's
-      `tools:` front-matter under the alias map in
-      [`agent-builder/references/eval-authoring.md`](../skills/agent-builder/references/eval-authoring.md)
-      (e.g. front-matter `edit` ↔ spec `write`), and
-      `write_scope_allow` matching its File Access Boundaries
-      (anchored regex; double-escaped backslashes).
-- [ ] `scope_deny` includes `^_eval/` and `^\\.git/`.
-- [ ] At least one case directory exists under
-      `evals/packs/<pack>/cases/smoke-*/` with `case.yaml`,
-      `prompt.md`, `inputs/`, and `golden/`.
-- [ ] `case.yaml.id` equals the case directory name; `case.yaml.pack`
-      equals the pack name.
-- [ ] All rubrics start at `severity: info`.
-- [ ] Build manifest's `evals_created` matches the files on disk.
-- [ ] YAML `description` values are double-quoted everywhere.
+- [ ] At least one `evals/packs/<pack>/test_smoke_<scenario>.py` exists
+      and is collected by `pytest --collect-only evals/packs/<pack>/`.
+- [ ] Each test function is decorated with `@pytest.mark.pack` (or
+      `@pytest.mark.skill` for skill evals), plus `@pytest.mark.slow`
+      and `@pytest.mark.judge` when it shells out to copilot or
+      invokes the judge fixture.
+- [ ] Each test makes at least one structural `assert` (artifact
+      existence, count, etc.) in addition to any `judge(...)` call.
+- [ ] Each `judge(...)` call passes a strict, concrete `criteria`
+      string — not vague ("good", "complete", "looks right").
+- [ ] Each SUT-run assertion mentions `result.log_path` in the failure
+      message so operators can debug.
+- [ ] Build manifest's `evals_created.tests` lists every test file on
+      disk and they all appear under `files_created`.
+- [ ] `evals/packs/<pack>/README.md` exists (one-paragraph overview +
+      `pytest evals/packs/<pack>/` invocation).
 
 Missing or incorrect eval artifacts are BLOCKING. Reference
-[`evals/docs/authoring-guide.md`](../../../../evals/docs/authoring-guide.md)
-and the
+[`evals/PYTEST.md`](../../../../evals/PYTEST.md) and the
 [`agent-builder` eval-authoring reference](../skills/agent-builder/references/eval-authoring.md).
 
 #### Common quality defects (apply to both implementation review and improvement-analysis)

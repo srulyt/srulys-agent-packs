@@ -1,30 +1,24 @@
 # eval-framework agent pack
 
-Two custom agents used by the harness under `eval/`:
+This pack ships **one custom agent**:
 
-- `@eval-runner` — captures session evidence into a fixture JSON.
-- `@eval-judge` — scores SUT artifacts against a single rubric.
+- `@eval-judge` — scores a SUT artifact against free-form criteria and
+  returns a single JSON verdict.
 
-These are **not** end-user-facing agents — they exist to support the
-evaluation framework, not to ship to users. See the top-level
-[`eval/README.md`](../../eval/README.md) for the operator workflow.
+It exists to support the pytest-based eval framework under
+[`evals/`](../../evals/). End users do not invoke it directly. The
+`judge` helper in `evals/_lib/judge.py` stages this agent into each
+test's workspace, calls `copilot -p ... --agent eval-judge`, and parses
+the JSON it emits.
 
-## Why split runner and judge
+## Why a dedicated agent
 
-- Separation of concerns: the runner is a thin SQL → JSON transformer; the
-  judge is a high-capability evaluator. Pinning each to the right model
-  keeps cost and latency proportional to value.
-- Independence: the judge never sees the orchestrator's session log or
-  other rubrics' scores. This prevents anchoring and lets us double-judge
-  blocker rubrics for self-consistency.
-- Negative scope: each agent's tool list is tight enough that the L3
-  assertions over the agent's own runs would catch any drift.
-
-## Model choice
-
-Both agents pin a specific model in front-matter:
-
-- Runner: standard model — its job is mechanical.
-- Judge: a strictly stronger model than any system-under-test. The
-  framework records the judge model on every run record so trends can
-  be sliced by it.
+- **Model pinning.** The judge is pinned to a strictly stronger model
+  than any system-under-test so its scores are credible. Pack/skill
+  agents can use whichever model their own contract calls for; the
+  judge uses its own.
+- **Tight tool scope.** The judge only has `read` + `search`. It cannot
+  modify files, invoke other agents, or fetch URLs.
+- **Prompt-injection resistance.** SUT artifacts are untrusted input.
+  Hard rules in the agent's prompt make the judge refuse to follow
+  instructions embedded in those artifacts.
