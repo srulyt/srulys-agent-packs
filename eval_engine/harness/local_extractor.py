@@ -54,7 +54,10 @@ LOG_LINE_PREFIX = re.compile(
     r"^\d{4}-\d{2}-\d{2}T[\d:.]+Z?\s+\[(?:DEBUG|INFO|WARN|ERROR)\]"
 )
 TELEMETRY_HDR = re.compile(
-    r"^(?P<ts>\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s+\[INFO\]\s+\[Telemetry\]"
+    # gh copilot CLI 1.0.45 emits the telemetry header at DEBUG level
+    # (older versions used INFO). Accept either to remain compatible
+    # across CLI upgrades. See session 2026-05-12-sa2fix02 finding F-B1.
+    r"^(?P<ts>\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s+\[(?:INFO|DEBUG)\]\s+\[Telemetry\]"
 )
 GROUP_START = re.compile(
     r"^(?P<ts>\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s+\[INFO\]\s+--- Start of group:\s+"

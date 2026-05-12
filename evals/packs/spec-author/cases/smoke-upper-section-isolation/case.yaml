@@ -38,26 +38,27 @@ expected:
     prd-critic:        { min: 1, max: 2 }
   artifact_content_assertions:
     - artifact: specification
-      # Section-scoped assertions: Solution Summary (text between
-      # "## Solution Summary" and the next "## ") MUST NOT restate
-      # the problem ("drowning", "12 hours/week", "no single view")
-      # nor name owners (Maya / Devon / platform PM / platform EM).
-      # Problem Statement MUST NOT preempt the solution
-      # ("dashboard", "drill-down") nor name owners. Goals MUST NOT
-      # name owners or describe rollout ("flag", "two weeks").
-      must_not_match_in_section:
-        - section: "Solution Summary"
-          patterns:
-            - "(?i)drowning|12 hours/week|no single view"
-            - "(?i)Maya|Devon|platform PM|platform EM"
-        - section: "Problem Statement"
-          patterns:
-            - "(?i)dashboard|drill-down"
-            - "(?i)Maya|Devon"
-        - section: "Goals & Success Metrics"
-          patterns:
-            - "(?i)Maya|Devon|platform PM|platform EM"
-            - "(?i)behind a flag|two weeks later"
+      # Section-scoped negatives encoded as section-anchored regexes.
+      # The harness's must_not_match is evaluated against the full
+      # artefact text; we anchor on the level-2 section heading and
+      # bound the look-ahead to 800 chars so the match cannot bleed
+      # into adjacent upper sections (typical upper-section bodies
+      # are <600 chars in spec-author's template). (?is): i =
+      # case-insensitive, s = dot-all (defence in depth — [\s\S]
+      # already crosses newlines).
+      must_not_match:
+        # ── Solution Summary MUST NOT restate problem narrative
+        - "(?is)## Solution Summary[\\s\\S]{0,800}(drowning|12 hours/week|no single view)"
+        # ── Solution Summary MUST NOT name owners
+        - "(?is)## Solution Summary[\\s\\S]{0,800}(Maya|Devon|platform PM|platform EM)"
+        # ── Problem Statement MUST NOT preempt the solution
+        - "(?is)## Problem Statement[\\s\\S]{0,800}(dashboard|drill-down)"
+        # ── Problem Statement MUST NOT name owners
+        - "(?is)## Problem Statement[\\s\\S]{0,800}(Maya|Devon)"
+        # ── Goals & Success Metrics MUST NOT name owners
+        - "(?is)## Goals & Success Metrics[\\s\\S]{0,800}(Maya|Devon|platform PM|platform EM)"
+        # ── Goals & Success Metrics MUST NOT describe rollout
+        - "(?is)## Goals & Success Metrics[\\s\\S]{0,800}(behind a flag|two weeks later)"
   agent_output_overrides:
     prd-critic:
       json_block_assertions:
