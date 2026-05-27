@@ -27,6 +27,8 @@ from pathlib import Path
 
 import pytest
 
+from _lib.asserts import assert_prose_not_contains
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ORCHESTRATOR = (
@@ -91,7 +93,11 @@ def test_orchestrator_uses_ask_user_for_clarifications():
         )
 
     # Regression guard: legacy verbatim Stop 0 KIND prompt is gone.
-    assert "Reply with `KIND: product`, `KIND: technical`, or `KIND: mixed`" not in text, (
-        "legacy verbatim 'Reply with KIND:' Stop 0 prompt must be "
-        "replaced by an ask_user(choices=[product, technical, mixed]) call"
+    assert_prose_not_contains(
+        text,
+        "Reply with `KIND: product`, `KIND: technical`, or `KIND: mixed`",
+        extra=(
+            "legacy verbatim 'Reply with KIND:' Stop 0 prompt must be "
+            "replaced by an ask_user(choices=[product, technical, mixed]) call"
+        ),
     )

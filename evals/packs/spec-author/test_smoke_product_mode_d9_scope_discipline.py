@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from _lib.asserts import assert_prose_not_contains
+
 FIXTURES = Path(__file__).parent / "fixtures" / "product_mode_d9_scope_discipline"
 
 PROMPT = """\
@@ -63,9 +65,11 @@ def test_product_mode_d9_scope_discipline(copilot_pack):
             f"product-mode spec must not name implementation token "
             f"{token!r}; see {result.log_path}"
         )
-    assert "implementation is out of scope" not in text_lower, (
-        f"boilerplate 'implementation is out of scope' must not appear; "
-        f"see {result.log_path}"
+    assert_prose_not_contains(
+        text_lower,
+        "implementation is out of scope",
+        log_path=result.log_path,
+        extra="boilerplate 'implementation is out of scope' must not appear",
     )
 
     reviews = ws.glob(

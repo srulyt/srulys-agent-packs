@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from _lib.asserts import assert_prose_contains, assert_prose_not_contains
+
 FIXTURES = Path(__file__).parent / "fixtures" / "update_revert_default"
 
 BAIT_TYPOS = [
@@ -57,15 +59,24 @@ def test_update_revert_default(copilot_pack):
     text = spec.read_text(encoding="utf-8")
 
     for typo in BAIT_TYPOS:
-        assert typo in text, (
-            f"REVERT-default: bait sentence must survive verbatim "
-            f"(typos and all): {typo!r}; see {result.log_path}"
+        assert_prose_contains(
+            text,
+            typo,
+            log_path=result.log_path,
+            extra=(
+                "REVERT-default: bait sentence must survive verbatim "
+                "(typos and all)"
+            ),
         )
     for polished in POLISHED_FORMS:
-        assert polished not in text, (
-            f"polished form {polished!r} must NOT appear (drafter "
-            f"polished an unrequested sentence -- F3 regressed); "
-            f"see {result.log_path}"
+        assert_prose_not_contains(
+            text,
+            polished,
+            log_path=result.log_path,
+            extra=(
+                "polished form must NOT appear (drafter polished an "
+                "unrequested sentence -- F3 regressed)"
+            ),
         )
 
     assert "AC-04" in text or "AC-4" in text, (

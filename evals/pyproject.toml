@@ -17,6 +17,13 @@ addopts = [
     "--tb=short",
     "-p", "no:cacheprovider",
 ]
+# Per-test timeout (H1). 1500s = 25min, comfortably covers the longest
+# spec-author tests (timeout=1200 inside the test body) with headroom for
+# staging + assertions. Tests with genuinely longer budgets opt in via
+# `@pytest.mark.timeout(<seconds>)`. `thread` method works on Windows;
+# `signal` is POSIX-only.
+timeout = 1500
+timeout_method = "thread"
 markers = [
     "slow: marks evals that take > 60s (deselect with '-m \"not slow\"')",
     "judge: marks evals that invoke the LLM judge",

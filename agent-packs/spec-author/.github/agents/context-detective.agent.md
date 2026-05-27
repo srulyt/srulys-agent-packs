@@ -186,6 +186,35 @@ includes any field needed to produce the changelog (e.g. "what is
 the rationale for new requirement FR-29?") that cannot be inferred
 from the diff.
 
+**P0 classification is strict (gate for Stop B).** A gap is P0
+**only if** the answer is genuinely absent from every input you
+were given (prompt body, copilot-instructions, attached files,
+referenced URLs, the existing-spec body in update mode). If any
+supplied input plausibly answers the section — even partially —
+demote it to P1. Concretely:
+
+- If the user supplied a personas document (e.g. `docs/personas.md`)
+  → "Users & Personas" is **not** a P0 gap.
+- If the user supplied spike notes / a design note covering the
+  technical approach → "Solution Summary" and "Technical
+  Considerations" are **not** P0 gaps.
+- If the prompt body itself states the problem with even a
+  one-sentence framing → "Problem Statement" is **not** a P0 gap;
+  it is at most a P1 ("strengthen with evidence").
+- If the user explicitly declares scope-bounding facts ("no new
+  datastore", "no public API", "single team", "no security
+  surface") → the corresponding gated sections are **not** P0
+  gaps; they are gated-omitted entries in `proposed-structure`.
+
+The `must_fill` array is the orchestrator's signal to fire Stop B
+(invoke `@prd-interviewer` and produce
+`artifacts/interview-questions.md`). An empty `must_fill` means
+"no interview needed, go to Stop A". Be conservative about
+declaring a gap P0: a false-positive P0 spawns an unnecessary
+user interview; a false-negative is easier to correct (the user
+can answer with `EDIT: ...` at Stop A). When in doubt between P0
+and P1, pick P1.
+
 ### Step 6: Write artefacts
 
 - `artifacts/context-pack.md` — synthesised findings keyed by

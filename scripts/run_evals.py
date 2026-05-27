@@ -44,6 +44,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -140,12 +141,56 @@ def make_run_dir() -> Path:
     return d
 
 
+def _kill_pytest_tree(pid: int, *, grace_seconds: float = 5.0) -> None:
+    """Best-effort recursive kill of the pytest process tree (H7).
+
+    When the global timeout fires (or the runner is signalled), we must
+    not orphan xdist workers / Copilot CLI subprocesses on Windows. Uses
+    psutil if available; falls back to a direct ``os.kill`` on ``pid``.
+    """
+    try:
+        import psutil  # type: ignore
+    except ImportError:
+        try:
+            os.kill(pid, getattr(__import__("signal"), "SIGTERM", 15))
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+        return
+
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return
+    procs = parent.children(recursive=True) + [parent]
+    for p in procs:
+        try:
+            p.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    gone, alive = psutil.wait_procs(procs, timeout=grace_seconds)
+    for p in alive:
+        try:
+            p.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    psutil.wait_procs(alive, timeout=2.0)
+
+
+def _popen_kwargs_for_tree_kill() -> dict:
+    """Per-OS Popen flags for clean subtree cleanup (H7)."""
+    if sys.platform == "win32":
+        # CREATE_NEW_PROCESS_GROUP = 0x00000200
+        return {"creationflags": 0x00000200}
+    return {"start_new_session": True}
+
+
 def run_pytest(
     targets: list[str],
     *,
     run_dir: Path,
     parallel: int,
     extra_args: list[str],
+    global_timeout_sec: float | None,
 ) -> int:
     report_log = run_dir / "report.jsonl"
     console_log = run_dir / "console.log"
@@ -166,9 +211,22 @@ def run_pytest(
     print(f"$ {' '.join(cmd)}", flush=True)
     print(f"  cwd:     {EVALS_DIR}", flush=True)
     print(f"  run dir: {run_dir}", flush=True)
+    if global_timeout_sec is not None:
+        print(
+            f"  global wall-clock safety backstop: "
+            f"{int(global_timeout_sec)}s (per-test timeouts are the "
+            f"primary safety net; see evals/pyproject.toml)",
+            flush=True,
+        )
     print()
 
     # Tee stdout to the console log file while still streaming to the user.
+    # H7: launch in a new process group so we can kill the whole tree on
+    # timeout / KeyboardInterrupt without orphaning xdist workers or
+    # Copilot CLI subprocesses.
+    deadline = (
+        None if global_timeout_sec is None else time.monotonic() + global_timeout_sec
+    )
     with console_log.open("w", encoding="utf-8") as f:
         proc = subprocess.Popen(
             cmd,
@@ -178,12 +236,39 @@ def run_pytest(
             text=True,
             encoding="utf-8",
             errors="replace",
+            **_popen_kwargs_for_tree_kill(),
         )
         assert proc.stdout is not None
-        for line in proc.stdout:
-            sys.stdout.write(line)
-            f.write(line)
-        proc.wait()
+        timed_out = False
+        try:
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                f.write(line)
+                if deadline is not None and time.monotonic() > deadline:
+                    timed_out = True
+                    f.write(
+                        f"\n[run_evals] GLOBAL TIMEOUT after "
+                        f"{int(global_timeout_sec)}s — killing pytest tree.\n"
+                    )
+                    print(
+                        f"\n[run_evals] GLOBAL TIMEOUT after "
+                        f"{int(global_timeout_sec)}s — killing pytest tree. "
+                        f"This is a safety backstop; per-test timeouts "
+                        f"should normally catch hangs first.",
+                        flush=True,
+                    )
+                    _kill_pytest_tree(proc.pid)
+                    break
+            proc.wait(timeout=10.0 if not timed_out else 30.0)
+        except KeyboardInterrupt:
+            print(
+                "\n[run_evals] KeyboardInterrupt — killing pytest tree.",
+                flush=True,
+            )
+            _kill_pytest_tree(proc.pid)
+            raise
+        except subprocess.TimeoutExpired:
+            _kill_pytest_tree(proc.pid)
     return proc.returncode
 
 
@@ -406,6 +491,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Don't stop after the first failure (default already keeps going).",
     )
     parser.add_argument(
+        "--global-timeout",
+        type=int,
+        default=int(os.environ.get("EVAL_GLOBAL_TIMEOUT_SEC", 14400)),
+        help=(
+            "Global wall-clock safety backstop in seconds (default 14400 "
+            "= 4h; env: EVAL_GLOBAL_TIMEOUT_SEC). Per-test timeouts in "
+            "evals/pyproject.toml are the primary safety net; this cap "
+            "only fires if a test escapes pytest-timeout. Set to 0 to "
+            "disable."
+        ),
+    )
+    parser.add_argument(
         "--",
         dest="dashdash",
         nargs=argparse.REMAINDER,
@@ -446,6 +543,7 @@ def main(argv: list[str] | None = None) -> int:
         run_dir=run_dir,
         parallel=max(1, args.parallel),
         extra_args=extra,
+        global_timeout_sec=(args.global_timeout if args.global_timeout > 0 else None),
     )
     records = parse_report(run_dir / "report.jsonl")
     summary_rc = render_summary(records)

@@ -21,6 +21,7 @@ keeps the last few runs of each test on disk under
 from __future__ import annotations
 
 import dataclasses
+import difflib
 import shutil
 import subprocess
 from pathlib import Path
@@ -156,20 +157,92 @@ class Workspace:
         return sorted(self.root.glob(pattern))
 
     def find_one(self, pattern: str) -> Path:
-        """Return the single match for ``pattern``; raise if 0 or >1 found."""
+        """Return the single match for ``pattern``; raise if 0 or >1 found.
+
+        Raises :class:`FixtureMissingError` (an ``AssertionError`` subclass)
+        when zero matches are found, with a list of the closest existing
+        paths in the workspace to help the test author spot a missing
+        fixture file or a path typo. Multiple matches still raise a plain
+        ``AssertionError`` (the ambiguity is what matters there, not the
+        names).
+        """
         matches = self.glob(pattern)
-        if len(matches) != 1:
-            raise AssertionError(
-                f"Expected exactly 1 match for {pattern!r} in workspace, "
-                f"got {len(matches)}: {matches}"
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) == 0:
+            raise FixtureMissingError(
+                pattern=pattern,
+                workspace_root=self.root,
+                suggestions=_suggest_close_paths(self.root, pattern),
             )
-        return matches[0]
+        raise AssertionError(
+            f"Expected exactly 1 match for {pattern!r} in workspace, "
+            f"got {len(matches)}: {matches}"
+        )
 
     def read(self, relative_path: str) -> str:
         return (self.root / relative_path).read_text(encoding="utf-8", errors="replace")
 
 
 # ---- internal helpers ---------------------------------------------------
+
+
+class FixtureMissingError(AssertionError):
+    """Raised by :meth:`Workspace.find_one` when zero matches are found.
+
+    Subclasses :class:`AssertionError` so pytest still treats it as a test
+    failure (preserving the existing ``assert ws.find_one(...)`` callers'
+    behaviour) but adds structured fields and a friendlier message that
+    points at likely-missing fixture files.
+    """
+
+    def __init__(
+        self,
+        *,
+        pattern: str,
+        workspace_root: Path,
+        suggestions: list[str],
+    ) -> None:
+        self.pattern = pattern
+        self.workspace_root = workspace_root
+        self.suggestions = suggestions
+        suggestion_block = (
+            "\n  closest paths in workspace:\n    - "
+            + "\n    - ".join(suggestions)
+            if suggestions
+            else "\n  (workspace appears empty)"
+        )
+        super().__init__(
+            f"Expected exactly 1 match for {pattern!r} in workspace at "
+            f"{workspace_root}, got 0.\n"
+            f"  This usually means the fixture file is missing under "
+            f"`fixtures/<scenario>/`, or the agent failed to create the "
+            f"artefact (check the agent log)."
+            f"{suggestion_block}"
+        )
+
+
+def _suggest_close_paths(root: Path, pattern: str, *, n: int = 5) -> list[str]:
+    """Return up to ``n`` workspace paths closest to ``pattern`` by name.
+
+    The pattern is stripped of glob meta-chars before fuzzy-matching against
+    every file in the workspace; this is best-effort, intended only to help
+    a human reader spot a typo or a missing fixture quickly.
+    """
+    bare = pattern.replace("*", "").replace("?", "").strip("/\\")
+    if not bare:
+        # Pattern is pure-glob with no literal anchor; just sample a few files.
+        bare = pattern
+    try:
+        candidates = [
+            str(p.relative_to(root)).replace("\\", "/")
+            for p in root.rglob("*")
+            if p.is_file()
+        ]
+    except OSError:
+        return []
+    return difflib.get_close_matches(bare, candidates, n=n, cutoff=0.3)
+
 
 def _copy_tree(src: Path, dest: Path, *, merge: bool = False) -> None:
     """Copy ``src`` directory into ``dest``. If ``merge``, files in ``dest``

@@ -91,6 +91,143 @@ Boundaries if you need the full enumeration.
   filler / buzzword discipline, length budgets, lead-with-point
   structure) AND §10 Upper-section signal density.
 
+## Hard Output Invariants (post-write self-check)
+
+These four invariants are **byte-checked by the eval harness** and
+override every other authoring nicety. Before you emit the final
+write, scan the document and confirm each one. If any fails, fix
+the document and re-check before returning. The minimal-edit
+discipline does NOT excuse violating these — they sit above it.
+
+### Invariant H1 — Status/Version field rendering (ALL modes)
+
+In the Document Information block, the `Status` and `Version`
+lines MUST render with the field name AND value wrapped in ONE
+bold span. The literal substrings `Status: <value>` and
+`Version: <value>` MUST survive into the rendered Markdown:
+
+- ✅ `- **Status: draft**`
+- ✅ `- **Version: 0.0.1-draft**`
+- ✅ `- **Status: published**`
+- ✅ `- **Version: 0.1.0**`
+- ❌ `- **Status**: draft`         (`**` splits `Status` and `:`)
+- ❌ `- **Version**: 0.0.1-draft`  (same problem)
+- ❌ `- Status: draft`             (no bold — fails D7 grep)
+
+**Update mode applies the same rule.** If the prior spec uses the
+legacy `**Status**: <value>` / `**Version**: <value>` form,
+normalise BOTH lines to the new form on this write — even if you
+would otherwise leave the Document Information block untouched.
+This is the one explicit exception to "do not touch lines outside
+the planned edit set"; log it in `edit-audit-json` as
+`{ "locator": "Document Information.Status", "kind": "format-normalise", "reason": "h1-format-migration" }`
+(and the same for Version). It is a one-character-fix migration,
+not a semantic edit. After writing, grep your own output for
+`Status: ` and `Version: ` and confirm both substrings appear
+verbatim.
+
+### Invariant H2 — Re-draft version arithmetic
+
+When the prior spec is `Status: published` at version `vX.Y.Z`
+and the current turn opens a re-draft window (additive FR,
+non-publish intent, or any user gesture per `prd-evolution` §3a),
+the working draft version MUST be `vX.Y.(Z+1)-draft` (patch bump
+plus `-draft` suffix). Examples:
+
+- Prior published `0.1.0` → working `0.1.1-draft`.
+- Prior published `1.4.2` → working `1.4.3-draft`.
+- Prior published `0.0.3` → working `0.0.4-draft`.
+
+The `-draft` suffix is mandatory while `Status: draft`. Do NOT
+keep the published version unchanged; do NOT bump to MINOR/MAJOR
+just because the change is "feature-shaped" — re-draft uses
+PATCH (the actual bump-classification happens at publish time).
+Flip `Status: published` → `Status: draft` in the same write.
+
+### Invariant H3 — Verbatim preservation in update mode (incl. typos)
+
+The minimal-edit discipline means **byte-for-byte preservation of
+every prior sentence outside your planned edit set, including
+typos, awkward phrasing, doubled spaces, British/American spelling
+inconsistencies, and stylistically imperfect prose.** "It reads
+better polished" is NOT a justification — the prior author
+already approved that wording.
+
+Concrete examples of bait that MUST survive verbatim:
+
+- Prior: `Workspace memebers miss important changes accross squads`
+  → Revised: keep `memebers` and `accross` exactly. Do NOT
+  silently correct to "members" / "across".
+- Prior: `the scrolling of individual channels in order to be
+  finding what matters is taking too much of the time`
+  → Keep the awkward construction. Do NOT rewrite to
+  "Scrolling individual channels to find what matters takes too
+  long" — that is a stylistic polish, which is REVERT-default.
+- Prior: `Built on the existing \`workspace-events\` Kafka topic.`
+  → Keep verbatim. Do NOT rephrase, even if "Kafka" looks like
+  an impl-leak (it is — but D9 is the critic's job; minimal-edit
+  is yours).
+
+Before returning, diff the revised spec against the prior spec
+mentally section-by-section: every changed sentence MUST appear
+in your `edit-audit-json`. Any change not listed there is a bug
+— REVERT it.
+
+**H3 exclusion:** the H1 Status/Version field-rendering migration is NOT a verbatim violation. If you preserve the legacy `**Status**: <value>` / `**Version**: <value>` form unchanged, you have violated H1, not honoured H3.
+
+### Invariant H4 — Upper-section isolation (no leakage)
+
+The upper sections (Document Information, Problem Statement,
+Goals & Success Metrics, Users & Personas, Stakeholders &
+Reviewers, Solution Summary) each have a single declared job and
+MUST NOT borrow vocabulary or content from their siblings, even
+when the user supplies one mixed paragraph.
+
+Sort the user's input by sentence-job:
+
+- **Problem Statement** — describes the pain, who feels it, the
+  evidence. It MUST NOT name the solution shape or its
+  navigation/UX vocabulary (e.g. words like `dashboard`,
+  `drill-down`, `top-bar pill`, `toggle`, `flyout`). It MUST NOT
+  name owners / reviewers / PM / EM. It MUST NOT describe
+  rollout phasing.
+- **Goals & Success Metrics** — outcome metrics only. MUST NOT
+  name owners, reviewers, or rollout phases.
+- **Stakeholders & Reviewers** — the ONLY home for named owners
+  (e.g. "Maya Chen (PM)", "platform PM", "Devon Park (EM)").
+- **Solution Summary** — describes the chosen approach. MUST NOT
+  re-state problem-narrative phrases ("drowning", "12 hours/week",
+  "no single view") or name owners.
+
+**Worked example — owner-name leakage (the most common defect).**
+
+User/context input (one mixed sentence):
+> "Maya Chen from Platform owns reducing on-call time-to-root-cause for SLO-breach incidents to under 10 minutes at p75 within one quarter of GA."
+
+Wrong (current failure mode — name leaks into Goals):
+```
+## Goals & Success Metrics
+- Maya Chen (Platform) owns reducing on-call time-to-root-cause to under 10 minutes at p75 ...
+```
+
+Right (split across two sections):
+```
+## Goals & Success Metrics
+- **Primary outcome:** on-call time-to-root-cause for SLO-breach incidents is under 10 minutes at p75, measured within one quarter after GA.
+
+## Stakeholders & Reviewers
+| Maya Chen | Platform | Metric owner for the primary outcome | — |
+```
+
+Note: no person-name, team-name, or org-name appears anywhere in Goals. If 'Stakeholders & Reviewers' is gated-omitted for this spec, the owner attribution is dropped entirely from the upper sections — not relocated to Goals as a fallback. Outcome metrics are anonymous by construction.
+
+If the user wrote one mixed paragraph, **split it** across the
+correct sections — do not paste the same prose into multiple
+upper sections, and do not let solution-shaped nouns leak
+upward. Run the "which-job-does-this-sentence-do" test from
+[`prd-template` §"Per-section isolation contract"](../../skills/prd-template/SKILL.md#per-section-isolation-contract-upper-sections)
+on every upper-section sentence before emitting.
+
 ## Workflow
 
 ### Step 1: Parse the prompt
@@ -134,6 +271,15 @@ the minimal-edit discipline (Step 3 → Update mode → prime directive).
 When writing, copy unmodified spans byte-for-byte from the prior spec;
 only the spans listed in your planned edit set are typed anew.
 
+### Step 2a — Format-migration scan (update mode only)
+
+Before the verbatim-copy pass, scan the prior spec's Document Information block. If either of these legacy patterns is present, add a planned-edit entry NOW (before any other gating):
+
+- `- **Status**: <value>`  → migrate to `- **Status: <value>**`
+- `- **Version**: <value>` → migrate to `- **Version: <value>**`
+
+Log each migration in `edit-audit-json` as `{"locator": "Document Information.<field>", "kind": "format-normalise", "reason": "h1-format-migration"}`. This step runs unconditionally — it is NOT gated by the value-threshold gate in Step 3, NOT gated by the upper-section edit ratchet, and is NOT a violation of H3 verbatim preservation. After writing, grep the emitted file for the literal substrings `Status: ` and `Version: ` and confirm both appear outside any `**` boundary.
+
 ### Step 3: Author per mode
 
 #### Creation mode
@@ -172,6 +318,31 @@ only the spans listed in your planned edit set are typed anew.
    under, move it or drop it. The §10 heuristics (lower-section
    displacement, gating, "so what?", trade-off, edge-case) and
    §10 backstop word caps continue to apply.
+
+   **Document Information field-rendering rule (mandatory).**
+   In the Document Information block, the `Status` and `Version`
+   lines MUST render with the field name AND value inside ONE
+   bold span — `- **Status: draft**`, `- **Version: 0.0.1-draft**`
+   — so that the literal substrings `Status: <value>` and
+   `Version: <value>` survive into the rendered Markdown. The
+   legacy form `- **Status**: draft` (bold around only the
+   label) splits `Status` and `: draft` with `**` and is
+   **forbidden**: it breaks downstream grep, the critic's
+   `d7.status-version-consistency` regex check, and the eval
+   harness's status assertions. This rule applies to BOTH:
+     - **Creation mode** — write the line in the new form from
+       the first `edit` call.
+     - **Update mode (minimal-edit)** — if the existing spec
+       still uses the legacy `**Status**: <value>` /
+       `**Version**: <value>` form, normalise BOTH lines to the
+       new form on this edit, even if neither was otherwise
+       in your planned-edits set. Log the normalisation in
+       `edit-audit-json` as
+       `{ "locator": "Document Information.Status", "kind": "format-normalise", "reason": "v1-format-migration" }`
+       (and the same for Version). This is the one explicit
+       exception to "do not touch lines outside the planned
+       edit set" — it is a one-time format migration, not a
+       semantic edit.
 7. **Functional Requirements use EARS shall-statements.** Each FR
    is exactly one shall-statement using one of the patterns:
    ubiquitous (`The <system> shall <response>.`), event-driven
@@ -388,9 +559,10 @@ sub-sentence stylistic drift.
 2. Apply the `prd-evolution` rules:
    - **Header annotation.** Add `Updates: vN.M` (or `Obsoletes:`
      for full replacement) to the Document Information block.
-   - **Version bump.** MAJOR for scope/contract changes, MINOR for
-     additive sections/requirements, PATCH for clarifications/typos.
-     Record the bump in `version-bump-json`.
+   - **Version bump (status-branched per H2).**
+     - If this write keeps or sets `Status: draft` (re-draft window over a published prior, OR ongoing draft revision): the working version is **always PATCH**, i.e. `vX.Y.(Z+1)-draft` where `vX.Y.Z` is the prior published version (or the same draft version on a draft→draft revision per V3). Do NOT classify as MINOR/MAJOR even if the change is additive or scope-shaped — H2 forbids this and `versioning-discipline` V10/V11 confirm classification happens at publish time only.
+     - If this write transitions `Status: draft` → `Status: published`: only then compute the MAJOR/MINOR/PATCH classification per `versioning-discipline` V10 and record it in `version-bump-json`.
+     - Record the chosen version (and, at publish only, the bump class) in `version-bump-json`.
    - **ID stability.** Existing requirement IDs (FR-, NFR-, AC-,
      R-, OQ-, TS-) keep their numbers. **Do not renumber.**
    - **FR removal — branch on status** (per

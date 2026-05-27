@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from _lib.asserts import assert_prose_contains
+
 FIXTURES = Path(__file__).parent / "fixtures" / "update_minimal_edit_discipline"
 
 BAIT_SPANS = [
@@ -70,10 +72,11 @@ def test_update_minimal_edit_discipline(copilot_pack):
         f"see {result.log_path}"
     )
     for span in BAIT_SPANS:
-        assert span in text, (
-            f"bait sentence must survive verbatim "
-            f"(minimal-edit discipline): {span!r}; "
-            f"see {result.log_path}"
+        assert_prose_contains(
+            text,
+            span,
+            log_path=result.log_path,
+            extra="bait sentence must survive verbatim (minimal-edit discipline)",
         )
 
     changelog = ws.find_one("docs/specs/CHANGELOG.md")

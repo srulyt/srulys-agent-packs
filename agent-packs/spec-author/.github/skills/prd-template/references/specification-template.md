@@ -56,9 +56,9 @@ section names, vocabulary, or rules.
 - **Author(s)**: [Name(s)]
 - **Created**: [YYYY-MM-DD]
 - **Last Updated**: [YYYY-MM-DD]
-- **Status**: draft | published   <!-- two-value enum per versioning-discipline §V1 -->
+- **Status: draft**   <!-- or `**Status: published**`; two-value enum per versioning-discipline §V1. The field name AND its value MUST sit inside one bold span (`**Status: <value>**`) so that the literal substring `Status: <value>` is preserved in the rendered Markdown. Do NOT use the legacy `**Status**: <value>` form (bold around just the label) — that splits `Status` and `: <value>` with `**`, breaking grep + downstream consumers. -->
 - **Reviewers**: [Names or "Pending assignment"]
-- **Version**: 0.0.1-draft         <!-- semver; carries -draft iff status == draft -->
+- **Version: 0.0.1-draft**   <!-- semver; carries `-draft` iff status == draft. Same rendering rule as Status: bold the field name AND value together (`**Version: <value>**`) so the literal substring `Version: <value>` survives. Do NOT use `**Version**: <value>`. -->
 - **Updates**: [vN.M]   <!-- update mode only; RFC-style -->
 - **Obsoletes**: [vN.M] <!-- update mode, full replacement only -->
 

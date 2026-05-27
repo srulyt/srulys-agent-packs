@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from _lib.asserts import assert_prose_contains
+
 FIXTURES = Path(__file__).parent / "fixtures" / "update_upper_section_stability"
 
 UPPER_BAIT_SPANS = [
@@ -58,9 +60,11 @@ def test_update_upper_section_stability(copilot_pack):
     text = spec.read_text(encoding="utf-8")
 
     for span in UPPER_BAIT_SPANS:
-        assert span in text, (
-            f"upper-section bait must survive byte-for-byte: {span!r}; "
-            f"see {result.log_path}"
+        assert_prose_contains(
+            text,
+            span,
+            log_path=result.log_path,
+            extra="upper-section bait must survive byte-for-byte",
         )
 
     changelog = ws.find_one("docs/specs/CHANGELOG.md")

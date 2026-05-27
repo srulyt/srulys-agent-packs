@@ -84,9 +84,21 @@ orchestrator uses this map to apply the C5 partial-answer fallback
 
 ### Step 4: Write artefact
 
-Write `artifacts/interview-questions.md` containing the same
-content as your `interview-md` fenced block. The orchestrator may
-read either the file or the fence; both must agree byte-for-byte.
+Write the file at the absolute repo-relative path
+`.spec-author/sessions/{session-id}/artifacts/interview-questions.md`
+(the `{session-id}` the orchestrator passed in its task prompt).
+This file MUST exist on disk before you return — the eval harness
+and the orchestrator's post-condition check both glob for it. Do
+NOT rely solely on the `interview-md` fence. The file and the
+fenced block must agree byte-for-byte.
+
+Writing the file is **non-discretionary** even when the user has
+pre-supplied answers (e.g. `interview-answers-partial.md` is
+already staged in the workspace, the orchestrator's prompt
+includes a "do not park, here are the answers" note, etc.). The
+artefact is a record of which questions were asked — its absence
+indicates an interview was skipped, which is a build bug
+whenever `must_fill` was non-empty.
 
 ## Output Contract
 

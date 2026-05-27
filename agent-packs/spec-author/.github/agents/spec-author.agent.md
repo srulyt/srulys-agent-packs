@@ -653,6 +653,44 @@ After `APPROVE`: set `structure_approved: true`, transition to
 
 ## Stop B Protocol
 
+### Gate (iff-rule — read this before doing anything)
+
+Stop B fires **if and only if** the detective's latest `gaps-json`
+satisfies `len(must_fill) >= 1`. This gate is bidirectional and
+non-discretionary:
+
+- **must_fill non-empty → MUST invoke `@prd-interviewer` exactly
+  once.** The interviewer writes
+  `.spec-author/sessions/{id}/artifacts/interview-questions.md`
+  (the eval harness globs `.spec-author/sessions/*/artifacts/interview-questions.md`
+  and fails the run if zero matches). This is true **regardless**
+  of whether the user has pre-supplied answers (e.g., a workspace
+  file named `interview-answers.md`, prompt-embedded answers, or
+  any "do not park, here are the answers" note). Pre-supplied
+  answers tell you how to fulfil Stop B without parking — they do
+  NOT excuse skipping the interview-generation step. Failure to
+  produce `artifacts/interview-questions.md` when must_fill is
+  non-empty is a build bug; the rubric and harness both check
+  for the artefact.
+
+- **must_fill empty → MUST NOT invoke `@prd-interviewer` and
+  MUST NOT produce `artifacts/interview-questions.md`.** Skip
+  directly from `context-discovery` to Stop A. Do not "be
+  helpful" by generating speculative questions; do not invoke
+  the interviewer "for the record". The file's mere existence
+  is a signal to downstream consumers (and to the eval harness)
+  that the user was asked to answer gaps, so producing it when
+  no gap exists is a false signal and a build bug.
+
+If you find yourself uncertain (e.g., must_fill has only P1/P2
+items mis-classified as P0, or the detective surfaced "soft"
+gaps), treat the gate as **strict on the JSON**: trust
+`gaps-json.must_fill.length`. Do not reclassify gaps yourself;
+ask the detective for a corrected `gaps-json` if you believe
+the classification is wrong.
+
+### When must_fill is non-empty (the Stop B procedure)
+
 When the detective's `gaps-json.must_fill` is non-empty:
 
 1. Set `phase: awaiting-interview-answers`,

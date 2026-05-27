@@ -150,7 +150,47 @@ python -m scripts.lint_pack copilot-factory --strict   # warnings = errors
 |---|---|
 | `COPILOT_BIN` | Override the path to the `copilot` binary |
 | `EVAL_JUDGE_THRESHOLD` | Default judge pass threshold (default `0.7`) |
+| `EVAL_GLOBAL_TIMEOUT_SEC` | Wall-clock safety backstop for `eval.cmd` runs (default `14400` = 4h; set `0` to disable). Per-test timeouts in `pyproject.toml` are the primary safety net. |
 | `TMPDIR` | Where pytest puts per-test workspaces |
 
 If `copilot` is not on `PATH` (and `COPILOT_BIN` is unset), evals that
 need it are auto-skipped; static tests still run.
+
+## Timeouts and failure isolation
+
+The harness uses three layers of timeout, in order of preference:
+
+1. **Per-test pytest-timeout** (the primary safety net): configured in
+   `evals/pyproject.toml` (`timeout = 1500`, `timeout_method = "thread"`).
+   A single hung Copilot subprocess kills only that test, not the whole
+   run. Override per test with `@pytest.mark.timeout(seconds)`.
+2. **Per-subprocess `run_agent` / `run_skill` timeout**: each call passes
+   `timeout=<seconds>` to the Copilot CLI subprocess; the harness kills
+   the whole process tree on timeout via `psutil`.
+3. **Global wall-clock backstop in `eval.cmd`**: `--global-timeout`
+   (env: `EVAL_GLOBAL_TIMEOUT_SEC`, default 4h). Only fires if a test
+   escapes pytest-timeout — set to `0` to disable.
+
+### Windows runtime crashes
+
+Known fatal Windows exit codes (`STATUS_ACCESS_VIOLATION`,
+`STATUS_STACK_OVERFLOW`, `STATUS_STACK_BUFFER_OVERRUN`) are surfaced
+via `CopilotResult.crash` and the `CopilotProcessCrash` exception
+class. When a test fails on `assert result.ok`, check `result.crash`
+first — a non-None value means the CLI itself crashed and the agent
+prompt is NOT at fault.
+
+### Missing fixture diagnostics
+
+`Workspace.find_one` raises `FixtureMissingError` (an `AssertionError`
+subclass) when zero matches are found, with a list of the closest
+existing paths in the workspace to help spot a typo or a missing
+fixture file.
+
+### Whitespace-tolerant prose assertions
+
+`evals/_lib/asserts.py` provides `assert_prose_contains` /
+`assert_prose_not_contains` which normalise whitespace before
+comparing. Use them for free-form prose (bait sentences, persona
+descriptions); keep plain `assert ... in text` for structural
+literals (headings, `Status:` fields, `FR-NN`, `[Deprecated]`).

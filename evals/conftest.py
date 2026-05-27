@@ -33,6 +33,65 @@ from _lib import judge as judge_mod  # noqa: E402
 from _lib.workspace import Workspace  # noqa: E402
 
 
+# ---- per-test report-log flush (H2) -------------------------------------
+#
+# `pytest-reportlog` writes one JSON line per pytest report, but does not
+# flush after each write. When the runner is killed at a wall-clock cap
+# (or via H1 per-test timeout that escalates), all completed-test failure
+# detail is lost because the kernel buffer is never drained.
+#
+# We register an after-write `pytest_runtest_logreport` hook (tryfirst is
+# False; the reportlog plugin's own hook runs first and writes the line)
+# that calls `flush()` + `os.fsync()` on the reportlog file handle so
+# every report is durable on disk before the next test starts.
+#
+# Best-effort: if a future `pytest-reportlog` release renames `_file`,
+# we silently degrade to no-flush rather than crashing the suite. The
+# regression guard in `evals/static/test_reportlog_flush.py` will fail
+# loudly when that happens.
+
+_REPORTLOG_PLUGIN_NAME = "reportlog-plugin"
+
+
+def pytest_configure(config):
+    """Cache the reportlog plugin on the config for fast access in the hook."""
+    plugin = config.pluginmanager.get_plugin(_REPORTLOG_PLUGIN_NAME)
+    config._evals_reportlog = plugin  # may be None if --report-log not passed
+
+
+def pytest_runtest_logreport(report):
+    """Flush+fsync the report-log after every TestReport write (H2)."""
+    import os as _os
+
+    config = getattr(report, "config", None)
+    # In recent pytest, the config isn't attached to the report; pull it
+    # from the active session via the plugin manager fallback.
+    plugin = None
+    if config is not None:
+        plugin = getattr(config, "_evals_reportlog", None)
+    if plugin is None:
+        # Last-ditch: walk the global pytest session to find the plugin.
+        try:
+            import _pytest.config as _pc  # noqa: WPS433
+            cfg = _pc.get_config() if hasattr(_pc, "get_config") else None
+            if cfg is not None:
+                plugin = cfg.pluginmanager.get_plugin(_REPORTLOG_PLUGIN_NAME)
+        except Exception:
+            plugin = None
+    if plugin is None:
+        return
+    f = getattr(plugin, "_file", None)
+    if f is None:
+        return
+    try:
+        f.flush()
+        _os.fsync(f.fileno())
+    except (OSError, ValueError, AttributeError):
+        # File closed, non-fsyncable handle, or plugin internals changed.
+        # Don't take down the test suite for a logging best-effort.
+        pass
+
+
 # ---- skip markers when copilot CLI is unavailable -----------------------
 
 

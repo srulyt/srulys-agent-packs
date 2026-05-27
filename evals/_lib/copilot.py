@@ -11,6 +11,18 @@ Two entry points:
 Both are thin wrappers; they exist so tests don't reach for ``subprocess``
 directly and so we can swap the backend (e.g. mock / record-replay) in
 fixtures.
+
+Hardening notes (see ``.copilot-factory`` harness-hardening proposal):
+
+* **H3** -- known Windows fatal exit codes are surfaced via
+  :class:`CopilotProcessCrash` and the ``crash`` attribute on
+  :class:`CopilotResult`. Tests that fail on ``result.ok`` should mention
+  ``result.crash_summary()`` so a Windows runtime crash is not confused
+  with an agent-prompt defect.
+* **H7** -- the subprocess is launched via :class:`subprocess.Popen` and on
+  timeout (or KeyboardInterrupt) the whole process tree is killed via
+  ``psutil``. On Windows the process is started in a new process group so
+  it can be signalled cleanly.
 """
 
 from __future__ import annotations
@@ -18,10 +30,46 @@ from __future__ import annotations
 import dataclasses
 import os
 import shutil
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import Sequence
+from typing import Optional, Sequence
+
+
+# ---- known fatal Windows exit codes (H3) --------------------------------
+#
+# Copilot CLI on Windows occasionally crashes with a Win32 NTSTATUS code
+# instead of a normal exit. These are NOT agent-prompt defects: they are
+# runtime crashes in the CLI itself (typically the Node.js process) and
+# the agent never gets a chance to emit output. Surfacing them with a
+# named class lets a human triager distinguish "CLI crashed" from
+# "agent did the wrong thing".
+_WIN_FATAL_EXIT_CODES: dict[int, str] = {
+    3221225477: "STATUS_ACCESS_VIOLATION (0xC0000005)",
+    3221225725: "STATUS_STACK_OVERFLOW (0xC00000FD)",
+    3221226505: "STATUS_STACK_BUFFER_OVERRUN (0xC0000409)",
+}
+
+
+class CopilotProcessCrash(RuntimeError):
+    """Raised / attached to results when Copilot CLI crashed with a known
+    fatal Windows exit code (H3).
+
+    The presence of this exception in :attr:`CopilotResult.crash` means
+    the failure is a CLI runtime crash, NOT an agent-prompt defect.
+    """
+
+    def __init__(self, returncode: int, status_name: str, log_path: Path):
+        self.returncode = returncode
+        self.status_name = status_name
+        self.log_path = log_path
+        super().__init__(
+            f"Copilot CLI crashed: {status_name} (exit={returncode}). "
+            f"This is a Windows runtime crash, NOT an agent-prompt defect. "
+            f"See {log_path}."
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -35,9 +83,31 @@ class CopilotResult:
     log_path: Path
     """Path to the persisted combined stdout+stderr log on disk."""
 
+    crash: Optional[CopilotProcessCrash] = None
+    """Set when ``returncode`` matches a known Windows fatal exit (H3).
+
+    When non-None the failure is a CLI runtime crash, not an agent defect.
+    Tests should mention ``result.crash_summary()`` in failure messages.
+    """
+
     @property
     def ok(self) -> bool:
         return self.returncode == 0
+
+    def crash_summary(self) -> str:
+        """Human-readable summary for failure messages.
+
+        Returns an empty string when there's no recognised crash; otherwise
+        a one-line "Windows runtime crash, NOT an agent-prompt defect"
+        message suitable for inclusion in a pytest assertion message.
+        """
+        if self.crash is None:
+            return ""
+        return (
+            f"Copilot CLI crashed: {self.crash.status_name} "
+            f"(exit={self.returncode}). This is a Windows runtime crash, "
+            f"NOT an agent-prompt defect. See {self.log_path}."
+        )
 
 
 class CopilotNotInstalled(RuntimeError):
@@ -58,6 +128,61 @@ def find_copilot_bin() -> str:
     return candidate
 
 
+# ---- process-tree kill helper (H7) --------------------------------------
+
+
+def _kill_process_tree(pid: int, *, grace_seconds: float = 5.0) -> None:
+    """Best-effort: terminate then kill ``pid`` and all descendants.
+
+    Uses ``psutil`` when available (it's a declared dep) for a portable
+    recursive walk; falls back to a direct kill of ``pid`` otherwise so
+    we never propagate an ImportError out of the harness.
+    """
+    try:
+        import psutil  # type: ignore
+    except ImportError:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+        return
+
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return
+
+    procs = parent.children(recursive=True) + [parent]
+    # Polite termination first.
+    for p in procs:
+        try:
+            p.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    gone, alive = psutil.wait_procs(procs, timeout=grace_seconds)
+    # Anything still alive gets SIGKILL / TerminateProcess.
+    for p in alive:
+        try:
+            p.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    psutil.wait_procs(alive, timeout=2.0)
+
+
+def _popen_kwargs_for_tree_kill() -> dict:
+    """Per-OS Popen flags that make the subtree easier to clean up.
+
+    On Windows we put the child in its own process group so Ctrl+Break can
+    reach it and so it doesn't inherit signal handling from the parent. On
+    POSIX we start a new session via ``os.setsid`` so the descendants are
+    all in one process group identifiable from the parent.
+    """
+    if sys.platform == "win32":
+        # CREATE_NEW_PROCESS_GROUP = 0x00000200
+        return {"creationflags": 0x00000200}
+    return {"start_new_session": True}
+
+
 def _run(
     cmd: Sequence[str],
     *,
@@ -67,38 +192,65 @@ def _run(
     env_extra: dict[str, str] | None = None,
     stdin_text: str | None = None,
 ) -> CopilotResult:
-    import time
-
     env = os.environ.copy()
     if env_extra:
         env.update(env_extra)
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
+    stdout = ""
+    stderr = ""
+    returncode = 0
+    timed_out = False
+
+    proc = subprocess.Popen(
+        list(cmd),
+        cwd=str(cwd),
+        stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        **_popen_kwargs_for_tree_kill(),
+    )
     try:
-        proc = subprocess.run(
-            list(cmd),
-            cwd=str(cwd),
-            input=stdin_text,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            env=env,
-            check=False,
-        )
-        stdout, stderr, returncode = proc.stdout, proc.stderr, proc.returncode
-    except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-        stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
-        stderr += f"\n[copilot helper] TIMEOUT after {timeout}s\n"
-        returncode = 124  # convention used by /usr/bin/timeout
+        try:
+            stdout, stderr = proc.communicate(input=stdin_text, timeout=timeout)
+            returncode = proc.returncode
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _kill_process_tree(proc.pid)
+            # Drain whatever's available now that the tree is dead.
+            try:
+                stdout, stderr = proc.communicate(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                # Pipes still wedged; give up gracefully.
+                proc.kill()
+                stdout, stderr = "", ""
+            stderr = (stderr or "") + f"\n[copilot helper] TIMEOUT after {timeout}s\n"
+            returncode = 124  # convention used by /usr/bin/timeout
+    except KeyboardInterrupt:
+        # Honour Ctrl+C from the runner without orphaning children.
+        _kill_process_tree(proc.pid)
+        raise
+
     duration = time.monotonic() - started
 
+    # H3: recognise known Windows fatal exit codes.
+    crash: Optional[CopilotProcessCrash] = None
+    if not timed_out and returncode in _WIN_FATAL_EXIT_CODES:
+        crash = CopilotProcessCrash(
+            returncode=returncode,
+            status_name=_WIN_FATAL_EXIT_CODES[returncode],
+            log_path=log_path,
+        )
+
+    crash_line = f"[crash] {crash}\n" if crash is not None else ""
     log_path.write_text(
         f"$ {' '.join(cmd)}\n[cwd] {cwd}\n[exit] {returncode}\n"
-        f"[duration_s] {duration:.2f}\n\n"
+        f"[duration_s] {duration:.2f}\n{crash_line}\n"
         f"--- PROMPT (stdin) ---\n{stdin_text or ''}\n"
         f"--- STDOUT ---\n{stdout}\n--- STDERR ---\n{stderr}\n",
         encoding="utf-8",
@@ -110,6 +262,7 @@ def _run(
         stderr=stderr,
         duration_seconds=duration,
         log_path=log_path,
+        crash=crash,
     )
 
 
