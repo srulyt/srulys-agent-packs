@@ -175,6 +175,44 @@ Say what you mean in plain language. Inflated language signals that the writer h
 | "paradigm shift in operational excellence" | "a better process" |
 | "holistic end-to-end solution" | "a complete solution" |
 
+## AI-ism Cleanup
+
+AI-generated prose carries recognizable verbal tics. The goal is **not** to hide that a document was drafted with AI — it is to make the text read the way a sharp human author would actually write it. Remove the noise that a careful writer would never have added. These tics are the single most common edit reviewers make by hand, so catch them before the draft ships.
+
+### What counts as an AI-ism
+
+**1. Inflated transition adverbs and connective filler.** Drop or replace: "moreover," "furthermore," "additionally," "notably," "importantly," "crucially," "fundamentally," "ultimately," "essentially," "indeed." Most can be deleted outright; the sentence stands without them.
+
+**2. The "X isn't just Y, it's Z" construction.** "This isn't just a feature, it's a platform." "It's not about speed, it's about trust." This antithesis template is the most recognizable AI tell. Rewrite as a direct claim: "This is a platform," or state both points plainly without the not-just scaffolding.
+
+**3. Rule-of-three padding.** Reflexive triples where two items (or one) carry the meaning: "robust, scalable, and future-proof." Keep only the words that are true and load-bearing. Do not manufacture a third adjective for cadence.
+
+**4. Hedged significance claims.** "plays a key role in," "serves as a critical component," "is a powerful tool for," "stands as a testament to," "underscores the importance of." Replace with the concrete thing it does.
+
+**5. Empty engagement scaffolding.** "It's worth noting that," "It's important to understand that," "As we navigate," "In an era of," "When it comes to," "At its core." Delete the wrapper and keep the payload.
+
+**6. Symmetrical wrap-up sentences.** Closings that restate the section in balanced clauses ("By combining X with Y, the team can achieve Z while ensuring W"). Cut them — the document is short enough that the reader remembers.
+
+**7. Over-signposting.** "Let's explore," "In this section we will," "Having established X, we now turn to Y." Briefs are read, not narrated. Remove the tour-guide voice.
+
+**8. Promotional intensifiers.** "seamless," "robust," "cutting-edge," "game-changing," "best-in-class," "unlock," "empower," "elevate," "harness," "leverage" (as a verb), "supercharge." Use a specific, literal verb or claim instead. (See also Buzzword Inflation above.)
+
+### The naturalness test
+
+Read each sentence aloud. Ask: **"Would a busy human expert actually write this, or does it sound like it's performing thoughtfulness?"** If it performs rather than informs, rewrite it as the plainest true version of the point. A human author writing fast and well produces asymmetric, specific, occasionally blunt sentences — not balanced, hedged, adjective-padded ones.
+
+### Before / after
+
+**AI-ism-laden:**
+
+> "It's important to note that this isn't just an incremental improvement — it's a fundamental shift. By leveraging a robust, scalable, and seamless architecture, the team can unlock powerful new capabilities while ensuring long-term maintainability."
+
+**Cleaned:**
+
+> "This replaces the architecture, not patches it. The new design removes the per-item permission checks that block enterprise rollout, and it reuses the existing OneLake identity model — so there is no new permission primitive to maintain."
+
+The cleaned version is longer in commitment and shorter in adjectives. It says what changed and why it matters, with zero scaffolding.
+
 ## Good vs. Bad Writing Examples
 
 ### Example 1: Problem Description

@@ -26,8 +26,8 @@ The orchestrator's delegation prompt MUST contain:
 
 - `Session: {session-id}`
 - `Run path: .product-brief-agent-stm/runs/{session-id}/`
-- `Task: web-research | url-fetch | command-execution`
-- `Request:` — exact search query, URL(s), or command
+- `Task: web-research | url-fetch | command-execution | mcp-query`
+- `Request:` — exact search query, URL(s), command, or MCP-query intent + target server
 - `Context:` — why this is needed (evidence gap, user-provided URL, skill-script execution)
 - `iteration_count: {n}`
 
@@ -36,6 +36,7 @@ If any required field is missing, do NOT guess. Emit `handoff` fence with `statu
 ## Skills to Load
 
 - `product-brief-framework` — STM Layout (path table only)
+- `mcp-cli-discovery` — detection of available MCP servers / CLIs, use rules, and the graceful-degradation contract
 
 (You do NOT load brief-writing skills. You are a utility layer.)
 
@@ -59,6 +60,18 @@ When the orchestrator provides URLs to fetch, retrieve the content via `execute 
 
 When the orchestrator requests command execution: run the exact command specified, capture stdout / stderr / exit code, and return them per the output contract. Do not modify, extend, or chain commands beyond what was specified.
 
+### 4. MCP Server / Tool Invocation (tool-agnostic)
+
+The pack does not hardcode any specific research tool. Source-of-truth context tools (internal-knowledge MCP servers, search MCP servers, repository/issue MCP servers, etc.) vary by environment and change over time. Use whatever is available.
+
+When the orchestrator requests an `mcp-query`:
+
+1. Apply the `mcp-cli-discovery` skill to determine which MCP servers and CLIs are available, using its three detection sources (user prompt, `copilot-instructions`, harness tool listing). Any harness tool whose name starts with `mcp_` is an MCP server.
+2. If a tool matching the requested intent is available, invoke it for the exact query the orchestrator specified and return the raw results.
+3. **Graceful degradation (mandatory)**: if the requested/expected tool is unavailable (not present, auth failure, rate limit, timeout), do NOT hard-fail and do NOT silently substitute. Record the gap explicitly in `handoff.notes` and in the `mcp-results` fence (`expected: <name>; available: false; reason: <…>`), and return what you could obtain (possibly nothing). The orchestrator decides whether to fall back to web research or proceed degraded.
+
+You retrieve raw MCP output only — you never interpret, rank, or synthesize it. Confidence and decision-relevance labeling happen downstream in `@evidence-analyst`.
+
 ## File Access Boundaries
 
 | Permission | Allowed Paths |
@@ -71,7 +84,7 @@ When the orchestrator requests command execution: run the exact command specifie
 
 - Write any file. Return payloads only.
 - Re-invoke other specialists.
-- Load brief-writing skills (`evidence-integrity`, `decision-metrics-financials`, `executive-writing-style`, `stakeholder-psychology`, or the brief-framework sections beyond STM Layout).
+- Load brief-writing skills (`evidence-integrity`, `decision-metrics-financials`, `executive-writing-style`, `stakeholder-psychology`, or the brief-framework sections beyond STM Layout). Loading `mcp-cli-discovery` for tool detection is permitted.
 - Respond directly to a user — refuse per Invocation Guard.
 - Invent commands, URLs, or search expansions beyond what the delegation specifies.
 - Follow links, navigate, or expand searches beyond what was requested.
@@ -140,10 +153,61 @@ Your final assistant message MUST contain these fenced sections (only the one(s)
 {success | failure}, exit code {n}
 ```
 
+```mcp-results
+# MCP / Tool Query Results
+
+## Intent
+{requested query intent, or empty if Task != mcp-query}
+
+## Tool Used
+{MCP server / CLI name actually invoked, or "none — degraded"}
+
+## Availability
+{available: true | false}; {expected: <name>; reason if unavailable}
+
+## Raw Result
+
+{raw tool output, or "no data — graceful degradation"}
+
+## Discovery Payload
+
+Per the `mcp-cli-discovery` skill, every `mcp-results` fence carries the
+structured discovery state below — even when zero tools are detected
+(emit empty arrays and `graceful_degradation: true`). No file is
+written; this payload lives in the fence and the orchestrator persists
+it. Field names match the skill byte-for-byte. Emit it as a JSON object:
+
+  {
+    "mcps_detected": [
+      {
+        "name": "{MCP server name}",
+        "source": "prompt | copilot-instructions | harness",
+        "used": true,
+        "notes": "{how it was used, or why not}"
+      }
+    ],
+    "clis_detected": [
+      {
+        "name": "{CLI name}",
+        "source": "prompt | copilot-instructions | harness",
+        "used": false,
+        "notes": "{how it was used, or why not}"
+      }
+    ],
+    "research_tools": ["{built-in tools relied on, e.g. web_search, browse}"],
+    "graceful_degradation": false,
+    "skipped": ["expected: <name>; available: false (reason)"]
+  }
+
+Zero-tools case (nothing detected, run proceeded on built-ins only):
+`mcps_detected: []`, `clis_detected: []`, `research_tools: []`,
+`graceful_degradation: true`, `skipped: []`.
+```
+
 ```handoff
-status: ok | blocked | error
-task: web-research | url-fetch | command-execution
-notes: <one-line summary; or enumerated missing fields when blocked; or error description>
+status: ok | blocked | error | degraded
+task: web-research | url-fetch | command-execution | mcp-query
+notes: <one-line summary; or enumerated missing fields when blocked; or error/degradation description>
 iteration_count: <int>
 ```
 ````

@@ -30,10 +30,10 @@ Evidence outputs are reference tables, not narrative documents. Each entry is 1�
 
 ### Evidence Log Table Template
 
-| # | Claim | Source | Confidence | Notes |
-|---|-------|--------|------------|-------|
-| 1 | [Claim text, 1–2 sentences] | [File name, date] | High/Medium/Low | [Assumption/Open Question if applicable] |
-| 2 | ... | ... | ... | ... |
+| # | Claim | Source | Confidence | Status | Notes |
+|---|-------|--------|------------|--------|-------|
+| 1 | [Claim text, 1–2 sentences] | [File name, date] | High/Medium/Low | Settled/Proposed/Open/n.a. | [Assumption/Open Question if applicable] |
+| 2 | ... | ... | ... | ... | ... |
 
 ### Format Rules
 
@@ -84,6 +84,26 @@ A claim not traceable to user-provided source material is an `Assumption` or `Op
 
 Never blur these categories.
 
+## Authorship and Decision Status
+
+A brief reads wrong when it defends a settled decision as if it were an open hypothesis, or misattributes who owns the proposal. Capture two extra signals during extraction so downstream framing is correct.
+
+### Authorship / ownership
+
+- Identify **who authored the source material and who owns the proposed initiative** (the producing team, the decision-maker, the requesting stakeholder), when the source reveals it.
+- Distinguish the producing team from partner/consumer teams. Do not assume the author is an external party — the source is frequently written by the owning team itself.
+- Record ownership in the evidence output so the composer frames the brief from the correct vantage point.
+
+### Decision status per claim
+
+Tag each material design/strategy claim with its decision status:
+
+- **Settled** — the source presents this as a decided, owned choice (architecture chosen, disposition decided, team committed). The brief states it declaratively; it is not "defended" or hedged.
+- **Proposed** — an advocated direction not yet ratified. The brief argues for it.
+- **Open** — genuinely undecided; surfaces as an Open Question.
+
+Never downgrade a Settled claim to Proposed framing (creates phantom uncertainty), and never upgrade a Proposed/Open claim to Settled (overclaims). When the source explicitly states a choice is final or owned, that is Settled regardless of how much supporting evidence is present.
+
 ## Contradiction Handling
 
 When inputs conflict:
@@ -92,6 +112,24 @@ When inputs conflict:
 2. State impact on the decision.
 3. Propose a resolution path (owner/data needed/timeline if known).
 4. Reflect unresolved conflict in risks/open questions.
+
+### Source vs. external-knowledge contradictions (mandatory check)
+
+When the orchestrator supplies external/research findings (web, MCP-server, or internal-tool results) alongside user source material, explicitly compare them. This is the highest-value contradiction class — especially claims about **external product status, competitive positioning, or platform direction** (e.g., whether a named product is being retired, expanding, or superseded).
+
+- If a research finding contradicts a transcript/source claim, you MUST record it as an explicit contradiction entry — never silently adopt either side.
+- Propose a reframe that the composer can apply (e.g., reframe the premise as "convergence" or "supersession" rather than asserting the unverified version).
+- Flag the contradiction's confidence and which side is better evidenced.
+
+Silently inheriting a factually shaky source claim about the outside world is a defect; the reviewer will catch it and force a rewrite.
+
+## Unverified Quantities
+
+Specific numbers, counts, and magnitudes that are not traceable to a labeled source get walked back during review. Default to qualitative phrasing unless the quantity is evidence-backed.
+
+- A precise count ("more than one hundred surfaces," "10 enterprise customers") is only stated as fact when a user-provided source or a labeled research finding supports it.
+- Otherwise, use qualitative phrasing ("many," "a small number of early customers") OR present the number explicitly as an assumption/estimate with its basis.
+- Never manufacture precision for rhetorical weight. The orchestrator's editing pass flags unsourced specifics.
 
 ## Confidence Guidance
 

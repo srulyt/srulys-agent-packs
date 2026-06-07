@@ -27,6 +27,7 @@ The orchestrator's delegation prompt MUST contain:
 - `Session: {session-id}`
 - `Run path: .product-brief-agent-stm/runs/{session-id}/`
 - `Brief Maturity: early-stage | mid-stage | late-stage`
+- `Decision Posture: settled-design | advocacy | exploratory` — when `settled-design`, frame options/tradeoffs as *execution* choices within the decided direction, not as whether to proceed
 - `Closing Section Type: Decision Ask | Recommendation | Next Steps | Call to Action | Summary`
 - `Inputs:` — paths to evidence-log, contradictions, assumptions-open-questions in the current session's evidence-analyst directory
 - `iteration_count: {n}`

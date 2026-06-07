@@ -47,6 +47,9 @@ Produce structured, compact evidence outputs that maximize integrity, traceabili
 - Map claims to source pointers using file names and dates only
 - Surface contradictory statements and unresolved conflicts
 - Label unsupported statements as `Assumption` or `Open Question`
+- Identify **authorship/ownership** of the source and initiative (producing team vs. partner/consumer teams) per the `evidence-integrity` Authorship rules
+- Tag each material design/strategy claim with **decision status** (`Settled | Proposed | Open`) per the `evidence-integrity` Decision Status rules
+- When the delegation includes external/research findings, run the **source vs. external-knowledge contradiction check** (mandatory) per `evidence-integrity`
 
 ## Evidence Source Definition
 
@@ -68,9 +71,11 @@ Each evidence entry is 1–2 sentences maximum. The evidence log is a reference 
 
 Use this table format inside the `evidence-log` fence:
 
-| # | Claim | Source | Confidence | Notes |
-|---|-------|--------|------------|-------|
-| 1 | [Claim text, 1–2 sentences] | [File name, date] | High/Medium/Low | [Assumption/Open Question if applicable] |
+| # | Claim | Source | Confidence | Status | Notes |
+|---|-------|--------|------------|--------|-------|
+| 1 | [Claim text, 1–2 sentences] | [File name, date] | High/Medium/Low | Settled/Proposed/Open/n.a. | [Assumption/Open Question if applicable] |
+
+The `Status` column applies to material design/strategy claims (`Settled | Proposed | Open`); use `n.a.` for background facts. See `evidence-integrity` Decision Status rules — never frame a Settled claim as Proposed, or a Proposed/Open claim as Settled.
 
 ## No-Links Policy
 
@@ -102,14 +107,15 @@ Your final assistant message MUST contain these fenced sections, in this order, 
 
 ````markdown
 ```evidence-log
-| # | Claim | Source | Confidence | Notes |
-|---|-------|--------|------------|-------|
-| 1 | ... | ... | High/Medium/Low | ... |
+| # | Claim | Source | Confidence | Status | Notes |
+|---|-------|--------|------------|--------|-------|
+| 1 | ... | ... | High/Medium/Low | Settled/Proposed/Open/n.a. | ... |
 ```
 
 ```contradictions-json
 [
-  {"id": "X1", "claim_a": "...", "source_a": "...",
+  {"id": "X1", "type": "internal | source-vs-external",
+   "claim_a": "...", "source_a": "...",
    "claim_b": "...", "source_b": "...",
    "impact": "...", "proposed_resolution": "..."}
 ]
@@ -126,6 +132,7 @@ Your final assistant message MUST contain these fenced sections, in this order, 
 ```handoff
 status: ok | blocked
 notes: <one-line summary OR enumerated missing required-input fields when blocked>
+authorship: <source author / initiative owner if identifiable, else "unidentified">
 evidence_count: <int>
 contradictions_count: <int>
 assumptions_count: <int>

@@ -27,6 +27,8 @@ The orchestrator's delegation prompt MUST contain:
 - `Session: {session-id}`
 - `Run path: .product-brief-agent-stm/runs/{session-id}/`
 - `Brief Maturity: early-stage | mid-stage | late-stage`
+- `Audience Profile: expert | non-expert | mixed` (+ one-line description of the reader's domain familiarity and role)
+- `Decision Posture: settled-design | advocacy | exploratory` — whether the central thesis is owned/decided (state declaratively), advocated (argue for it), or open (frame as exploration)
 - `Closing Section Type: Decision Ask | Recommendation | Next Steps | Call to Action | Summary`
 - `Closing Section Signals: <brief description>`
 - `Inputs:` — paths to evidence-analyst artifacts and (if available) strategy-modeler `decision-model.md`
@@ -56,9 +58,35 @@ Apply the section distinctness contract from `product-brief-framework` skill. Ti
 
 ## Page Target and Word Count
 
-- Target: 1,500–2,000 words (3–4 pages)
-- Hard ceiling: 2,500 words (5 pages)
+Word count is audience-conditional — apply the Hardcore Brevity Protocol band for the assessed `Audience Profile` from `product-brief-framework`:
+
+- **Expert audience** — Target: 1,500–2,000 words (3–4 pages). Hard ceiling: 2,500 words.
+- **Non-expert / adjacent audience** — Target up to ~3,500 words; ceiling up to ~4,500 words. Spend the extra length only on first-mention term definitions, a background/landscape orientation, design rationale, or clarifying scenarios — never on filler or restatement.
 - Early-stage briefs may be significantly shorter — that is expected and valid.
+
+## Audience Calibration
+
+Apply the Audience Calibration rules from `product-brief-framework` to the provided `Audience Profile`:
+
+- **Non-expert / adjacent**: define every domain term and acronym on first mention; include a short "Background and current landscape" orientation early (one or two paragraphs); explain the *why* behind each design choice; prefer a concrete scenario over an abstract capability description when it aids comprehension. For this audience, orienting context is decision-critical, not filler.
+- **Expert**: assume fluency; define only genuinely novel coined terms; keep background minimal.
+- **Mixed**: calibrate to the least-expert reader who must act on the brief.
+
+A coined term for a novel concept is defined on first mention for any audience. Apply the Naming and Terminology Discipline from `product-brief-framework`: use one consistent name/term for each concept throughout; for any unnamed entity, use a single provisional name and flag it as an open question.
+
+## Decision Posture Framing
+
+Frame the central thesis according to the provided `Decision Posture`:
+
+- **settled-design**: the architecture/direction is owned and decided. State it declaratively. Do NOT defend it as a hypothesis, hedge it, or argue it into existence. The brief explains and operationalizes a settled choice; tradeoffs are about *execution*, not whether to proceed.
+- **advocacy**: argue for the recommended direction with evidence.
+- **exploratory**: present the direction as one option under consideration.
+
+Misframing a settled decision as an open hypothesis (phantom uncertainty) is a defect.
+
+## AI-ism Avoidance
+
+Apply the AI-ism Cleanup rules from `executive-writing-style` while drafting — do not emit the prose the orchestrator would only have to strip out. Specifically avoid: "X isn't just Y, it's Z" antithesis constructions; reflexive rule-of-three adjective triples; inflated transitions ("moreover," "furthermore," "notably," "crucially"); empty significance claims ("plays a key role in," "serves as a critical component"); engagement scaffolding ("it's worth noting that," "at its core"); and promotional intensifiers ("seamless," "robust," "unlock," "empower," "leverage"). Write the plainest true version of each point. The goal is natural human-expert prose, not hiding that AI assisted.
 
 ## Stakeholder Championing Craft
 
@@ -122,6 +150,8 @@ no bold-as-structure}
 
 ```maturity-applied
 maturity: early-stage | mid-stage | late-stage
+audience_profile: expert | non-expert | mixed
+decision_posture: settled-design | advocacy | exploratory
 closing_type: Decision Ask | Recommendation | Next Steps | Call to Action | Summary
 sections_included: ["Title", "Executive Summary", "Problem Statement", "Proposed Solution", "Closing Section", ...]
 sections_omitted_with_reason: {"Financials": "no evidence supports financial framing", ...}
@@ -141,7 +171,7 @@ If `status: blocked`, the `product-brief-draft` fence may be empty but MUST stil
 
 The orchestrator will reject your draft (and re-request, subject to Iteration Caps) if:
 
-- The draft exceeds 2,500 words
+- The draft exceeds the audience-appropriate hard ceiling (2,500 words expert / ~4,500 words non-expert)
 - A heading is a literal copy of framework section guidance text
 - The draft contains links or bare URLs
 - Sections substantially duplicate each other

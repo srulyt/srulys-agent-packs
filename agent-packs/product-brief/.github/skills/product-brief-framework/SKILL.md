@@ -84,6 +84,40 @@ The user has detailed planning artifacts — metrics, timelines, resource estima
 - The orchestrator must explicitly state the assessed maturity level before delegation.
 - The closing section type is independent of the maturity level. A late-stage brief can close with a Summary (if purely informational), and an early-stage brief can close with a Decision Ask (if the decision request is explicit even with thin evidence).
 
+## Audience Calibration
+
+Maturity scopes *which sections* appear. Audience calibration scopes *how much context each section assumes*. These are independent axes — a mid-stage brief for a non-expert audience is common and valid.
+
+The orchestrator assesses the audience before composition and passes an `Audience Profile` to the composer. When the source material or the user does not specify the audience, the orchestrator asks. Never guess silently — assumed-expert framing is the single largest driver of post-draft rework.
+
+### Audience dimensions to assess
+
+- **Domain familiarity**: Does the reader already know the product area, its terminology, and the surrounding systems? Or are they an adjacent stakeholder who needs the landscape explained?
+- **Role/altitude**: Executive decision-maker, peer team, engineering reviewer, or mixed.
+- **Prior context**: Has the reader seen earlier material on this initiative, or is this their first exposure?
+
+### Audience levels
+
+**Expert audience** (knows the domain and terminology):
+- Assume fluency in domain terms; define only genuinely novel coined terms.
+- Lead with the decision; keep background minimal.
+- Apply the tighter end of the word-count band.
+
+**Non-expert / adjacent audience** (stakeholders without the background):
+- **Define every domain term on first mention**, inline and briefly.
+- Include a short **"Background and current landscape"** orientation early in the brief (one or two paragraphs) that situates the reader before the problem statement. This section is permitted even though it is "context" — for a non-expert audience it is decision-critical, not filler.
+- Explain the *why* behind each design choice, not just the *what*.
+- Prefer a concrete scenario/vignette over an abstract capability description when it aids comprehension.
+- The word-count ceiling is relaxed (see Hardcore Brevity Protocol) — clarity for a non-expert reader outranks brevity.
+
+**Mixed audience**: calibrate to the least-expert reader who must act on the brief.
+
+### Calibration rules
+
+- The orchestrator records the assessed `Audience Profile` in `maturity-assessment.md` alongside maturity and closing type.
+- A "so what?" or filler cut that would remove context a *non-expert* reader needs is NOT a valid cut. Re-scope the so-what test to the assessed audience: "If I deleted this, would *this reader's* decision or understanding change?"
+- Defining terms and explaining rationale for a non-expert audience is not bloat. Do not strip it during the brevity pass.
+
 ## Canonical Section Order
 
 Sections are either required (always present) or optional (included only when the user's provided source material explicitly contains relevant information). The Closing Section (slot #11) is always required, but its type varies based on context — see the Closing Section Types section below. Do not generate or infer content for optional sections — omit them entirely when user context does not support them. See the Brief Maturity Levels section above for guidance on which optional sections are appropriate at each stage.
@@ -287,13 +321,19 @@ This policy applies to all agents in the pipeline — evidence-analyst, strategy
 
 ## Hardcore Brevity Protocol
 
+Brevity is audience-conditional. The targets below are the default for an **expert** audience. For a **non-expert / adjacent** audience (see Audience Calibration), clarity outranks brevity: define terms, explain rationale, and relax the ceiling as noted.
+
 ### Word Count Targets
 
-- **Target**: 1,500–2,000 words (3–4 pages)
-- **Hard ceiling**: 2,500 words (5 pages)
-- Drafts exceeding the ceiling are rejected and returned for condensation
+- **Target (expert audience)**: 1,500–2,000 words (3–4 pages)
+- **Hard ceiling (expert audience)**: 2,500 words (5 pages)
+- **Non-expert / adjacent audience**: target up to ~3,500 words and ceiling up to ~4,500 words when the added length is spent on first-mention term definitions, a background/landscape orientation, design rationale, or clarifying scenarios — never on filler, restatement, or padding.
+- Drafts exceeding the applicable ceiling are rejected and returned for condensation.
+- Early-stage briefs may be far shorter than target — that is expected and valid. Do not pad to hit a number.
 
 ### Anti-Bloat Rules
+
+These apply at every audience level — extra length for a non-expert audience buys *clarity*, never noise:
 
 1. No filler paragraphs that introduce the next section
 2. No restating content from a previous section
@@ -301,13 +341,34 @@ This policy applies to all agents in the pipeline — evidence-analyst, strategy
 4. Prefer a single strong sentence over three weak ones
 5. Tables and lists over paragraphs when the content is structured data
 6. No bridging paragraphs between sections
-7. No background context that does not directly inform the decision
+7. No background context that does not directly inform the decision **for the assessed audience** (for a non-expert audience, orienting background and term definitions *do* inform the decision and are retained)
 
 ### Enforcement
 
-- Brief-composer applies these rules during drafting
-- Orchestrator performs a condensation editing pass after receiving the draft
-- Orchestrator rejects drafts that exceed the hard ceiling
+- Brief-composer applies these rules during drafting, calibrated to the `Audience Profile`
+- Orchestrator performs a condensation editing pass after receiving the draft, using the audience-appropriate ceiling
+- Orchestrator rejects drafts that exceed the applicable hard ceiling
+
+## Naming and Terminology Discipline
+
+Naming churn and inconsistent terminology are recurring manual fixes during review. Enforce these rules so the first draft ships consistent.
+
+### Provisional naming
+
+- Any product, feature, or entity that the source material has not formally named must be given a **single provisional name**, used consistently, and **flagged as an open question** ("provisional name; final naming TBD").
+- Never invent a confident-sounding final name and present it as settled. Never rotate between several informal labels for the same thing.
+- When the source proposes a name that collides with an existing product or is under dispute, surface it as a contradiction/open question rather than silently adopting it.
+
+### Define on first mention
+
+- For a non-expert / adjacent audience, every domain term, acronym, or coined label is defined briefly at its first occurrence (see Audience Calibration).
+- A coined term for a novel concept is defined on first mention for **any** audience.
+
+### Terminology consistency
+
+- Once a term or name is chosen, use it verbatim everywhere. Do not alternate between synonyms for the same concept (e.g., do not switch between "instance share" and "consumer-pays share" for the same thing).
+- When a name is finalized or changed mid-draft, propagate it to every occurrence — partial renames are a defect.
+- The orchestrator runs a terminology-consistency sweep during the editing pass (see the editing pass in `@brief-orchestrator`).
 
 ## Standalone Document Policy
 
@@ -383,6 +444,7 @@ agent prompts.
 | Web research results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/web-research.md` |
 | URL fetch results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/url-fetch.md` |
 | Command execution results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/command-results.md` |
+| MCP query results | `.product-brief-agent-stm/runs/{session-id}/agents/research-runner/mcp-results.md` |
 
 ### Rules
 
