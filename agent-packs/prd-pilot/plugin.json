@@ -1,0 +1,9 @@
+{
+  "name": "prd-pilot",
+  "description": "Lightweight guided workflow that produces a high-quality EARS-style PRD fast: gather context, grill-me interrogation to close gaps, outline approval, then format with EARS best practices.",
+  "version": "0.1.0",
+  "author": { "name": "srulys-agent-packs" },
+  "skills": "skills/",
+  "repository": "https://github.com/srulyt/srulys-agent-packs",
+  "keywords": ["ears", "prd", "requirements", "spec", "specification"]
+}

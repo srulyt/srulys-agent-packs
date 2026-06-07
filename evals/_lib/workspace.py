@@ -96,14 +96,44 @@ class Workspace:
                 )
 
     def stage_skill(self, skill: str) -> None:
-        """Stage exactly one skill (no agents)."""
-        # Skills can live in either .github/skills/<skill>/ at repo root or
-        # ~/.copilot/skills/<skill>/. We stage from the repo only.
+        """Stage exactly one skill (no agents).
+
+        Resolution order (first match wins):
+
+        1. Repo-root ``.github/skills/<skill>/`` -- the legacy shared-skills
+           layout.
+        2. Plugin-root ``agent-packs/<pack>/skills/<skill>/`` -- the
+           conformant **agent-plugin** layout (the manifest's default
+           ``skills/`` path). A plugin no longer keeps its skills under
+           ``.github/skills/``; they live at the plugin root so VS Code,
+           Copilot CLI, and ``gh skill`` all discover them.
+
+        Either way the skill is copied into the workspace's
+        ``.github/skills/<skill>`` so the SUT (Copilot CLI) discovers it
+        identically when the workspace is its ``cwd``.
+        """
         candidate = REPO_ROOT / ".github" / "skills" / skill
         if not candidate.exists():
+            # Agent-plugin layout: agent-packs/<pack>/skills/<skill>/SKILL.md
+            plugin_matches = [
+                p
+                for p in sorted(REPO_ROOT.glob(f"agent-packs/*/skills/{skill}"))
+                if (p / "SKILL.md").exists()
+            ]
+            if len(plugin_matches) == 1:
+                candidate = plugin_matches[0]
+            elif len(plugin_matches) > 1:
+                raise FileNotFoundError(
+                    f"Skill {skill!r} is ambiguous across plugins: "
+                    f"{[str(p) for p in plugin_matches]}. Disambiguate by "
+                    "renaming one of the skill directories."
+                )
+        if not candidate.exists():
             raise FileNotFoundError(
-                f"Skill not found at {candidate}. Skill evals require the "
-                "skill to live in the repo's .github/skills/ tree."
+                f"Skill not found at {REPO_ROOT / '.github' / 'skills' / skill} "
+                f"or under agent-packs/*/skills/{skill}. Skill evals require "
+                "the skill to live in the repo's .github/skills/ tree or in a "
+                "plugin-root skills/ directory."
             )
         _copy_tree(candidate, self.root / ".github" / "skills" / skill)
 
