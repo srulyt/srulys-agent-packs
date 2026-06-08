@@ -1,6 +1,6 @@
 ---
 name: pptx-visual-qa
-description: "Headless render pipeline (.pptx → .pdf → per-slide .png via LibreOffice + pdftoppm) plus per-slide visual rubric for multimodal inspection. Loaded by @deck-critic to actually look at generated decks. Cross-platform with fallbacks. Keywords: render, screenshot, headless, soffice, libreoffice, pdftoppm, visual QA, multimodal, rubric."
+description: "Headless render pipeline (.pptx → .pdf → per-slide .png via LibreOffice + pypdfium2) plus per-slide visual rubric (incl. the aesthetic_craft axis) for multimodal inspection. Loaded by @deck-critic to actually look at generated decks. Cross-platform with fallbacks; permissive-only engines. Keywords: render, screenshot, headless, soffice, libreoffice, pypdfium2, pdftoppm, visual QA, multimodal, rubric, aesthetic craft."
 ---
 
 # PPTX Visual QA
@@ -22,24 +22,27 @@ Load this skill when you are `@deck-critic` and need to:
 ```
 output.pptx
     │
-    ▼ soffice --headless --convert-to pdf
+    ▼ soffice --headless --convert-to pdf   (auto-discovers LibreOffice off-PATH)
 output.pdf
     │
-    ▼ pdftoppm -r 110 deck.pdf slide -png
-slide-1.png, slide-2.png, ...
+    ▼ pypdfium2 render(scale=dpi/72)  [preferred; pdftoppm/pdf2image fallback]
+slide-1.png, slide-2.png, ...   (150 DPI aesthetic pass)
     │
     ▼ @deck-critic.view (image-aware)
-qa-report.json (per-slide visual section)
+qa-report.json (per-slide visual section incl. aesthetic_craft)
 ```
 
 If LibreOffice is unavailable, the script tries (in order)
-`libreoffice` (alias), `unoconv`, then a pure-Python fallback via
-`pdf2image` (which itself needs `poppler`). If none succeed, the
-script writes `manifest.json` with `"render_engine": null` and
-`"slides": []`; structural assertions still run. Per OQ5,
-`render_skipped: true` is BLOCKING for any deck containing one or
-more `styled` slides; for simple-only decks the critic downgrades
-the verdict to `pass_unverified` rather than blocking.
+`libreoffice` (alias), `unoconv`. The pdf→png stage prefers
+**pypdfium2** (Apache/BSD, no system dependency) and falls back to
+`pdftoppm` then `pdf2image` (both poppler). PyMuPDF is excluded (AGPL).
+If none succeed, the script writes `manifest.json` with `"render_engine": null` and
+`"slides": []`; structural assertions still run. Per OQ5 (and the B3
+verify-or-block policy), `render_skipped: true` is BLOCKING
+(`render_unverified`) for any deck containing one or more `styled`
+slides; for simple-only decks the critic emits `unverified-needs-user`
+— an explicit user-decision gate (install / ship-with-consent / abort),
+NOT a silent pass.
 
 ## Files in This Skill
 
@@ -83,14 +86,18 @@ lives in [references/visual-rubric.md](references/visual-rubric.md).
 
 ## Known Failure Modes
 
-- **Font substitution** — If the host LibreOffice doesn't have Calibri/
-  Inter/Helvetica Neue, it substitutes (often badly). The render
-  pipeline records `font_substitutions` in `manifest.json` so the
-  critic can flag it.
+- **Font substitution** — The design systems target a render-installed
+  free font set (Inter, Source Serif 4, IBM Plex, Fraunces, Space
+  Grotesk, Archivo) so the verified PNG shows the intended faces. An
+  *unexpected* substitution (a design font absent from `render_safe`)
+  is surfaced by the critic as a CONCERN with an install recommendation
+  — not a silent pass. Substitutions are recorded in
+  `manifest.font_substitutions`.
 - **Slow first invocation** — LibreOffice's first headless run can take
   20–40s while it initializes profiles. Subsequent runs are <5s.
-- **DPI tradeoff** — `-r 110` is the default (good legibility, fast).
-  Bump to `-r 200` for fine alignment review; quadruples file size.
+- **DPI tradeoff** — the aesthetic pass renders at **150 DPI**
+  (`render_pptx.DEFAULT_DPI`) so tracking/hairlines are legible; bump
+  to 200 for sub-pixel alignment review.
 
 ## References
 
@@ -111,7 +118,20 @@ scripts/render_pptx.py was rewritten in session
   succeeds. The `@deck-critic` consults this flag plus the
   deck's `styled_count` to choose between the
   `render_unverified` BLOCKING verdict (any styled slide) and
-  the `pass_unverified` shippable verdict (simple-only deck —
-  per OQ5).
+  the `unverified-needs-user` user-decision gate (simple-only deck
+  — per OQ5 / B3; NOT a silent ship).
 - **engines_attempted / engines_available** lists for
   visibility into which engines the runner saw on PATH.
+
+## pdf→png Engine + Font Pass (2026-06-08, session c5d9e1a7)
+
+- **pdf→png now prefers `pypdfium2`** (Google PDFium, Apache-2.0/BSD —
+  OQ1-clean, no system poppler). `pdftoppm` / `pdf2image` remain
+  fallbacks. **PyMuPDF/`fitz` is forbidden** (AGPL). `manifest.json`
+  gained a `png_engine` field recording which path produced the PNGs.
+- **soffice off-PATH discovery** — the renderer probes standard
+  LibreOffice install locations so a Windows/macOS installer works
+  without a PATH edit.
+- **Aesthetic-pass DPI bumped to 150** (`DEFAULT_DPI`).
+- **Render-present design fonts** + unexpected-substitution → critic
+  CONCERN (see render-pipeline.md → Font Substitution).

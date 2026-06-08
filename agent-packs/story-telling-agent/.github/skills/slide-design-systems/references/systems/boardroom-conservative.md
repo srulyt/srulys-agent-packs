@@ -26,7 +26,7 @@ strip, 10pt footnoted sources), Pyramid Principle.
     "divider": "#D0D5DC"
   },
   "type_scale": {"hero": 44, "section": 40, "title": 32, "subtitle": 20, "body": 20, "small": 16, "caption": 12, "fine_print": 10},
-  "fonts": {"title_family": "Arial", "body_family": "Arial", "mono_family": "Consolas"},
+  "fonts": {"title_family": "Source Serif 4", "body_family": "Inter", "mono_family": "IBM Plex Mono", "title_fallback": "Liberation Serif", "body_fallback": "Inter", "mono_fallback": "IBM Plex Mono", "render_safe": ["Inter", "Source Serif 4", "IBM Plex Sans", "IBM Plex Mono", "Fraunces", "Space Grotesk", "Archivo", "DejaVu Sans", "Carlito", "Liberation Sans", "Liberation Serif", "Noto Sans"]},
   "grid": {"slide_width_inches": 13.333, "slide_height_inches": 7.5, "margin_inches": 0.7, "stripe_left_inches": 0.35, "snap_inches": 0.05},
   "accent_rules": {"top_bar_max_slides_pct": 0.5, "left_stripe_on_light": true, "title_underline_max": 1},
   "slide_type_defaults": {

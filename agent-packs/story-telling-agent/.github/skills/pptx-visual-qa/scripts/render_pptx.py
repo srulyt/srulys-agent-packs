@@ -5,17 +5,26 @@ Pipeline:
   1. pptx → pdf via a layered fallback list (`ENGINES`):
        soffice → libreoffice → unoconv
      (NO aspose-slides — per OQ1, decisions.md 2026-05-04T14:50Z,
-     we stay LGPL OSS-permissive only.)
-  2. pdf → png via `pdftoppm` (poppler), with fallback to `pdf2image`.
+     we stay LGPL/permissive OSS only.)
+  2. pdf → png via **pypdfium2** (Google PDFium, Apache-2.0/BSD — OQ1
+     clean, no system dependency) as the PREFERRED path, falling back
+     to `pdftoppm` (poppler) then `pdf2image` only when pypdfium2 is
+     absent. PyMuPDF / `fitz` is deliberately NOT used: it is AGPL-3.0
+     and violates the pack's permissive-only engine policy.
 
 If no engine is available, writes manifest.json with
 `render_engine: null` AND `render_unverified: true`. The deck-critic
 treats `render_unverified=true` as a BLOCKING finding for any deck
 that has at least one styled slide (per OQ5); for simple-only decks
-the verdict may downgrade to `pass_unverified` (still ships).
+the verdict downgrades to the `unverified-needs-user` user-decision
+gate (B3 — never a silent ship).
+
+Subprocess discipline (mirrors marp-engine `_run_bounded`): every
+external call closes stdin (DEVNULL) so a first-run / interactive
+prompt can never block, and is bounded by a hard timeout.
 
 Usage:
-  python render_pptx.py --pptx PATH --out DIR [--dpi 110]
+  python render_pptx.py --pptx PATH --out DIR [--dpi 150]
 
 Output:
   <out>/manifest.json
@@ -26,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -33,12 +43,34 @@ import time
 from pathlib import Path
 from typing import Callable
 
+# Default aesthetic-pass DPI (C5 — bumped from 110 so the critic can
+# actually judge letter-tracking, hairlines, and tonal layering).
+DEFAULT_DPI = 150
+
+# Known non-PATH LibreOffice install locations probed when `soffice`
+# isn't on PATH (common on Windows / macOS). Keeps the render-and-
+# inspect loop functional without requiring a PATH edit.
+_SOFFICE_FALLBACK_PATHS = [
+    r"C:\Program Files\LibreOffice\program\soffice.exe",
+    r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+    "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+    "/usr/bin/soffice",
+    "/usr/local/bin/soffice",
+    "/opt/libreoffice/program/soffice",
+]
+
 
 def _which(*candidates: str) -> str | None:
     for c in candidates:
         p = shutil.which(c)
         if p:
             return p
+    # PATH miss — probe well-known install locations for the office
+    # engines so a standard installer (no PATH edit) still renders.
+    if any(c in ("soffice", "libreoffice") for c in candidates):
+        for p in _SOFFICE_FALLBACK_PATHS:
+            if os.path.isfile(p):
+                return p
     return None
 
 
@@ -80,7 +112,8 @@ def pptx_to_pdf(pptx: Path, outdir: Path,
             continue
         try:
             argv = build_argv(exe, pptx, outdir)
-            r = subprocess.run(argv, capture_output=True, text=True, timeout=180)
+            r = subprocess.run(argv, capture_output=True, text=True,
+                               stdin=subprocess.DEVNULL, timeout=180)
             stderr = (r.stderr or "") + (r.stdout or "")
             for line in stderr.splitlines():
                 low = line.lower()
@@ -96,37 +129,80 @@ def pptx_to_pdf(pptx: Path, outdir: Path,
     return None, None, substitutions
 
 
-def pdf_to_pngs(pdf: Path, outdir: Path, dpi: int, errors: list) -> list[Path]:
-    """pdftoppm preferred; pdf2image fallback."""
+def pdf_to_pngs(pdf: Path, outdir: Path, dpi: int,
+                errors: list) -> tuple[list[Path], str | None]:
+    """Render every PDF page to slide-N.png.
+
+    Engine preference (OQ1 permissive-only):
+      1. **pypdfium2** (Google PDFium, Apache-2.0/BSD) — in-process, no
+         system dependency, no subprocess to hang. PREFERRED.
+      2. `pdftoppm` (poppler) — subprocess, stdin closed + bounded.
+      3. `pdf2image` (poppler bindings) — last resort.
+
+    PyMuPDF/`fitz` is intentionally excluded (AGPL-3.0 — OQ1 violation).
+
+    Returns ``(pngs, png_engine_name)``.
+    """
+    # --- 1. pypdfium2 (preferred) -------------------------------------
+    try:
+        import pypdfium2 as pdfium  # type: ignore
+
+        scale = dpi / 72.0  # PDF points → pixels at requested DPI
+        doc = pdfium.PdfDocument(str(pdf))
+        pngs: list[Path] = []
+        try:
+            n = len(doc)
+            for i in range(n):
+                page = doc[i]
+                bitmap = page.render(scale=scale)
+                pil_image = bitmap.to_pil()
+                p = outdir / f"slide-{i + 1}.png"
+                pil_image.save(str(p), "PNG")
+                pngs.append(p)
+        finally:
+            doc.close()
+        if pngs:
+            return pngs, "pypdfium2"
+        errors.append("pypdfium2 produced no pages")
+    except ImportError:
+        errors.append("pypdfium2 not installed; trying pdftoppm/pdf2image")
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"pypdfium2 exception: {e}; trying pdftoppm/pdf2image")
+
+    # --- 2. pdftoppm (poppler) fallback -------------------------------
     pdftoppm = _which("pdftoppm")
     if pdftoppm:
         try:
             prefix = outdir / "slide"
             r = subprocess.run(
                 [pdftoppm, "-r", str(dpi), "-png", str(pdf), str(prefix)],
-                capture_output=True, text=True, timeout=180,
+                capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=180,
             )
             if r.returncode == 0:
                 pngs = sorted(outdir.glob("slide-*.png"))
                 if pngs:
-                    return pngs
+                    return pngs, "pdftoppm"
             errors.append(f"pdftoppm exit={r.returncode} stderr={(r.stderr or '')[:400]}")
         except Exception as e:  # noqa: BLE001
             errors.append(f"pdftoppm exception: {e}")
+
+    # --- 3. pdf2image (poppler bindings) last resort ------------------
     try:
         from pdf2image import convert_from_path  # type: ignore
         images = convert_from_path(str(pdf), dpi=dpi)
-        pngs: list[Path] = []
+        pngs = []
         for i, im in enumerate(images, start=1):
             p = outdir / f"slide-{i}.png"
             im.save(str(p), "PNG")
             pngs.append(p)
-        return pngs
+        if pngs:
+            return pngs, "pdf2image"
     except ImportError:
-        errors.append("pdf2image not installed; pdftoppm unavailable; cannot render PNGs")
+        errors.append("pdf2image not installed; pypdfium2/pdftoppm unavailable; cannot render PNGs")
     except Exception as e:  # noqa: BLE001
         errors.append(f"pdf2image exception: {e}")
-    return []
+    return [], None
 
 
 def png_dims(path: Path) -> tuple[int | None, int | None]:
@@ -145,7 +221,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pptx", required=True, type=Path)
     ap.add_argument("--out",  required=True, type=Path)
-    ap.add_argument("--dpi",  type=int, default=110)
+    ap.add_argument("--dpi",  type=int, default=DEFAULT_DPI)
     args = ap.parse_args()
 
     pptx, outdir = args.pptx, args.out
@@ -160,10 +236,12 @@ def main() -> int:
     manifest: dict = {
         "session_id": None,
         "pptx_path": str(pptx),
-        "render_engine": None,        # populated when engine succeeds
+        "render_engine": None,        # pptx→pdf engine, populated on success
+        "png_engine": None,           # pdf→png engine (pypdfium2|pdftoppm|pdf2image)
         "render_unverified": True,    # flipped False on success (OQ1/OQ5)
         "engines_attempted": [name for name, _ in ENGINES],
         "engines_available": [name for name, _ in ENGINES if _which(name)],
+        "png_engines_preference": ["pypdfium2", "pdftoppm", "pdf2image"],
         "dpi": args.dpi,
         "slides": [],
         "font_substitutions": [],
@@ -179,8 +257,9 @@ def main() -> int:
         print("WARN: render skipped (no PPTX→PDF engine available)", file=sys.stderr)
         return 0
 
-    pngs = pdf_to_pngs(pdf, outdir, args.dpi, errors)
+    pngs, png_engine = pdf_to_pngs(pdf, outdir, args.dpi, errors)
     manifest["render_engine"] = engine_pdf
+    manifest["png_engine"] = png_engine
     if not pngs:
         # PDF stage succeeded; PNG stage didn't. Still unverified.
         manifest["duration_ms"] = int((time.time() - t0) * 1000)
@@ -199,8 +278,8 @@ def main() -> int:
         })
     manifest["duration_ms"] = int((time.time() - t0) * 1000)
     (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    print(f"SUCCESS: rendered {len(pngs)} slides via {engine_pdf} → "
-          f"pdftoppm/pdf2image in {manifest['duration_ms']}ms")
+    print(f"SUCCESS: rendered {len(pngs)} slides via {engine_pdf} -> "
+          f"{png_engine} in {manifest['duration_ms']}ms")
     return 0
 
 

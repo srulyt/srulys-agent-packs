@@ -25,7 +25,7 @@ Zen (signal-to-noise).
     "divider": "#E0D6BB"
   },
   "type_scale": {"hero": 56, "section": 48, "title": 40, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},
-  "fonts": {"title_family": "Garamond", "body_family": "Inter", "mono_family": "Consolas"},
+  "fonts": {"title_family": "Source Serif 4", "body_family": "Inter", "mono_family": "IBM Plex Mono", "title_fallback": "Liberation Serif", "body_fallback": "Inter", "mono_fallback": "IBM Plex Mono", "render_safe": ["Inter", "Source Serif 4", "IBM Plex Sans", "IBM Plex Mono", "Fraunces", "Space Grotesk", "Archivo", "DejaVu Sans", "Carlito", "Liberation Sans", "Liberation Serif", "Noto Sans"]},
   "grid": {"slide_width_inches": 13.333, "slide_height_inches": 7.5, "margin_inches": 0.95, "stripe_left_inches": 0.0, "snap_inches": 0.05},
   "accent_rules": {"top_bar_max_slides_pct": 0.2, "left_stripe_on_light": false, "title_underline_max": 0},
   "slide_type_defaults": {

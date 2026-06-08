@@ -25,7 +25,7 @@ case studies. **Vibe**: Warm, human, narrative.
     "divider": "#FCD9C7"
   },
   "type_scale": {"hero": 54, "section": 48, "title": 40, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},
-  "fonts": {"title_family": "Inter", "body_family": "Inter", "mono_family": "Consolas"},
+  "fonts": {"title_family": "Inter", "body_family": "Inter", "mono_family": "IBM Plex Mono", "title_fallback": "Inter", "body_fallback": "Inter", "mono_fallback": "IBM Plex Mono", "render_safe": ["Inter", "Source Serif 4", "IBM Plex Sans", "IBM Plex Mono", "Fraunces", "Space Grotesk", "Archivo", "DejaVu Sans", "Carlito", "Liberation Sans", "Liberation Serif", "Noto Sans"]},
   "grid": {"slide_width_inches": 13.333, "slide_height_inches": 7.5, "margin_inches": 0.85, "stripe_left_inches": 0.45, "snap_inches": 0.05},
   "accent_rules": {"top_bar_max_slides_pct": 0.3, "left_stripe_on_light": true, "title_underline_max": 1},
   "slide_type_defaults": {

@@ -1,0 +1,29 @@
+{
+  "title": "B3 No-Engine User-Gate Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_path": "output.pptx",
+  "slides": [
+    {"index": 1, "type": "title", "style": "simple",
+     "title": "Simple-Only Deck",
+     "subtitle": "Every slide is style: simple",
+     "notes": "Setup — no styled recipe anywhere in this deck."},
+    {"index": 2, "type": "content", "style": "simple",
+     "title": "Why this matters",
+     "bullets": ["A simple-only deck still needs visual verification",
+                 "No render engine means quality is not assured"],
+     "notes": "Body content, simple layout."},
+    {"index": 3, "type": "key-message", "style": "simple",
+     "title": "Unassured output must not ship silently",
+     "notes": "The critic must surface a user decision, not auto-pass."},
+    {"index": 4, "type": "content", "style": "simple",
+     "title": "The gate",
+     "bullets": ["Install a render engine and retry",
+                 "Ship unverified with explicit consent",
+                 "Abort"],
+     "notes": "These are the three options the orchestrator surfaces."},
+    {"index": 5, "type": "question", "style": "simple",
+     "title": "Did the critic ask the user to decide?",
+     "notes": "Final slide."}
+  ]
+}

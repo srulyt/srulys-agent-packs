@@ -1,6 +1,6 @@
 ---
 name: slide-design-systems
-description: "Curated digest of widely-used deck-design canon (Pyramid Principle, Presentation Zen, Duarte, BCG action titles, Beautiful.ai/Gamma, marp/slidev) plus six fully-specified design systems (palette + type scale + grid + slide-type defaults) usable directly as deck-spec config. Loaded by @deck-builder for system selection. Keywords: design system, palette, typography, grid, theme, executive, technical, customer, investor, editorial, boardroom."
+description: "Curated digest of widely-used deck-design canon (Pyramid Principle, Presentation Zen, Duarte, BCG action titles, Beautiful.ai/Gamma, marp/slidev) plus ten fully-specified design systems (palette + tint ladders + type scale + grid + slide-type defaults) usable directly as deck-spec config. Loaded by @deck-builder for system selection. Keywords: design system, palette, typography, grid, theme, executive, technical, customer, investor, editorial, boardroom, ink-editorial, quiet-luxury, signal-dark, warm-editorial."
 ---
 
 # Slide Design Systems
@@ -13,7 +13,7 @@ production-ready design systems the deck-builder can drop into a
 
 1. [When to Use This Skill](#when-to-use-this-skill)
 2. [Design Canon Digest](#design-canon-digest)
-3. [The Six Design Systems](#the-six-design-systems)
+3. [The Design Systems](#the-design-systems)
 4. [System Selection by Audience](#system-selection-by-audience)
 5. [Token Schema (deck-spec compatibility)](#token-schema-deck-spec-compatibility)
 6. [References](#references)
@@ -92,7 +92,16 @@ Affects: `technical-slate`, `editorial-mono`.
 
 Affects: all systems (pack typography baseline).
 
-## The Six Design Systems
+## The Design Systems
+
+The original six are render-host-safe (B2: all design fonts updated to
+installed families — Inter, Source Serif 4, IBM Plex Sans/Mono, Fraunces,
+Space Grotesk, Archivo — so the verified PNG shows the *designed*
+typography, never a substitute). The four **premium** systems
+(`ink-editorial`, `quiet-luxury`, `signal-dark`, `warm-editorial`) ship
+tint ladders + categorical `chart_palette` + font-weight tokens and were
+authored to fix the stock-palette / brand-pastiche / desaturated-coral
+problems of their predecessors.
 
 | System | Best For | Vibe | Default Background Mix |
 |--------|----------|------|------------------------|
@@ -102,6 +111,12 @@ Affects: all systems (pack typography baseline).
 | `investor-gold` | Funding asks, investor updates | Premium, restrained, confident | 40% dark / 50% cream / 10% gold |
 | `editorial-mono` | Vision decks, manifestos, opinion | Bold typographic, magazine | 70% black or pure white / 30% inverse |
 | `boardroom-conservative` | Regulated industries, M&A | Traditional consulting | 20% deep blue / 70% white / 10% red |
+| `ink-editorial` ⭐ | Vision / thought-leadership keynotes | Print-editorial, paper + ink + one vermilion signal | 70% paper / 25% ink / 5% signal |
+| `quiet-luxury` ⭐ | Premium investor / board narratives | Understated luxury, champagne as line never fill | 45% warm-black / 50% bone / 5% champagne line |
+| `signal-dark` ⭐ | Product / platform launches, eng reviews | Cool dark product UI, iris + mint focal, tint ladder | 65% charcoal / 30% paper / 5% iris |
+| `warm-editorial` ⭐ | Customer / sales / culture narratives | Warm cream + vivid coral kept bright | 55% cream / 35% espresso / 10% coral |
+
+⭐ = premium system (tint ladders + `chart_palette` + weight tokens).
 
 ## System Selection by Audience
 
@@ -162,7 +177,7 @@ schema, embeddable in `deck-spec.json` under `design_system_tokens`:
     "divider": "#E2E4E8"
   },
   "type_scale": {"hero": 54, "section": 48, "title": 40, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},
-  "fonts": {"title_family": "Calibri Light", "body_family": "Calibri", "mono_family": "Consolas"},
+  "fonts": {"title_family": "Inter", "body_family": "Inter", "mono_family": "IBM Plex Mono"},
   "grid": {"slide_width_inches": 13.333, "slide_height_inches": 7.5, "margin_inches": 0.75, "stripe_left_inches": 0.45, "snap_inches": 0.05},
   "accent_rules": {"top_bar_max_slides_pct": 0.4, "left_stripe_on_light": true, "title_underline_max": 2},
   "slide_type_defaults": {
@@ -194,6 +209,110 @@ any single mid-gray to clear AA against both — see
 `references/systems/technical-slate.md` (F4 note) and
 `references/wcag-thresholds.md` for the math.
 
+### Font portability tokens (concern C1)
+
+python-pptx **cannot embed fonts**, and LibreOffice / Chromium
+substitute missing fonts "often badly" — the deck *file* is fine but
+every *render* (and the deck opened on a host lacking the font) looks
+wrong. To eliminate this class of bug, every system's `fonts` block
+SHOULD declare a **render-safe fallback** that is present on render
+hosts (mirroring `render-visual/assets/font_locator.py`):
+
+```json
+"fonts": {
+  "title_family": "Calibri Light",
+  "body_family": "Calibri",
+  "mono_family": "Consolas",
+  "title_fallback": "DejaVu Sans",
+  "body_fallback": "Carlito",
+  "mono_fallback": "DejaVu Sans Mono",
+  "render_safe": ["DejaVu Sans", "Carlito", "Caladea", "Liberation Sans",
+                  "DejaVu Sans Mono", "Liberation Mono", "Liberation Serif",
+                  "Noto Sans"]
+}
+```
+
+`render_safe` is the allowlist of fonts known present on LibreOffice /
+Chromium render hosts. `pptx-structural-asserts/scripts/check_pptx.py`
+reads it (via `deck-spec.json.design_system_tokens.fonts`) and emits a
+**`font_not_render_present`** warning for any run whose font is neither
+in `render_safe` nor a declared `*_fallback`. Set the deck's actual
+python-pptx `font.name` to the design font; the fallback documents what
+the renderer will substitute so the warning stays quiet for known-good
+substitutions. Marp inherits the same fallback chain via
+`marp-engine/references/marp-theming.md`.
+
+### Whitespace / safe-area tokens (concern C4)
+
+Add explicit breathing-room tokens to the `grid` block so the structural
+asserts can check spacing, not just overflow:
+
+```json
+"grid": {
+  "slide_width_inches": 13.333, "slide_height_inches": 7.5,
+  "margin_inches": 0.75, "stripe_left_inches": 0.45, "snap_inches": 0.05,
+  "safe_area_inches": 0.5, "min_gutter_inches": 0.25
+}
+```
+
+- `safe_area_inches` — minimum clear margin from every slide edge; no
+  content shape should start inside it. `check_pptx.py` emits a
+  **`safe_area_violation`** warning ("breathing room") for shapes that
+  intrude. Defaults to `margin_inches` when absent.
+- `min_gutter_inches` — minimum gap between adjacent content blocks
+  (columns, cards). Defaults to `0.25` when absent.
+
+### Premium token extensions (C3 — tints, chart palette, weights)
+
+The four premium systems (and any new system) extend the base schema so
+builders can *layer tone* and charts get a categorical theme. These keys
+are read directly by `pptx-engine/scripts/generate_deck.py` (`Tokens`)
+and `render-visual/scripts/render_chart.py`:
+
+```json
+{
+  "palette": {
+    "surface_elevated": "#F6F8FA",
+    "surface_on_dark": "#1E2128",
+    "hairline": "#D5DAE0",
+    "hairline_on_dark": "#2C313A",
+    "scrim": "#14161B",
+    "tints": {
+      "primary": {"50": "#EEF0FF", "100": "#DADFFF", "300": "#9AA6FF",
+                  "500": "#5468FF", "700": "#3A49C2", "900": "#222C78"}
+    }
+  },
+  "chart_palette": {
+    "focal": "#46E5B0", "muted": "#9AA1AC", "grid": "#2C313A",
+    "ramp": ["#5468FF", "#46E5B0", "#9AA1AC", "#8A6BFF", "#3FB6F0", "#F0A93F"]
+  },
+  "typography": {
+    "font_title": "Space Grotesk", "font_body": "Inter",
+    "title_weight": 700, "body_weight": 400, "eyebrow_weight": 600,
+    "size_hero": 60, "size_section": 48, "size_title": 40
+  }
+}
+```
+
+- **`palette.tints.<role>.<step>`** — HSL-lightness tint/shade ladder per
+  accent role (Refactoring-UI). Builders pull `t.tint("primary", "500")`
+  for cards / insets / zebra so tone layers instead of one flat fill.
+  When absent, `Tokens` derives card/hairline/scrim tones from the base
+  colours so legacy systems still work.
+- **`chart_palette`** — categorical theme: `focal` (the single "look
+  here" colour, deliberately separate from brand `secondary`), `muted`
+  (non-focal marks), `grid`, and a `ramp` cycled for ≥4-category charts.
+- **`typography.*_weight`** — 300/400/600/700/800 weight tokens; helpers
+  map weight ≥ 600 to bold and feed `_set_tracking` for display type.
+- **`surface_elevated` / `surface_on_dark` / `hairline*` / `scrim`** —
+  craft-surface colours consumed by `_add_card`, `_add_hairline`, and
+  `_add_scrim`.
+
+The render-host font set is now the installed allowlist: **Inter,
+Source Serif 4, IBM Plex Sans, IBM Plex Mono, Fraunces, Space Grotesk,
+Archivo** (plus the legacy LibreOffice substitutes). Set every system's
+design fonts to one of these so design-font == render-font (B2).
+
 ## References
 
 - [Design Canon](references/design-canon.md) — Expanded notes on the canon listed above
@@ -203,6 +322,10 @@ any single mid-gray to clear AA against both — see
 - [Investor Gold](references/systems/investor-gold.md)
 - [Editorial Mono](references/systems/editorial-mono.md)
 - [Boardroom Conservative](references/systems/boardroom-conservative.md)
+- [Ink Editorial](references/systems/ink-editorial.md) ⭐ premium
+- [Quiet Luxury](references/systems/quiet-luxury.md) ⭐ premium
+- [Signal Dark](references/systems/signal-dark.md) ⭐ premium
+- [Warm Editorial](references/systems/warm-editorial.md) ⭐ premium
 
 ## Rendering Subsystem Rebuild (2026-05-04)
 

@@ -1,0 +1,21 @@
+{
+  "title": "output_mode=both Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_mode": "both",
+  "output_path": "output.pptx",
+  "slides": [
+    {"index": 1, "type": "title", "style": "simple",
+     "title": "Both Mode Smoke",
+     "subtitle": "output_mode = both",
+     "notes": "Build pptx via python-pptx AND author Marp source-of-record."},
+    {"index": 2, "type": "content", "style": "simple",
+     "title": "pptx is full-fidelity",
+     "bullets": ["python-pptx builds the deliverable pptx",
+                 "Marp deck.md is the source-of-record markdown"],
+     "notes": "Body."},
+    {"index": 3, "type": "question", "style": "simple",
+     "title": "Did both artifacts get produced?",
+     "notes": "Final."}
+  ]
+}

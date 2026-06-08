@@ -172,7 +172,15 @@ Parse the user's request to extract:
 3. **Target audience** — Who will see it
 4. **Template** (optional) — Path to a `.pptx` template
 5. **Design system** (optional) — Name from `slide-design-systems` (e.g. `executive-navy`)
-6. **Audience-belief fields** (optional but strongly recommended; see
+6. **Output mode** (optional) — `output_mode` ∈ `pptx` | `marp` | `both`
+   (see `.story-telling-stm/schemas/intake.schema.json` v2.2.0).
+   **Default `pptx`** when the user does not specify. `marp` →
+   Marp/Marpit markdown rendered+verified via the `marp-engine` skill;
+   `both` → Marp markdown (source-of-record) **and** a full-fidelity
+   python-pptx deck. Do NOT block intake on this field — assume `pptx`
+   when absent. If the user asks for Marp, record the mode and pass it
+   to the builder in Phase 5.
+7. **Audience-belief fields** (optional but strongly recommended; see
    `.story-telling-stm/schemas/intake.schema.json` v2.1.0):
    - `current_belief` — what the audience believes today
    - `desired_belief` — what they should believe after
@@ -229,9 +237,11 @@ If goal or audience is missing, ask the user — do NOT guess.
 ```
 
 4. Write `intake.json` to `agents/story-orchestrator/` conforming to
-   `.story-telling-stm/schemas/intake.schema.json` (v2.1.0). Required
-   fields: `context_files`, `goal`, `audience`. Optional belief fields
-   (`current_belief`, `desired_belief`, `stakes`, `objections`,
+   `.story-telling-stm/schemas/intake.schema.json` (v2.2.0). Required
+   fields: `context_files`, `goal`, `audience`. Set `output_mode` from
+   the user's request (`pptx` | `marp` | `both`), defaulting to `pptx`
+   when absent. Optional belief fields (`current_belief`,
+   `desired_belief`, `stakes`, `objections`,
    `proof_required`, `desired_action`, `presentation_mode`) are
    included when the user provided them; omit cleanly otherwise (do
    NOT fabricate).
@@ -302,10 +312,23 @@ user pushes back on the gate.
 
 ### Phase 5: Delegate to Builder
 
-Delegate via `task`. Parse the builder's fenced contract:
+Delegate via `task`. **Pass `output_mode` from `intake.json` in the
+builder prompt** so the builder routes correctly:
+
+- `pptx` (default) → current python-pptx path, unchanged.
+- `marp` → builder authors Marp markdown + theme CSS and renders via
+  the `marp-engine` skill (no native pptx).
+- `both` → builder authors Marp markdown (source-of-record) **and**
+  builds a full-fidelity python-pptx deck.
+
+Parse the builder's fenced contract:
 
 - `status: complete` → record `deliverables.deck` from `artifacts-json`,
   set `phase = "qa"`, go to Phase 6.
+- `status: blocked` → the builder hit a missing Marp toolchain. Surface
+  the install / ship-unverified-with-consent / abort decision to the
+  user (same gate as Phase 6's `unverified-needs-user`); do NOT
+  auto-proceed.
 - `status: error` → if `proposal_iteration` retry budget allows, retry
   once with the error context attached; otherwise surface to user.
 
@@ -315,6 +338,36 @@ Delegate via `task`. Parse the critic's fenced contract:
 
 - `status: pass` → record `deliverables.qa_report` and
   `deliverables.render_pngs` from `qa-report-json`, set `phase = "complete"`, go to Phase 7.
+- `status: unverified-needs-user` → **the deck could not be visually
+  verified** (no render engine for a simple-only pptx deck, or the Marp
+  toolchain is missing). Per the verify-or-block policy (B3), you must
+  NOT auto-ship. Surface an explicit decision gate to the user and end
+  your turn:
+
+```
+---
+
+⚠️ **I could not visually verify this deck — your decision is required.**
+
+Reason: {render-engine missing / Marp toolchain missing — from
+`install-instructions` in the critic verdict}
+
+**Please choose one:**
+- 🛠️ **Install & retry**: install the tooling below, then I'll re-render
+  and verify.
+  {install-instructions, verbatim from the critic verdict}
+- 📦 **Ship unverified**: I'll deliver the deck as-is. Structural checks
+  passed, but I could not confirm how it *looks* rendered.
+- 🛑 **Abort**: stop without delivering.
+
+⏳ **Waiting for your response...**
+```
+
+  On user response: **Install & retry** → re-delegate to `@deck-critic`
+  (and `@deck-builder` if a re-render is needed); **Ship unverified** →
+  record explicit consent in `state.json`, set `phase = "complete"`,
+  deliver with the unverified caveat; **Abort** → set `phase` to a
+  terminal aborted state and stop.
 - `status: revise` →
   - Increment `qa_iteration`.
   - If `qa_iteration <= 2`: re-delegate to `@deck-builder` with
@@ -354,7 +407,7 @@ The deck includes speaker notes for every slide.
 When you reach `phase = "complete"` (or surface for user input), emit:
 
 ```status
-complete | awaiting-approval | awaiting-clarification | qa-residuals-pending-user | error
+complete | awaiting-approval | awaiting-clarification | awaiting-render-decision | qa-residuals-pending-user | error
 ```
 
 ```deliverables-json

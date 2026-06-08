@@ -25,7 +25,41 @@ For each rendered PNG, record:
 | **Image Use** | If image present, does it carry meaning? | `image_meaningful: bool\|null` |
 | **Type Scale** | Does typography follow a coherent scale? | `type_scale_coherent: bool` |
 | **Layout Label** | Which layout-type best describes this slide? | `layout_label: <vocab from presentation-design>` |
+| **Aesthetic Craft** | How *premium* does the slide feel (not just defect-free)? | `aesthetic_craft: 1-5` (see scale below) |
 | **Antipatterns** | Which `slide-critique` antipatterns apply? | `antipatterns: int[]` (IDs 1–10) |
+
+> **Render at `--dpi 150` for the aesthetic pass (C5).** The default
+> `render_pptx.py --dpi` is 150 precisely so the critic can resolve
+> letter-tracking, hairline rules, and tonal layering — the cues the
+> `aesthetic_craft` axis grades. Do not drop below 150 when scoring craft.
+
+### Aesthetic Craft scale (1–5)
+
+`aesthetic_craft` grades *positive design quality*, not the absence of
+defects. Score the slide against five sub-cues and map to a 1–5 band:
+
+- **Spacing rhythm** — consistent margins/gutters; intentional whitespace.
+- **Type tracking & hierarchy** — tracked uppercase eyebrows, a clear
+  display/body contrast, no flat single-weight wall.
+- **Tonal layering** — cards / insets / hairlines / scrims create depth;
+  not one flat fill edge-to-edge.
+- **Accent restraint** — accent is a purposeful highlight, never a large
+  saturated body panel behind text.
+- **Grid adherence** — elements snap to a visible underlying grid;
+  asymmetry is deliberate, not accidental.
+
+| Score | Band | Meaning |
+|-------|------|---------|
+| 5 | Editorial | All five cues present; reads like a designed magazine/keynote slide |
+| 4 | Polished | Four cues; minor rhythm or tracking slip |
+| 3 | Competent | Clean but flat — defect-free yet "templated" |
+| 2 | Amateur | Flat fills, no layering/tracking, weak rhythm |
+| 1 | Broken | Visual noise, no hierarchy, no craft |
+
+**Minimum passing bar: `aesthetic_craft >= 3`.** A slide with
+`aesthetic_craft <= 2` FAILS the visual section even if every defect axis
+passes — flag it for restyle with a concrete craft fix (add a card,
+hairline, tracked eyebrow, or tonal inset; break the flat fill).
 
 ## Scoring Per Axis
 
@@ -38,6 +72,7 @@ visual section when:
 - `alignment_label in ["aligned", "mostly-aligned"]`
 - `accent_purposeful == true`
 - `type_scale_coherent == true`
+- `aesthetic_craft >= 3`
 - `len(antipatterns) <= 1`
 
 A slide fails the visual section when any of:
@@ -47,6 +82,7 @@ A slide fails the visual section when any of:
 - `contrast_pass == false` → antipattern 10 (low contrast)
 - `alignment_label == "misaligned"` → flag for builder
 - `accent_purposeful == false` → antipattern 6 (decorative shapes)
+- `aesthetic_craft <= 2` → flag for restyle (flat/templated; below the craft bar)
 - `len(antipatterns) >= 2` → flag
 
 ## Antipattern Detection (Visual Cues)
@@ -81,6 +117,7 @@ Each entry in `qa-report.json` at `.visual.per_slide[]`:
   "accent_purposeful": true,
   "image_meaningful": null,
   "type_scale_coherent": true,
+  "aesthetic_craft": 4,
   "antipatterns": [],
   "notes": "Bullets parallel and concise; left stripe anchors well."
 }
@@ -106,6 +143,7 @@ Each entry in `qa-report.json` at `.visual.per_slide[]`:
   "accent_purposeful": true,
   "image_meaningful": null,
   "type_scale_coherent": true,
+  "aesthetic_craft": 4,
   "antipatterns": [],
   "notes": "Clean headline+bullets pattern; no antipatterns."
 }
@@ -127,7 +165,8 @@ Each entry in `qa-report.json` at `.visual.per_slide[]`:
   "accent_purposeful": false,
   "image_meaningful": null,
   "type_scale_coherent": true,
+  "aesthetic_craft": 2,
   "antipatterns": [1, 3, 5],
-  "notes": "Title underline + 6 bullets > 4 max + no clear focal point."
+  "notes": "Title underline + 6 bullets > 4 max + no clear focal point. Flat fill, no tonal layering — below craft bar."
 }
 ```

@@ -1,12 +1,12 @@
 ---
 name: pptx-structural-asserts
-description: "Programmatic python-pptx structural assertions for deck QA. Runs thirteen checks: text-frame overflow, contrast violations (luminance ratio), alignment-grid drift, repeated-layout-hash, title-underline spam, dark/light run length, missing speaker notes, duplicate titles, body-word density, plus three archetype-spec checks (waterfall zero-baseline algebra, decision_options column-width sum, risk_heatmap WCAG-AA contrast). Single entry point: check_pptx.py emits a merged JSON report consumed by @deck-critic. Keywords: structural QA, contrast, overflow, alignment grid, layout hash, archetype asserts, python-pptx assertions."
+description: "Programmatic python-pptx structural assertions for deck QA. Runs fifteen checks: text-frame overflow, contrast violations (luminance ratio), alignment-grid drift, repeated-layout-hash, title-underline spam, dark/light run length, missing speaker notes, duplicate titles, body-word density, font render-presence (portability), safe-area breathing-room, plus three archetype-spec checks (waterfall zero-baseline algebra, decision_options column-width sum, risk_heatmap WCAG-AA contrast). Single entry point: check_pptx.py emits a merged JSON report consumed by @deck-critic. Keywords: structural QA, contrast, overflow, alignment grid, layout hash, archetype asserts, font portability, safe area, python-pptx assertions."
 ---
 
 # PPTX Structural Asserts
 
 Deterministic, fast, no-render-required structural QA. Loads the deck
-via python-pptx and runs thirteen checks against shape geometry, text
+via python-pptx and runs fifteen checks against shape geometry, text
 frames, runs, notes, and (when a `--spec` is supplied) deck-spec
 archetype invariants. Output is a single JSON report consumed by
 `@deck-critic`.
@@ -66,7 +66,9 @@ Exit codes: `0` on script success (regardless of pass/fail of checks);
 | `max_same_bg_run` | blocking if ≥3 | Longest run of consecutive slides with same fill color |
 | `speaker_notes_missing` | blocking | Slides with empty `notes_text_frame.text` |
 | `duplicate_titles` | blocking | Slides whose first text-frame matches another's |
-| `body_word_max_violations` | warn | Slides with body text >70 words total |
+| `body_word_max_violations` | warn | Slides with body text >30 words total (F11 — Reynolds) |
+| `font_not_render_present` | warn | Run fonts not in the design system's `render_safe` allowlist or declared `*_fallback` (C1 — font portability). Requires `--spec` with `design_system_tokens.fonts`. |
+| `safe_area_violations` | warn | Content text shapes intruding into the slide's `grid.safe_area_inches` margin ("breathing room"; full-bleed/background shapes exempt) (C4). Requires `--spec`. |
 | `archetype.waterfall.zero_baseline` | blocking | Spec-level: waterfall start + Σdeltas == end (±0.5%). Requires `--spec`. |
 | `archetype.decision_options.columns_sum_to_slide_width` | warn | Spec-level: derived option-column widths sum to slide-content width within 0.05". Requires `--spec`. |
 | `archetype.risk_heatmap.contrast_aa` | blocking | Spec-level: WHITE labels on green/amber/red heatmap cells clear WCAG AA normal-text 4.5:1. Requires `--spec`. |
@@ -94,6 +96,10 @@ Exit codes: `0` on script success (regardless of pass/fail of checks);
   "speaker_notes_missing": [],
   "duplicate_titles": [],
   "body_word_max_violations": [],
+  "fonts_used": ["Calibri", "Calibri Light"],
+  "font_not_render_present": [],
+  "render_safe_fonts_known": ["Carlito", "DejaVu Sans", "..."],
+  "safe_area_violations": [{"slide": 6, "shape": "Body", "edges": ["left"], "safe_area_emu": 457200}],
   "archetype_violations": [
     {"id": "waterfall.zero_baseline", "slide_index": 5,
      "status": "fail",

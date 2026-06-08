@@ -1,0 +1,29 @@
+{
+  "name": "fallback",
+  "palette": {
+    "background_dark": "#0F1B2D",
+    "background_light": "#F4F5F7",
+    "background_accent": "#3B82F6",
+    "primary_accent": "#3B82F6",
+    "secondary_accent": "#06B6D4",
+    "highlight": "#F59E0B",
+    "surface_elevated": "#FFFFFF",
+    "text_on_dark": "#FFFFFF",
+    "text_on_light": "#1A1A2E",
+    "text_secondary": "#6B7080",
+    "text_secondary_on_dark": "#6B7080",
+    "text_secondary_on_light": "#6B7080"
+  },
+  "typography": {
+    "font_title": "Calibri Light",
+    "font_body": "Calibri",
+    "size_hero": 54,
+    "size_section": 48,
+    "size_title": 40,
+    "size_subtitle": 24,
+    "size_body": 22,
+    "size_caption": 14,
+    "size_metric_xxl": 200,
+    "size_quote_glyph": 240
+  }
+}

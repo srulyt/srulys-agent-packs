@@ -1,0 +1,13 @@
+{
+  "session_id": "smoke-no-engine-gate",
+  "pptx_path": ".story-telling-stm/runs/smoke-no-engine-gate/agents/deck-builder/output.pptx",
+  "render_engine": null,
+  "render_unverified": true,
+  "engines_attempted": ["soffice", "libreoffice", "unoconv"],
+  "engines_available": [],
+  "dpi": 110,
+  "slides": [],
+  "font_substitutions": [],
+  "errors": ["no PPTX->PDF render engine available on host (pre-staged for eval portability)"],
+  "duration_ms": 0
+}

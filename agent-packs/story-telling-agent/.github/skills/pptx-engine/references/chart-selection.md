@@ -94,22 +94,61 @@ visual rubric `chart_legibility` / `axis_units_present` heuristics.
 | Misleading dual-axis | visual rubric `chart_dual_axis: true` | Split into two charts or reframe as ratio |
 | Small multiples without shared scale | visual rubric | Use shared y-axis across panels |
 
+## Native editable charts vs rendered PNGs (C2)
+
+Two ways to put a chart on a slide, with a deliberate split:
+
+- **Native python-pptx charts** (`chart_part` via
+  `slide.shapes.add_chart(XL_CHART_TYPE.*, x, y, cx, cy, CategoryChartData)`)
+  — the chart stays **editable in PowerPoint**: the end user can retheme
+  it, change the data, and restyle series. **Prefer native** for the
+  *standard* relationships below. Source:
+  <https://python-pptx.readthedocs.io/en/latest/user/charts.html>.
+- **Rendered PNGs** (`render-visual` matplotlib → `add_picture`) —
+  pixel-perfect, Tufte-grade control, but **not editable**. **Reserve**
+  for non-native / bespoke types (slopegraph, waterfall, sparkline,
+  small multiples, heatmap, Sankey).
+
+| Relationship / chart | Native python-pptx | `XL_CHART_TYPE` | Else render PNG |
+|---|---|---|---|
+| Comparison — sorted bar | ✅ native | `BAR_CLUSTERED` / `COLUMN_CLUSTERED` | — |
+| Trend over time — line | ✅ native | `LINE` / `LINE_MARKERS` | — |
+| Composition — stacked bar | ✅ native | `COLUMN_STACKED` / `BAR_STACKED` | — |
+| Part-of-whole (2–3 parts) — pie | ✅ native (trivial only) | `PIE` / `DOUGHNUT` | — |
+| Slopegraph | ❌ | — | ✅ `render-visual` |
+| Waterfall / value bridge | ❌ | — | ✅ `render-visual` (TODO recipe) |
+| Sparkline | ❌ | — | ✅ `render-visual` `sparkline` |
+| Distribution (histogram/box) | ❌ | — | ✅ `render-visual` |
+| Correlation — scatter/bubble | ⚠️ native `XY_SCATTER` ok; bespoke → PNG | `XY_SCATTER` | for annotated/bubble |
+| Risk heatmap / 2×2 | ❌ | — | ✅ `render-visual` (TODO) |
+| Funnel / flywheel / Sankey | ❌ | — | ✅ `render-visual` (TODO) |
+
+> **Decision record.** Native charts trade Tufte-grade pixel control for
+> editability. For standard bar/line/pie this is the right default — an
+> editable chart the user can retheme beats a locked PNG. Mark each chart
+> in `deck-spec.json` with `"chart_render": "native"` or `"rendered"` so
+> the builder dispatches correctly and the critic knows which is which.
+> Count native charts in the builder-summary `visual-assets-native-charts`.
+
 ## Mapping to the Existing Renderer
 
 The `render-visual` skill provides matplotlib recipes that already
 implement most of the above:
 
-| Chart type | Recipe (existing) | Status |
-|---|---|---|
-| Bar (with annotation callouts) | `bar_with_callouts` (`render_chart.py`) | ✅ |
-| Line / sparkline | `sparkline` (`render_chart.py`) | ✅ |
-| Stacked / dual bar | `dual_bar_diff` (`render_chart.py`) | ✅ |
-| Donut (trivial only) | `donut` (`render_chart.py`) | ✅ — guard against ≥4 slices |
-| Progress / step indicator | `progress_strip` (`render_chart.py`) | ✅ |
-| Waterfall / value bridge | — | **TODO** — gated on layout-archetypes P3 |
-| Risk heatmap / 2x2 matrix | — | **TODO** — gated on layout-archetypes P3 |
-| Funnel / flywheel / Sankey | — | **TODO** — gated on layout-archetypes P3 |
+| Chart type | Recipe (existing) | Native alt? | Status |
+|---|---|---|---|
+| Bar (with annotation callouts) | `bar_with_callouts` (`render_chart.py`) | ✅ `BAR_CLUSTERED` when no bespoke annotation | ✅ |
+| Line / sparkline | `sparkline` (`render_chart.py`) | ✅ `LINE` (sparkline stays PNG) | ✅ |
+| Stacked / dual bar | `dual_bar_diff` (`render_chart.py`) | ✅ `COLUMN_STACKED` | ✅ |
+| Donut (trivial only) | `donut` (`render_chart.py`) | ✅ `DOUGHNUT`/`PIE` (≤3 parts) | ✅ — guard against ≥4 slices |
+| Progress / step indicator | `progress_strip` (`render_chart.py`) | ❌ | ✅ |
+| Waterfall / value bridge | — | ❌ | **TODO** — gated on layout-archetypes P3 |
+| Risk heatmap / 2x2 matrix | — | ❌ | **TODO** — gated on layout-archetypes P3 |
+| Funnel / flywheel / Sankey | — | ❌ | **TODO** — gated on layout-archetypes P3 |
 
-When the recipe exists, prefer it; when it doesn't, document the
-"chart-not-yet-renderable" gap in the proposal and use the closest
-existing recipe (e.g. sorted bar in lieu of waterfall).
+When the chart is a *standard* bar/line/pie and carries no bespoke
+annotation that only matplotlib can draw, prefer the **native**
+python-pptx chart (editable); otherwise prefer the matplotlib recipe;
+when neither exists, document the "chart-not-yet-renderable" gap in the
+proposal and use the closest existing recipe (e.g. sorted bar in lieu of
+waterfall).

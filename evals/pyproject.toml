@@ -29,6 +29,7 @@ markers = [
     "judge: marks evals that invoke the LLM judge",
     "skill: marks evals that exercise a skill in isolation",
     "pack: marks evals that exercise a full agent pack",
+    "tooling: marks fast, no-LLM tooling smoke evals that drive a pack's scripts directly via bounded subprocess (select with '-m tooling')",
 ]
 log_cli = true
 log_cli_level = "INFO"

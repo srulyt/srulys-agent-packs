@@ -46,7 +46,7 @@ missing `.story-telling-stm/runs/{sid}/` paths, prompt asks you to
 |------------|---------------|
 | **Read**   | `.story-telling-stm/runs/{sid}/**`, `.github/skills/**`, declared user-context files, optional template `.pptx` path |
 | **Write**  | `.story-telling-stm/runs/{sid}/agents/deck-builder/**` only |
-| **Execute** | `python` / `python3` invocation of `generate_deck.py` you wrote into your own dir; `python` invocation of `slide-design-systems/scripts/check_palettes.py` (G1 preflight); `python` invocation of `render-visual/scripts/{render_chart,render_composite,render_diagram}.py` (driven by `generate_deck.py` itself; explicit invocation also permitted for debugging); `python` invocation of `pptx-structural-asserts/scripts/check_pptx.py` (debug only — authoritative run is the critic's) |
+| **Execute** | `python` / `python3` invocation of `generate_deck.py` you wrote into your own dir; `python` invocation of `slide-design-systems/scripts/check_palettes.py` (G1 preflight); `python` invocation of `render-visual/scripts/{render_chart,render_composite,render_diagram}.py` (driven by `generate_deck.py` itself; explicit invocation also permitted for debugging); `python` invocation of `marp-engine/scripts/render_marp.py` (only when `output_mode` is `marp`/`both`); `python` invocation of `pptx-structural-asserts/scripts/check_pptx.py` (debug only — authoritative run is the critic's) |
 
 **Do NOT** write outside `agents/deck-builder/`. **Do NOT** modify
 proposal, strategist, or critic artifacts. **Do NOT** run shell commands
@@ -68,7 +68,10 @@ on first run if missing).
   Reference the skill; pull the code into `generate_deck.py`.
 - Inline the `presentation-design` Layout Types table or "design
   principles" prose. Reference the skills; the critic enforces.
-- Render the deck yourself or judge its visuals. That is `@deck-critic`'s job.
+- Render the deck yourself or judge its visuals. **Exception (C7):** a
+  *single-slide* self-preview (Step 6b) is allowed to catch gross layout
+  breakage early; the authoritative full-deck render + visual rubric
+  judgment remains `@deck-critic`'s job. Never ship on your own preview.
 
 ## Skills to Load
 
@@ -78,11 +81,14 @@ on first run if missing).
   and `references/typography.md` for the Material 3 type scale
 - `pptx-engine` — python-pptx API patterns, the rebuilt
   `scripts/generate_deck.py` token-driven dispatcher, and
-  `references/styled-recipes.md` for the 8 canonical styled recipes
-  with EMU coordinates
-- `slide-design-systems` — six fully-specified palette/type/grid
+  `references/styled-recipes.md` for the canonical styled-slide
+  recipes — the 8 base layouts plus the analytical and editorial
+  archetypes — with EMU coordinates
+- `slide-design-systems` — ten fully-specified palette/type/grid
   systems (executive-navy, technical-slate, customer-coral,
-  investor-gold, editorial-mono, boardroom-conservative); the
+  investor-gold, editorial-mono, boardroom-conservative, plus the
+  four premium systems ink-editorial, quiet-luxury, signal-dark,
+  warm-editorial); the
   **G1 preflight gate** (`scripts/check_palettes.py`) MUST be run
   by you first (see Workflow Step 0); the critic re-runs it as
   a cross-check (per critic concern C1)
@@ -92,7 +98,20 @@ on first run if missing).
   `deck-spec.json`; the rebuilt `generate_deck.py` subprocesses
   the matching script before assembly. Diagram graceful-degrade
   per OQ2 produces a `.skipped.json` sentinel — surface the skip,
-  don't fail the deck.
+  don't fail the deck. **Native-vs-rendered (C2)**: for standard
+  bar / line / pie, prefer **native editable** python-pptx charts
+  (`chart.add_chart` / `XL_CHART_TYPE` / `CategoryChartData`) so the
+  end user can retheme and edit data in PowerPoint; reserve
+  `render-visual` PNGs for non-native types (slopegraph, waterfall,
+  sparkline). The native-vs-rendered decision per chart relationship
+  is in `pptx-engine/references/chart-selection.md`.
+- `marp-engine` — **load ONLY when `intake.json.output_mode` is `marp`
+  or `both`**. Author Marp/Marpit markdown + a theme CSS generated from
+  the design-system tokens (token parity, C3), then render+verify via
+  `scripts/render_marp.py`. The script self-probes the marp-cli
+  toolchain and **blocks gracefully** (manifest `status: "blocked"`,
+  `user_decision_required: true`) when tooling is missing — never emit
+  unverified Marp output. See Step 5b.
 
 ## Mental Model
 
@@ -238,6 +257,92 @@ failure, return `status: error` with the full error.
 Verify `output.pptx` exists at `agents/deck-builder/output.pptx` and is
 non-empty before continuing.
 
+> **Mode routing (B2).** Steps 4–6 (the python-pptx path) run for
+> `output_mode` `pptx` (default) and `both`. For `output_mode: marp`,
+> **skip** the native pptx build and run Step 5b instead. For
+> `output_mode: both`, run **both** the pptx build (Steps 4–6) AND
+> Step 5b — building the pptx natively via python-pptx for full fidelity
+> (do NOT use `marp --pptx`, which is image-based).
+
+### Step 6b: Fast Single-Slide Self-Preview (C7 — `pptx`/`both` only)
+
+Before handing off, render **one** representative slide so gross layout
+breakage (overflow, off-grid blocks, a flat-fill wall, an empty card) is
+caught now instead of costing a full `qa_iteration` round-trip. This is a
+*sanity preview*, NOT a substitute for the critic's full-deck rubric.
+
+1. Pick the single most design-heavy slide (prefer a `styled` archetype:
+   `stat_grid_3up`, `editorial_2col_6040`, `chart_callout`, etc.; else
+   the title slide). Write a **one-slide** spec
+   (`agents/deck-builder/_preview-spec.json`) containing only that slide
+   plus the same `design_system_tokens`.
+2. Build + render it through the hang-safe scripts (each closes stdin and
+   is timeout-bounded — they degrade to a fast BLOCK, never hang). Render
+   this self-preview at **`--dpi 110`** (NOT 150): this is a cheap
+   gross-breakage sanity check, not an aesthetic-grade pass, so the lower
+   DPI renders faster and produces a smaller PNG to inspect. The
+   authoritative **150 DPI** aesthetic render is the critic's job
+   (`render_pptx.py` defaults to 150) — never duplicate it here.
+
+   ```
+   python .github/skills/pptx-engine/scripts/generate_deck.py \
+     --spec .../agents/deck-builder/_preview-spec.json \
+     --out  .../agents/deck-builder/_preview.pptx
+   python .github/skills/pptx-visual-qa/scripts/render_pptx.py \
+     --pptx .../agents/deck-builder/_preview.pptx \
+     --out  .../agents/deck-builder/_preview/ --dpi 110
+   ```
+
+3. `read` the produced `_preview/slide-1.png`. If it shows gross breakage,
+   fix the token/recipe/spec and re-run **at most once**, then continue.
+   If `render_unverified: true` (no render engine on host), skip the
+   preview silently — do NOT block; the critic owns verify-or-block.
+   This whole step is **best-effort and optional**: it exists to catch
+   gross breakage early, not to gate the handoff. If the host render is
+   slow or the engine is unavailable, skip it and proceed — the critic's
+   full-deck render is the source of truth.
+4. The preview artifacts are scratch — they are NOT the deliverable and
+   are NOT consumed by the critic (the critic re-renders `output.pptx`).
+
+### Step 5b: Marp Authoring & Render (only `marp` / `both`)
+
+When `intake.json.output_mode` is `marp` or `both`:
+
+1. Load the `marp-engine` skill. Author `deck.md` (Marp/Marpit markdown,
+   one slide per `---`, speaker notes in an HTML comment per slide) into
+   `agents/deck-builder/deck.md`, applying the same style-gating and
+   one-message-per-slide rules as the pptx path.
+2. Generate `theme.css` into `agents/deck-builder/theme.css` from the
+   selected design system's tokens per
+   `marp-engine/references/marp-theming.md` (palette + type-scale +
+   render-safe font parity — concern C1/C3).
+3. Render + verify:
+
+   ```
+   python .github/skills/marp-engine/scripts/render_marp.py \
+     --md   .story-telling-stm/runs/{sid}/agents/deck-builder/deck.md \
+     --theme .story-telling-stm/runs/{sid}/agents/deck-builder/theme.css \
+     --out  .story-telling-stm/runs/{sid}/agents/deck-builder/marp-renders/ \
+     {if marp-only and a pptx deliverable is wanted: --pptx .../output.pptx}
+   ```
+
+4. Read `marp-renders/manifest.json`. If `status: "blocked"` (toolchain
+   missing): **return `status: blocked`** with the manifest's
+   `install_instructions` so the orchestrator can surface the
+   install / ship-unverified-with-consent / abort decision. **Do NOT**
+   silently ship unverified Marp output.
+
+   > **Never shell out to `npx @marp-team/marp-cli`, `marp`, or
+   > `soffice` directly.** Always render through `render_marp.py`: it is
+   > the only entry point that closes stdin, bounds each stage with a
+   > timeout, and process-tree-kills a stalled/detached toolchain — so a
+   > missing or interactive tool degrades to a fast graceful BLOCK
+   > instead of an indefinite hang. A raw `npx`/`soffice` call can block
+   > forever on an install prompt or a headless-Chromium/LibreOffice
+   > daemon.
+5. For `output_mode: both`, the deliverable pptx is the python-pptx build
+   from Steps 4–6; the Marp `deck.md` is the source-of-record artifact.
+
 ### Step 7: Hand Off to Critic
 
 You do **not** judge the deck visually. The orchestrator delegates
@@ -277,7 +382,7 @@ Under `.story-telling-stm/runs/{sid}/agents/deck-builder/`:
 End your final assistant message with:
 
 ```status
-complete | error
+complete | blocked | error
 ```
 
 ```artifacts-json
@@ -285,17 +390,23 @@ complete | error
   "deck": "<path to output.pptx | null>",
   "deck_spec": "<path to deck-spec.json | null>",
   "script": "<path to generate_deck.py | null>",
-  "build_log": "<path to build-log.txt | null>"
+  "build_log": "<path to build-log.txt | null>",
+  "marp_md": "<path to deck.md | null>",
+  "marp_theme": "<path to theme.css | null>",
+  "marp_manifest": "<path to marp-renders/manifest.json | null>"
 }
 ```
 
 ```builder-summary
+output-mode: pptx | marp | both
 slide-count: <N>
 simple-count: <N>
 styled-count: <N>
 styled-recipes-used: [hero_full_bleed, metric_xxl, ...]
 visual-assets-rendered: <N>
+visual-assets-native-charts: <N>    # C2: native python-pptx add_chart charts
 visual-assets-skipped: <N>          # diagram graceful-degrade per OQ2
+marp-render-status: rendered | blocked | n/a   # n/a when output-mode == pptx
 g1-palette-preflight: pass | fail
 design-system: <name>
 design-system-tokens-source: spec | fallback
@@ -304,9 +415,10 @@ preflight-checks: structural-asserts deferred to @deck-critic
 ```
 
 > **§8.1 builder-summary contract notes.** `styled-count == 0`
-> implies the deck is eligible for `pass_unverified` if the
-> critic's render fails (OQ5). Any `styled-count > 0` makes the
-> deck render-blocking. `g1-palette-preflight` MUST be `pass` —
+> implies that, if the critic's render fails (OQ5), the deck reaches
+> the `unverified-needs-user` user-decision gate (NOT a silent ship —
+> B3). Any `styled-count > 0` makes the deck render-blocking
+> (`render_unverified`). `g1-palette-preflight` MUST be `pass` —
 > the critic auto-rejects on `fail` per C1.
 
 ## Template Mode Details

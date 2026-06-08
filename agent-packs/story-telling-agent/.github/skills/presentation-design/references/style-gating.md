@@ -68,9 +68,21 @@ Demote a slide to simple when:
 3. The user has **explicitly requested** a low-decoration deck
    (boardroom, financial, regulated industries).
 
-## OQ5 binding
+## OQ5 binding (B3 — verify-or-block, no silent pass)
 
 A deck where every slide is `style: "simple"` is the only deck
-shape that may ship with `pass_unverified` when the render
-pipeline is unavailable. Any styled slide makes the deck
-render-blocking on render failure.
+shape that may reach the **`unverified-needs-user`** verdict when the
+render pipeline is unavailable. Any styled slide makes the deck
+render-blocking (`render_unverified`, verdict `revise`) on render
+failure.
+
+> **`unverified-needs-user` does NOT ship the deck.** It replaces the
+> former silent `pass_unverified` downgrade, which contradicted the
+> user's explicit rule: *"do not generate slides when output quality
+> cannot be assured."* A simple-only deck shipped with zero render
+> verification is, by definition, unassured. So instead of auto-passing,
+> the critic returns `unverified-needs-user` and the orchestrator
+> (Phase 6) surfaces an explicit decision: **install** a render engine
+> and retry / **ship unverified with explicit consent** / **abort**.
+> The same graceful-block discipline applies to the Marp toolchain
+> (`marp_toolchain_unverified`) for `output_mode` `marp` / `both`.

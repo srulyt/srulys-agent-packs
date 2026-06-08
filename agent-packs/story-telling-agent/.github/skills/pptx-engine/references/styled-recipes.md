@@ -1,13 +1,18 @@
 # Styled Recipes (architecture §4.1)
 
-The 8 canonical styled-slide recipes implemented by
-`scripts/generate_deck.py`. All EMU coordinates assume 16:9 deck
-geometry: **12,192,000 × 6,858,000 EMU** (1" = 914,400 EMU).
+The styled-slide recipes implemented by `scripts/generate_deck.py`.
+The accepted set is **whatever `STYLED_RECIPES` registers** — currently
+**22 recipes**: 8 base recipes (detailed below), 7 analytical
+archetypes (`risk_heatmap`, `priority_matrix`, `waterfall`,
+`flywheel`, `funnel`, `decision_options`, `appendix_dense`), and 7
+editorial archetypes (summarized at the end). All EMU coordinates
+assume 16:9 deck geometry: **12,192,000 × 6,858,000 EMU**
+(1" = 914,400 EMU).
 
 Each recipe is dispatched when `slide.style == "styled"` and
 `slide.style_recipe == "<recipe>"`. The strategist/builder MUST
-select from this canonical 8 — unknown recipes are rejected with
-`bad_spec.unknown_recipe`.
+select a recipe registered in `STYLED_RECIPES` — any recipe not in
+that set is rejected with `bad_spec.unknown_recipe`.
 
 ## 1. `hero_full_bleed`
 
@@ -100,17 +105,44 @@ Left-half chart (matplotlib) + 2 right-side annotation textboxes.
 | Element | x | y | w | h |
 |---|---|---|---|---|
 | Title textbox | Inches(0.75) | Inches(0.4) | Inches(11.83) | Inches(0.8) |
-| Chart picture | 0 | Inches(1.4) | **6096000** | Inches(5.6) |
+| Chart picture | Inches(0.5) | Inches(1.5) | **6096000 − Inches(0.5)** | Inches(5.3) |
 | Callout #1 | Inches(7.0) | Inches(2.0) | Inches(5.6) | Inches(1.8) |
 | Callout #2 | Inches(7.0) | Inches(4.2) | Inches(5.6) | Inches(1.8) |
 
-Chart asset: any of `bar_with_callouts`, `dual_bar_diff`, `donut`,
-`sparkline`. The strategist picks the recipe that fits the data
-shape; the builder consumes the produced PNG.
+The chart is **inset to the 0.5" safe margin** (C8 — no x=0 edge-touch,
+honouring the system's own `safe_area_inches`). Chart asset: any of
+`bar_with_callouts`, `dual_bar_diff`, `donut`, `sparkline`. The
+strategist picks the recipe that fits the data shape; the builder
+consumes the produced PNG.
 
 ## Validation rules (enforced by `_validate_slide`)
 
 - `style: "styled"` + missing `style_recipe` → `bad_spec.styled_without_recipe`
-- `style: "styled"` + `style_recipe` not in the 8-set → `bad_spec.unknown_recipe`
+- `style: "styled"` + `style_recipe` not registered in `STYLED_RECIPES` → `bad_spec.unknown_recipe`
 - `style: "simple"` + non-null `style_recipe` → `bad_spec.simple_with_recipe`
 - Missing `style` → C5 backwards-compat: treat as `style: "simple"`
+
+## Editorial archetypes (C6 — session 2026-06-08-c5d9e1a7)
+
+High-impact archetypes built on the craft helpers (`_add_card`,
+`_add_hairline`, `_add_scrim`, `_set_tracking`, `_add_kicker`). All are
+registered in `STYLED_RECIPES` / `STYLED_BUILDERS`.
+
+| Recipe | Layout | Key spec fields |
+|--------|--------|-----------------|
+| `stat_grid_3up` | Three rounded-card big numbers + delta arrow + hairline + label | `title`, `stats: [{value, label, delta}]` (≤3; value auto-sizes by length) |
+| `pull_quote_portrait` | Left 1/3 portrait card + right 2/3 display-face quote | `quote`, `attribution`, `role`, `portrait` (image path, optional) |
+| `full_bleed_caption` | Full-bleed image + bottom gradient scrim + caption strip | `title`/`caption`, `image` (optional; scrim guarantees caption contrast) |
+| `editorial_2col_6040` | 60% lead column (standfirst + ≤3 points) + 40% tonal aside card | `title`, `standfirst`, `points: []`, `aside: {kicker, body}` |
+| `timeline_horizontal` | Baseline rule + milestone nodes + date labels | `title`, `milestones: [{date, label}]` |
+| `agenda_toc` | Numbered sections w/ tracked numerals | `title`, `sections: []` |
+| `closing_cta` | Restrained CTA + contact, asymmetric, one accent rule | `title`, `cta`, `contact` (dict `{name,email,phone,url}` or bare string) |
+
+Craft notes:
+
+- Cards use `surface_elevated` / `surface_on_dark` + a hairline border +
+  optional soft shadow — never a raw saturated accent panel.
+- Kickers are tracked uppercase (`_add_kicker`, +220 tracking) with an
+  optional hairline rule beneath.
+- `stat_grid_3up` numerals scale down for long values (e.g. `99.99%`,
+  `3.2B`) so they never wrap/overflow the card.

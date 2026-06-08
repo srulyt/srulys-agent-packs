@@ -1,0 +1,21 @@
+{
+  "title": "output_mode=marp Smoke Fixture",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_mode": "marp",
+  "output_path": "output.pptx",
+  "slides": [
+    {"index": 1, "type": "title", "style": "simple",
+     "title": "Marp Mode Smoke",
+     "subtitle": "output_mode = marp",
+     "notes": "Author deck.md + theme.css, render via marp-engine."},
+    {"index": 2, "type": "content", "style": "simple",
+     "title": "Token parity",
+     "bullets": ["Theme CSS comes from the design-system tokens",
+                 "Same palette + type scale as the pptx path"],
+     "notes": "Body."},
+    {"index": 3, "type": "question", "style": "simple",
+     "title": "Did Marp render or block gracefully?",
+     "notes": "Final."}
+  ]
+}

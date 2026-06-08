@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.2.0",
+  "context_files": [],
+  "goal": "Smoke: exercise output_mode=both routing (pptx + marp source)",
+  "audience": "eval-harness",
+  "design_system": "executive-navy",
+  "output_mode": "both"
+}

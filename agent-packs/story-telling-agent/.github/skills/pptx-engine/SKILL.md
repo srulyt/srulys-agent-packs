@@ -206,8 +206,57 @@ CAPTION_SIZE = Pt(14)       # Fine print
 
 FONT_TITLE = "Calibri Light"  # Light weight for large display text
 FONT_BODY = "Calibri"         # Regular weight for readability
+FONT_TITLE_FALLBACK = "DejaVu Sans"   # render-safe (LibreOffice/Chromium)
+FONT_BODY_FALLBACK = "Carlito"        # metric-compatible Calibri substitute
 MARGIN = Inches(0.75)
 ```
+
+> **Font portability (concern C1).** python-pptx cannot embed fonts and
+> LibreOffice substitutes missing ones "often badly". Pull the design
+> font AND a `*_fallback` from the selected system's
+> `design_system_tokens.fonts` block (see
+> `slide-design-systems/SKILL.md` → "Font portability tokens"). Set the
+> python-pptx `font.name` to the design font; the renderer substitutes
+> the `render_safe` fallback (`Carlito`/`DejaVu Sans`) cleanly.
+> `check_pptx.py` emits a `font_not_render_present` warning for any run
+> font outside the `render_safe` allowlist — keep deck fonts inside it
+> (or declared as a fallback) to stay quiet.
+
+## Native editable charts (concern C2)
+
+For **standard** bar / line / pie relationships, prefer a **native**
+python-pptx chart so the user can edit it in PowerPoint:
+
+```python
+from pptx.chart.data import CategoryChartData
+from pptx.enum.chart import XL_CHART_TYPE
+from pptx.util import Inches
+
+data = CategoryChartData()
+data.categories = ["Q1", "Q2", "Q3", "Q4"]
+data.add_series("Revenue ($M)", (12, 15, 19, 27))
+slide.shapes.add_chart(
+    XL_CHART_TYPE.COLUMN_CLUSTERED,
+    Inches(1), Inches(1.6), Inches(11), Inches(5), data,
+)
+```
+
+Reserve `render-visual` PNGs for non-native / bespoke types (slopegraph,
+waterfall, sparkline, heatmap). Mark each chart in `deck-spec.json` with
+`"chart_render": "native" | "rendered"`. The full native-vs-rendered
+matrix (with `XL_CHART_TYPE` mappings) is in
+[`references/chart-selection.md`](references/chart-selection.md).
+
+## Relationship to the user-level `pptx` skill (concern C7)
+
+If the host happens to have the user-level **`pptx`** skill (python-pptx
+based) installed, it is an *optional* alternative for ad-hoc manual edits
+to a finished deck. **This pack does not require it** — `pptx-engine` is
+the canonical, repo-pinned engine and is deliberately self-contained for
+portability. Do **not** vendor or duplicate the `pptx` skill's content
+here; the native-chart and table patterns this pack uses are drawn from
+the same python-pptx API documented at
+<https://python-pptx.readthedocs.io/>.
 
 ## Background and Visual Elements
 

@@ -1,8 +1,36 @@
 # Chart Recipes (matplotlib)
 
-Five matplotlib-based chart recipes consumed by `render_chart.py`.
+Six matplotlib-based chart recipes consumed by `render_chart.py`.
 Every recipe inherits the **Tufte data-ink rcParams** (spines top /
 right off, no gridlines, single accent for the focal data point).
+
+## Chart palette tokens (C11)
+
+Recipes resolve colour from the `chart_palette` token block (see
+`slide-design-systems` Token Schema), NOT just brand `primary`/
+`secondary`:
+
+| Token | Role |
+|-------|------|
+| `chart_focal` | the single "look here" series / bar — a deliberate focal colour, separate from brand `secondary` (which is muddy/branded in some systems) |
+| `chart_muted` | every non-focal mark |
+| `chart_grid`  | gridlines / axes when shown |
+| `ramp` | categorical cycle for multi-series / ≥4-category charts |
+
+`render_chart._palette()` derives these from `tokens.chart_palette`
+(falling back to `secondary` / `text_secondary` when a system omits
+them), so editable **native** charts and **rendered** PNGs share one
+categorical theme.
+
+## Number formatting & bar discipline (C11)
+
+- **`_fmt_num(v, unit, decimals=1)`** — thousands separators, ≤1
+  decimal, integers print without a trailing `.0`, optional unit suffix.
+  Used for every direct value label.
+- **Direct value labels** at bar ends (`value_labels: true` default),
+  focal bold, rest in `chart_muted`. Pass `"unit": "%"` / `" k"` etc.
+- **Bar width 0.62 / gap 0.38** on all bar recipes (no fat default bars).
+- Axis title carries the unit when `y_label` + `unit` are both present.
 
 ## Tufte rcParams (applied by `_apply_tufte_rc`)
 
@@ -25,9 +53,8 @@ plt.rcParams.update({
 })
 ```
 
-The focal data point uses `pal["secondary"]` (typically a brand
-green); all other marks use `pal["primary"]` or `pal["text_secondary"]`.
-Annotations use `pal["highlight"]` for the arrow.
+The focal data point uses `pal["chart_focal"]`; all other marks use
+`pal["chart_muted"]`. Annotations use `pal["highlight"]` for the arrow.
 
 ## Recipes
 
@@ -47,9 +74,30 @@ Spec:
 }
 ```
 
-The bar with `value == max(values)` is rendered in `secondary`;
-others in `primary`. Each callout is an arrow + label pointing at
-its data point.
+The bar with `value == max(values)` is rendered in `chart_focal`;
+others in `chart_muted`. Each callout is an arrow + label pointing at
+its data point. Direct value labels (thousands-separated, `unit`
+suffix) sit at each bar end; bar width 0.62.
+
+### `categorical_bars`
+
+Spec:
+
+```json
+{
+  "labels": ["NA", "EMEA", "APAC", "LATAM", "MEA"],
+  "values": [12500, 9800, 15200, 4300, 2100],
+  "focal": "APAC",
+  "unit": "",
+  "y_label": "Revenue",
+  "title": "Revenue by region"
+}
+```
+
+For ≥4-category charts. Bars cycle the `chart_palette.ramp`; the
+optional `focal` (label or index) is promoted to `chart_focal`. Direct
+value labels are thousands-separated. This is the categorical theme that
+keeps native (editable) and rendered charts visually identical (C11).
 
 ### `donut`
 
@@ -94,7 +142,7 @@ Spec:
 }
 ```
 
-Paired bars: `before` in `text_secondary`, `after` in `secondary`.
+Paired bars: `before` in `chart_muted`, `after` in `chart_focal`.
 Legend in the upper-right. No gridlines.
 
 ### `progress_strip`

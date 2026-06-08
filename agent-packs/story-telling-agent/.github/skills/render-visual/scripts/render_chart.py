@@ -7,9 +7,11 @@ Recipes:
   sparkline          — thin line chart w/ end-marker
   dual_bar_diff      — paired before/after bars
   progress_strip     — horizontal axhline w/ numbered scatter markers
+  categorical_bars   — ≥4-category bars cycling chart_palette.ramp (C11)
 
 Tufte data-ink rcParams: spines top/right off, no gridlines unless
-explicit, single accent for the focal data point.
+explicit, single accent for the focal data point. Colour comes from the
+`chart_palette` token block (chart_focal / chart_muted / ramp, C11).
 
 Open-question bindings (session 2026-05-04-7d3f9a2b decisions.md):
   OQ1 — no aspose; matplotlib only
@@ -57,12 +59,13 @@ def _hex(token_or_hex: str) -> str:
 
 def _palette(tokens: dict) -> dict:
     p = tokens.get("palette") or {}
+    cp = tokens.get("chart_palette") or {}
     # Surface-aware text_secondary resolution: prefer per-surface
     # override tokens (used by systems whose dark/light backgrounds
     # are too close in luminance for a single mid-gray to clear AA),
     # else fall back to the legacy bare key.
     ts_default = p.get("text_secondary", "#A0A4B0")
-    return {
+    pal = {
         "bg_dark":   _hex(p.get("background_dark",  "#1E1E2E")),
         "bg_light":  _hex(p.get("background_light", "#F5F6FA")),
         "bg_accent": _hex(p.get("background_accent", "#4F46E5")),
@@ -74,6 +77,31 @@ def _palette(tokens: dict) -> dict:
         "text_secondary_on_dark":  _hex(p.get("text_secondary_on_dark",  ts_default)),
         "text_secondary_on_light": _hex(p.get("text_secondary_on_light", ts_default)),
     }
+    # C11: categorical chart palette. `chart_focal` is a DELIBERATE focal
+    # token (separate from brand `secondary`, which for some systems is a
+    # muddy/branded hue); `chart_muted` is the non-focal mark colour;
+    # `ramp` cycles for multi-series (≥4 category) charts.
+    pal["chart_focal"] = _hex(cp.get("focal", p.get("secondary_accent", "#3ECF8E")))
+    pal["chart_muted"] = _hex(cp.get("muted", ts_default))
+    pal["chart_grid"]  = _hex(cp.get("grid",  ts_default))
+    ramp = [c for c in (cp.get("ramp") or []) if isinstance(c, str) and c.startswith("#")]
+    pal["chart_ramp"] = ramp or [pal["primary"], pal["chart_focal"], pal["highlight"],
+                                 pal["chart_muted"], pal["bg_accent"], pal["secondary"]]
+    return pal
+
+
+def _fmt_num(v, unit: str = "", decimals: int = 1) -> str:
+    """C11 number discipline: thousands separators, ≤1 decimal, optional
+    unit suffix. Integers print without a trailing `.0`."""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return f"{v}{unit}"
+    if abs(f - round(f)) < 1e-9:
+        s = f"{int(round(f)):,}"
+    else:
+        s = f"{f:,.{decimals}f}"
+    return f"{s}{unit}"
 
 
 def _ts(pal: dict, on_dark: bool) -> str:
@@ -131,12 +159,25 @@ def render_bar_with_callouts(spec: dict, pal: dict, size: str, on_dark: bool):
     if not labels or len(labels) != len(values):
         raise ValueError("bar_with_callouts: labels and values must be parallel non-empty arrays")
     focal_value = max(values)
-    colors = [pal["secondary"] if v == focal_value else pal["primary"] for v in values]
-    ax.bar(labels, values, color=colors, edgecolor="none")
+    # C11: use the deliberate chart_focal token for the focal bar and
+    # chart_muted for the rest (not whatever `secondary` happens to be).
+    colors = [pal["chart_focal"] if v == focal_value else pal["chart_muted"] for v in values]
+    # C11: bar-width discipline — 0.62 width / 0.38 gap.
+    ax.bar(labels, values, width=0.62, color=colors, edgecolor="none")
     ax.tick_params(axis="x", labelsize=18)
     ax.tick_params(axis="y", labelsize=14)
+    # C11: direct value labels at bar ends, thousands-separated + unit.
+    unit = spec.get("unit", "")
+    if spec.get("value_labels", True):
+        fg = pal["text_dark"] if on_dark else pal["text_light"]
+        vmax = focal_value or 1
+        for xi, v in enumerate(values):
+            ax.text(xi, v + vmax * 0.02, _fmt_num(v, unit),
+                    ha="center", va="bottom", fontsize=15,
+                    color=fg if v == focal_value else pal["chart_muted"],
+                    fontweight="bold" if v == focal_value else "normal")
     if spec.get("y_label"):
-        ax.set_ylabel(spec["y_label"])
+        ax.set_ylabel(spec["y_label"] + (f" ({unit.strip()})" if unit else ""))
     if spec.get("title"):
         ax.set_title(spec["title"], color=pal["text_dark"] if on_dark else pal["text_light"],
                      fontsize=22, loc="left", pad=20)
@@ -217,8 +258,8 @@ def render_dual_bar_diff(spec: dict, pal: dict, size: str, on_dark: bool):
     import numpy as np
     x = np.arange(len(labels))
     w = 0.35
-    ax.bar(x - w / 2, before, w, color=_ts(pal, on_dark), label=spec.get("before_label", "Before"))
-    ax.bar(x + w / 2, after,  w, color=pal["secondary"],      label=spec.get("after_label",  "After"))
+    ax.bar(x - w / 2, before, w, color=pal["chart_muted"], label=spec.get("before_label", "Before"))
+    ax.bar(x + w / 2, after,  w, color=pal["chart_focal"], label=spec.get("after_label",  "After"))
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=16)
     ax.legend(fontsize=14, frameon=False)
@@ -259,12 +300,49 @@ def render_progress_strip(spec: dict, pal: dict, size: str, on_dark: bool):
     return fig
 
 
+def render_categorical_bars(spec: dict, pal: dict, size: str, on_dark: bool):
+    """C11: multi-series / ≥4-category bars that cycle the `chart_palette`
+    ramp so editable/native charts and rendered charts share one
+    harmonious categorical theme. One optional focal category is promoted
+    to `chart_focal`; the rest cycle the ramp."""
+    _apply_tufte_rc(pal, on_dark=on_dark)
+    fig, ax = plt.subplots(figsize=_figsize(size), dpi=160)
+    labels = spec.get("labels") or []
+    values = spec.get("values") or []
+    if not labels or len(labels) != len(values):
+        raise ValueError("categorical_bars: labels and values must be parallel non-empty arrays")
+    ramp = pal["chart_ramp"]
+    focal = spec.get("focal")  # label or index to promote, optional
+    colors = []
+    for i, lab in enumerate(labels):
+        is_focal = (focal is not None and (lab == focal or i == focal))
+        colors.append(pal["chart_focal"] if is_focal else ramp[i % len(ramp)])
+    ax.bar(labels, values, width=0.62, color=colors, edgecolor="none")
+    ax.tick_params(axis="x", labelsize=16)
+    ax.tick_params(axis="y", labelsize=14)
+    unit = spec.get("unit", "")
+    if spec.get("value_labels", True):
+        fg = pal["text_dark"] if on_dark else pal["text_light"]
+        vmax = (max(values) or 1)
+        for xi, v in enumerate(values):
+            ax.text(xi, v + vmax * 0.02, _fmt_num(v, unit),
+                    ha="center", va="bottom", fontsize=14, color=fg)
+    if spec.get("y_label"):
+        ax.set_ylabel(spec["y_label"] + (f" ({unit.strip()})" if unit else ""))
+    if spec.get("title"):
+        ax.set_title(spec["title"], fontsize=22, loc="left", pad=20,
+                     color=pal["text_dark"] if on_dark else pal["text_light"])
+    fig.tight_layout()
+    return fig
+
+
 RECIPES = {
     "bar_with_callouts": render_bar_with_callouts,
     "donut": render_donut,
     "sparkline": render_sparkline,
     "dual_bar_diff": render_dual_bar_diff,
     "progress_strip": render_progress_strip,
+    "categorical_bars": render_categorical_bars,
 }
 
 

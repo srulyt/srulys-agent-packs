@@ -304,6 +304,81 @@ def _alignment_violations_for(slide, idx: int) -> list[dict]:
     return out
 
 
+# ---------- C1: font portability / render-presence ----------
+
+_EMU_PER_INCH = 914400
+
+
+def _slide_run_fonts(slide) -> set[str]:
+    """Collect every explicitly-set run font name on a slide."""
+    names: set[str] = set()
+    for shape in slide.shapes:
+        if not getattr(shape, "has_text_frame", False):
+            continue
+        try:
+            for para in shape.text_frame.paragraphs:
+                for run in para.runs:
+                    fname = getattr(run.font, "name", None)
+                    if fname:
+                        names.add(fname)
+        except Exception:
+            continue
+    return names
+
+
+def _font_presence_violations(fonts_used: set[str],
+                              allowed: set[str]) -> list[str]:
+    """Return the subset of used fonts not known-present on render hosts."""
+    if not allowed:
+        return []
+    return sorted(f for f in fonts_used if f not in allowed)
+
+
+# ---------- C4: whitespace / safe-area (breathing room) ----------
+
+def _safe_area_violations_for(slide, idx: int, sw: int, sh: int,
+                              safe_emu: int) -> list[dict]:
+    """Flag content shapes that intrude into the slide's safe-area margin.
+
+    Backgrounds / full-bleed shapes (covering >= 92% of the slide on an
+    axis) are exempt — they are *meant* to reach the edge."""
+    out: list[dict] = []
+    if not (sw and sh and safe_emu):
+        return out
+    for shp in slide.shapes:
+        if not getattr(shp, "has_text_frame", False):
+            continue
+        try:
+            l = shp.left or 0
+            t = shp.top or 0
+            w = shp.width or 0
+            h = shp.height or 0
+        except Exception:
+            continue
+        # Exempt full-bleed / background shapes.
+        if w >= 0.92 * sw or h >= 0.92 * sh:
+            continue
+        r = l + w
+        b = t + h
+        intrusions = []
+        if l < safe_emu:
+            intrusions.append("left")
+        if t < safe_emu:
+            intrusions.append("top")
+        if r > sw - safe_emu:
+            intrusions.append("right")
+        if b > sh - safe_emu:
+            intrusions.append("bottom")
+        if intrusions:
+            out.append({
+                "slide": idx,
+                "shape": getattr(shp, "name", "?"),
+                "edges": intrusions,
+                "safe_area_emu": int(safe_emu),
+            })
+    return out
+
+
 # ---------- F1: Pillow-based real-metric overflow ----------
 
 _FONT_CACHE: dict[tuple[str | None, int], "ImageFont.FreeTypeFont"] = {}
@@ -555,6 +630,8 @@ def main() -> int:
     # Pull the deck-spec's design_system_tokens block (F9) so theme
     # colour resolution can recover scheme-color references.
     master_theme: dict[str, str] = {}
+    render_safe_fonts: set[str] = set()
+    safe_area_emu = 0
     if args.spec and args.spec.exists():
         try:
             ds = json.loads(args.spec.read_text())
@@ -563,6 +640,22 @@ def main() -> int:
             # Map common scheme keys -> hex; loose-keyed for forward-compat.
             for k, v in palette.items():
                 master_theme[k] = v
+            # C1: render-safe font allowlist + declared fallbacks.
+            fonts_tok = tokens.get("fonts") or {}
+            for f in (fonts_tok.get("render_safe") or []):
+                render_safe_fonts.add(f)
+            for key in ("title_family", "body_family", "mono_family",
+                        "title_fallback", "body_fallback", "mono_fallback"):
+                v = fonts_tok.get(key)
+                if v:
+                    render_safe_fonts.add(v)
+            # C4: safe-area margin in EMU (default to grid.margin_inches).
+            grid_tok = tokens.get("grid") or {}
+            safe_in = grid_tok.get("safe_area_inches")
+            if safe_in is None:
+                safe_in = grid_tok.get("margin_inches")
+            if safe_in:
+                safe_area_emu = int(float(safe_in) * _EMU_PER_INCH)
         except Exception:
             pass
 
@@ -577,6 +670,8 @@ def main() -> int:
     titles: dict[str, list[int]] = {}
     body_word_violations: list[dict] = []
     font_fallback_flag = [False]
+    fonts_used: set[str] = set()
+    safe_area_violations: list[dict] = []
 
     slides = list(prs.slides)
     for idx, slide in enumerate(slides, start=1):
@@ -610,6 +705,11 @@ def main() -> int:
         # F11: tightened body_word_max from 70 -> 30 (Reynolds)
         if bwc > 30:
             body_word_violations.append({"slide": idx, "body_words": bwc})
+        # C1: collect run fonts for render-presence check.
+        fonts_used |= _slide_run_fonts(slide)
+        # C4: breathing-room / safe-area check.
+        safe_area_violations.extend(
+            _safe_area_violations_for(slide, idx, sw, sh, safe_area_emu))
 
     # Repeated layout hash on consecutive slides.
     repeated = []
@@ -712,6 +812,15 @@ def main() -> int:
     if contrast_unresolved and "contrast_unresolved" not in blocking:
         warnings.append("contrast_unresolved")
 
+    # C1: fonts used but not known-present on render hosts (warning).
+    font_not_render_present = _font_presence_violations(
+        fonts_used, render_safe_fonts)
+    if font_not_render_present:
+        warnings.append("font_not_render_present")
+    # C4: breathing-room / safe-area intrusions (warning).
+    if safe_area_violations:
+        warnings.append("safe_area_violation")
+
     # Archetype-level fails are blocking; warns are warnings. Each
     # check id (e.g. "archetype.waterfall.zero_baseline") surfaces
     # at most once in the verdict bucket regardless of slide count.
@@ -743,6 +852,10 @@ def main() -> int:
         "duplicate_titles": duplicate_titles,
         "body_word_max_violations": body_word_violations,
         "font_fallback": font_fallback_flag[0],
+        "fonts_used": sorted(fonts_used),
+        "font_not_render_present": font_not_render_present,
+        "render_safe_fonts_known": sorted(render_safe_fonts),
+        "safe_area_violations": safe_area_violations,
         "archetype_violations": archetype_violations,
         "archetype_runner_available": _RUN_ARCHETYPE_CHECKS is not None,
         "blocking_findings": blocking,

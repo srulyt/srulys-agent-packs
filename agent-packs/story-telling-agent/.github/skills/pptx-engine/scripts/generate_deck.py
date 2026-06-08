@@ -80,8 +80,10 @@ FALLBACK_TOKENS: dict = {
         "text_secondary_on_light": "#6B7080",
     },
     "typography": {
-        "font_title": "Calibri Light",
-        "font_body":  "Calibri",
+        "font_title": "Inter",
+        "font_body":  "Inter",
+        "title_weight": 700,
+        "body_weight":  400,
         "size_hero":     54,
         "size_section":  48,
         "size_title":    40,
@@ -90,6 +92,12 @@ FALLBACK_TOKENS: dict = {
         "size_caption":  14,
         "size_metric_xxl": 200,
         "size_quote_glyph": 240,
+    },
+    "chart_palette": {
+        "focal": "#3B82F6",
+        "muted": "#9AA1AC",
+        "grid":  "#D8DBE0",
+        "ramp": ["#3B82F6", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EF4444"],
     },
 }
 
@@ -102,6 +110,10 @@ STYLED_RECIPES = {
     "risk_heatmap", "priority_matrix", "waterfall",
     "flywheel", "funnel", "decision_options",
     "appendix_dense",
+    # Session 2026-06-08-c5d9e1a7 (C6) — high-impact editorial archetypes
+    "stat_grid_3up", "pull_quote_portrait", "full_bleed_caption",
+    "editorial_2col_6040", "timeline_horizontal", "agenda_toc",
+    "closing_cta",
     # `footer_source` is a partial applied via slide.footer; not a primary recipe.
 }
 SIMPLE_TYPES = {
@@ -120,6 +132,155 @@ def _hex(s: str) -> RGBColor:
     if len(s) != 6:
         s = "000000"
     return RGBColor(int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
+
+
+def _rgb_tuple(c: RGBColor) -> tuple[int, int, int]:
+    return (c[0], c[1], c[2])
+
+
+def _mix(a: RGBColor, b: RGBColor, t: float) -> RGBColor:
+    """Linear blend a→b by t in [0,1]. t=0 → a, t=1 → b."""
+    t = max(0.0, min(1.0, t))
+    return RGBColor(
+        int(round(a[0] + (b[0] - a[0]) * t)),
+        int(round(a[1] + (b[1] - a[1]) * t)),
+        int(round(a[2] + (b[2] - a[2]) * t)),
+    )
+
+
+_WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+_BLACK = RGBColor(0x00, 0x00, 0x00)
+
+
+def _tint(c: RGBColor, amount: float) -> RGBColor:
+    """Lighten toward white by `amount` (Refactoring-UI tint ladder)."""
+    return _mix(c, _WHITE, amount)
+
+
+def _shade(c: RGBColor, amount: float) -> RGBColor:
+    """Darken toward black by `amount` (Refactoring-UI shade ladder)."""
+    return _mix(c, _BLACK, amount)
+
+
+# ------------------------------------------------------------
+# WCAG contrast auto-safety (mirrors pptx-structural-asserts
+# check_pptx: _rgb_to_relative_luminance / _contrast_ratio /
+# _is_large_text / _resolved_run_color / _shape_solid_rgb /
+# _slide_bg_rgb). Applied as a final pass before save so accent
+# text marks (delta chips, node/date labels) that would otherwise
+# fail AA on a light surface are nudged darker (or lighter on a dark
+# surface) just enough to resolve — keeping hue, improving legibility,
+# and letting the visual-QA loop reach pass with *genuine* contrast
+# rather than masked/false-blocked contrast.
+# ------------------------------------------------------------
+
+def _rel_lum(rgb: tuple[int, int, int]) -> float:
+    def chan(c: int) -> float:
+        x = c / 255.0
+        return x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+    r, g, b = rgb
+    return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
+
+
+def _contrast(fg: tuple[int, int, int], bg: tuple[int, int, int]) -> float:
+    l1, l2 = _rel_lum(fg), _rel_lum(bg)
+    a, b = max(l1, l2), min(l1, l2)
+    return (a + 0.05) / (b + 0.05)
+
+
+def _is_large(size_pt: float, bold: bool) -> bool:
+    return size_pt >= 18 or (bool(bold) and size_pt >= 14)
+
+
+def _shape_fill_rgb(shape) -> tuple[int, int, int] | None:
+    try:
+        f = shape.fill
+        if f.type is None:
+            return None
+        if hasattr(f, "fore_color") and getattr(f.fore_color, "type", None) is not None:
+            rgb = f.fore_color.rgb
+            if rgb is not None:
+                return rgb[0], rgb[1], rgb[2]
+    except Exception:
+        return None
+    return None
+
+
+def _slide_bg_tuple(slide) -> tuple[int, int, int] | None:
+    try:
+        bg = slide.background
+        if bg is not None and bg.fill is not None and getattr(bg.fill, "type", None) is not None:
+            rgb = bg.fill.fore_color.rgb
+            if rgb is not None:
+                return rgb[0], rgb[1], rgb[2]
+    except Exception:
+        pass
+    best, best_area = None, 0
+    for shp in slide.shapes:
+        try:
+            area = int(shp.width or 0) * int(shp.height or 0)
+            rgb = _shape_fill_rgb(shp)
+            if rgb and area > best_area:
+                best, best_area = rgb, area
+        except Exception:
+            continue
+    return best
+
+
+def _aa_safe(fg: tuple[int, int, int], bg: tuple[int, int, int],
+             threshold: float) -> tuple[int, int, int] | None:
+    """Return an AA-safe variant of `fg` against `bg` (>= threshold), or
+    None if `fg` already passes. Preserves hue by mixing toward the pole
+    (black/white) that raises contrast, stepping until the bar is met."""
+    if _contrast(fg, bg) >= threshold:
+        return None
+    target = _BLACK if _rel_lum(bg) > _rel_lum(fg) else _WHITE
+    fc = RGBColor(*fg)
+    for step in range(1, 21):
+        cand = _mix(fc, target, step / 20.0)
+        if _contrast((cand[0], cand[1], cand[2]), bg) >= threshold:
+            return (cand[0], cand[1], cand[2])
+    return (target[0], target[1], target[2])
+
+
+def _enforce_text_contrast(prs, log=None) -> int:
+    """Final-pass WCAG guard: darken/lighten only the text runs that fail
+    AA against their effective background. Returns the count of runs fixed."""
+    fixed = 0
+    for slide in prs.slides:
+        bg = _slide_bg_tuple(slide)
+        if bg is None:
+            continue
+        for shp in slide.shapes:
+            if not getattr(shp, "has_text_frame", False):
+                continue
+            local_bg = _shape_fill_rgb(shp) or bg
+            for para in shp.text_frame.paragraphs:
+                for run in para.runs:
+                    try:
+                        col = run.font.color
+                        if col is None or col.type is None:
+                            continue
+                        rgb = col.rgb
+                        if rgb is None:
+                            continue
+                    except Exception:
+                        continue
+                    fg = (rgb[0], rgb[1], rgb[2])
+                    size_pt = (
+                        (run.font.size.pt if run.font.size else None)
+                        or (para.font.size.pt if para.font.size else None)
+                        or 18.0
+                    )
+                    bold = bool(run.font.bold)
+                    threshold = 3.0 if _is_large(size_pt, bold) else 4.5
+                    safe = _aa_safe(fg, local_bg, threshold)
+                    if safe is not None:
+                        run.font.color.rgb = RGBColor(*safe)
+                        fixed += 1
+    if log is not None and fixed:
+        log.write(f"[contrast] auto-corrected {fixed} sub-AA text run(s)\n")
+    return fixed
 
 
 class Tokens:
@@ -149,8 +310,8 @@ class Tokens:
         # Backward-compat alias (dark surface dominates most decks).
         self.text_2     = self.text_2_dark
         # Typography
-        self.font_title = t.get("font_title", "Calibri Light")
-        self.font_body  = t.get("font_body",  "Calibri")
+        self.font_title = t.get("font_title", "Inter")
+        self.font_body  = t.get("font_body",  "Inter")
         self.sz_hero     = Pt(t.get("size_hero", 54))
         self.sz_section  = Pt(t.get("size_section", 48))
         self.sz_title    = Pt(t.get("size_title", 40))
@@ -159,6 +320,57 @@ class Tokens:
         self.sz_caption  = Pt(t.get("size_caption", 14))
         self.sz_metric_xxl  = Pt(t.get("size_metric_xxl", 200))
         self.sz_quote_glyph = Pt(t.get("size_quote_glyph", 240))
+
+        # --- C3: font-weight tokens (300/400/600/700/800). python-pptx
+        # cannot set arbitrary numeric weights directly, so helpers map
+        # weight >= 600 to bold. Stored for builders/_set_tracking use.
+        self.title_weight = int(t.get("title_weight", 700))
+        self.body_weight  = int(t.get("body_weight", 400))
+        self.eyebrow_weight = int(t.get("eyebrow_weight", 600))
+
+        # --- C3: tint / shade ladders. Builders layer tone (cards,
+        # insets, hairlines, scrims) from these. Explicit ladders in
+        # `palette.tints` win; otherwise derived from base colours so
+        # legacy specs + the fallback palette always have tones.
+        tints = p.get("tints") or {}
+        self._tints = {
+            role: {str(k): _hex(v) for k, v in ladder.items()}
+            for role, ladder in tints.items() if isinstance(ladder, dict)
+        }
+        # Craft-surface derived tones (overridable via palette keys).
+        # `hairline` — 1px rule colour: a faint mix toward the text.
+        self.hairline = _hex(p["hairline"]) if p.get("hairline") else \
+            _mix(self.bg_light, self.text_light, 0.14)
+        self.hairline_on_dark = _hex(p["hairline_on_dark"]) if p.get("hairline_on_dark") else \
+            _mix(self.bg_dark, self.text_dark, 0.18)
+        # `card_fill` — elevated card surface on a light slide.
+        self.card_fill = self.surface if p.get("surface_elevated") else \
+            _tint(self.bg_light, 0.45)
+        self.card_fill_on_dark = _hex(p["surface_on_dark"]) if p.get("surface_on_dark") else \
+            _tint(self.bg_dark, 0.08)
+        # `scrim` — overlay colour for full-bleed caption contrast.
+        self.scrim = _hex(p["scrim"]) if p.get("scrim") else self.bg_dark
+
+        # --- C3: categorical chart palette. Multi-series charts cycle
+        # `ramp`; the focal series uses `chart_focal`; muted marks use
+        # `chart_muted`; gridlines/axes use `chart_grid`.
+        cp = raw.get("chart_palette") or {}
+        self.chart_focal = _hex(cp.get("focal")) if cp.get("focal") else self.secondary
+        self.chart_muted = _hex(cp.get("muted")) if cp.get("muted") else self.text_2_dark
+        self.chart_grid  = _hex(cp.get("grid")) if cp.get("grid") else self.text_2_light
+        ramp = cp.get("ramp") or []
+        self.chart_ramp = [_hex(c) for c in ramp] if ramp else [
+            self.primary, self.secondary, self.highlight,
+            _tint(self.primary, 0.35), _shade(self.secondary, 0.25),
+            _tint(self.highlight, 0.3),
+        ]
+
+    def tint(self, role: str, step: str, default: RGBColor = None) -> RGBColor:
+        """Look up an explicit tint-ladder colour (e.g. tint('primary','100'))."""
+        ladder = self._tints.get(role) or {}
+        if step in ladder:
+            return ladder[step]
+        return default if default is not None else self.primary
 
 
 # ============================================================
@@ -202,7 +414,16 @@ def _add_textbox(slide, x, y, w, h, text, *,
         p.font.size = font_size
         p.font.bold = bold
         if color is not None:
+            # Paragraph-level set kept for inherited defaults, but the
+            # contrast checker (check_pptx._resolved_run_color) reads colour
+            # at RUN level. Set colour on every run so real contrast resolves
+            # instead of bucketing as `contrast_unresolved`.
             p.font.color.rgb = color
+            for r in p.runs:
+                r.font.name = font_name
+                r.font.size = font_size
+                r.font.bold = bold
+                r.font.color.rgb = color
         if align is not None:
             p.alignment = align
     return tx
@@ -215,6 +436,200 @@ def _add_picture(slide, path, x, y, w, h):
 
 def _new_blank_slide(prs):
     return prs.slides.add_slide(prs.slide_layouts[6])  # blank
+
+
+# ============================================================
+# C1 — Rendering-craft helpers (the leverage move)
+# ============================================================
+#
+# Four reusable primitives that turn flat solid()-fill blocks into
+# layered, "premium"-feeling compositions: tonal cards, hairline rules,
+# gradient scrims, and letter-tracking on display type. Used across the
+# styled + archetype builders.
+
+from pptx.oxml.ns import qn  # noqa: E402
+
+
+def _set_alpha(fill_or_color_elem, pct: int) -> None:
+    """Inject an <a:alpha val=".."/> into a solidFill's srgbClr."""
+    try:
+        srgb = fill_or_color_elem.find(qn("a:srgbClr"))
+        if srgb is None:
+            return
+        alpha = srgb.makeelement(qn("a:alpha"), {"val": str(int(pct * 1000))})
+        srgb.append(alpha)
+    except Exception:
+        pass
+
+
+def _add_soft_shadow(shape, blur_emu: int = 90000, dist_emu: int = 38100,
+                     alpha_pct: int = 72) -> None:
+    """Attach a subtle outer drop shadow to a shape (manual, not inherited).
+
+    `alpha_pct` is the shadow's TRANSPARENCY (higher = fainter)."""
+    try:
+        spPr = shape._element.spPr
+        # Remove any inherited effect list first.
+        for tag in ("a:effectLst",):
+            existing = spPr.find(qn(tag))
+            if existing is not None:
+                spPr.remove(existing)
+        effectLst = spPr.makeelement(qn("a:effectLst"), {})
+        shdw = effectLst.makeelement(qn("a:outerShdw"), {
+            "blurRad": str(int(blur_emu)),
+            "dist": str(int(dist_emu)),
+            "dir": "5400000",   # straight down
+            "rotWithShape": "0",
+        })
+        clr = shdw.makeelement(qn("a:srgbClr"), {"val": "1A1A1A"})
+        alpha = clr.makeelement(qn("a:alpha"), {"val": str(int((100 - alpha_pct) * 1000))})
+        clr.append(alpha)
+        shdw.append(clr)
+        effectLst.append(shdw)
+        spPr.append(effectLst)
+    except Exception:
+        pass
+
+
+def _add_card(slide, x, y, w, h, *, fill: RGBColor, line: RGBColor = None,
+              line_w_emu: int = 9525, radius: float = 0.06,
+              shadow: bool = True):
+    """Rounded-rect 'card': tonal fill + hairline border + soft shadow.
+
+    `radius` is the rounded-corner adjustment (0..0.5 of the short side).
+    Returns the shape so callers can place content over it."""
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h)
+    card.fill.solid()
+    card.fill.fore_color.rgb = fill
+    if line is not None:
+        card.line.color.rgb = line
+        card.line.width = Emu(int(line_w_emu))
+    else:
+        card.line.fill.background()
+    # Corner radius via the shape adjustment handle.
+    try:
+        card.adjustments[0] = radius
+    except Exception:
+        pass
+    if shadow:
+        _add_soft_shadow(card)
+    return card
+
+
+def _add_hairline(slide, x, y, w, color: RGBColor, *, weight_emu: int = 9525,
+                  vertical: bool = False, length=None):
+    """Thin 1px rule (horizontal by default). The single most effective
+    'editorial' primitive — used under kickers, between rows, as folio
+    separators. `weight_emu` 9525 ≈ 0.75pt."""
+    if vertical:
+        h = length if length is not None else w
+        rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, Emu(int(weight_emu)), h)
+    else:
+        rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, Emu(int(weight_emu)))
+    rect.fill.solid()
+    rect.fill.fore_color.rgb = color
+    rect.line.fill.background()
+    rect.shadow.inherit = False
+    return rect
+
+
+def _add_scrim(slide, x, y, w, h, color: RGBColor, *,
+               top_alpha: int = 0, bottom_alpha: int = 78,
+               direction: int = 5400000):
+    """Vertical gradient scrim (transparent → opaque `color`) guaranteeing
+    caption/title contrast over full-bleed imagery. `*_alpha` are OPACITY
+    percentages (0 = fully transparent, 100 = solid) at each end."""
+    rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, h)
+    rect.line.fill.background()
+    rect.shadow.inherit = False
+    try:
+        spPr = rect._element.spPr
+        # Drop the solidFill python-pptx created by default.
+        for tag in ("a:solidFill", "a:noFill", "a:gradFill", "a:blipFill", "a:pattFill"):
+            ex = spPr.find(qn(tag))
+            if ex is not None:
+                spPr.remove(ex)
+        hexv = "%02X%02X%02X" % (color[0], color[1], color[2])
+        grad = spPr.makeelement(qn("a:gradFill"), {})
+        gsLst = grad.makeelement(qn("a:gsLst"), {})
+        for pos, op in ((0, top_alpha), (100000, bottom_alpha)):
+            gs = gsLst.makeelement(qn("a:gs"), {"pos": str(pos)})
+            clr = gs.makeelement(qn("a:srgbClr"), {"val": hexv})
+            a = clr.makeelement(qn("a:alpha"), {"val": str(int(op * 1000))})
+            clr.append(a)
+            gs.append(clr)
+            gsLst.append(gs)
+        grad.append(gsLst)
+        lin = grad.makeelement(qn("a:lin"), {"ang": str(direction), "scaled": "1"})
+        grad.append(lin)
+        # Insert gradFill in the correct schema position (after line? before).
+        ln = spPr.find(qn("a:ln"))
+        if ln is not None:
+            ln.addprevious(grad)
+        else:
+            spPr.append(grad)
+    except Exception:
+        # Fallback: plain semi-opaque solid.
+        rect.fill.solid()
+        rect.fill.fore_color.rgb = color
+    return rect
+
+
+def _set_tracking(textbox, spc: int) -> None:
+    """Apply letter-spacing (tracking) to every run in a textbox.
+    `spc` is in 1/100 pt (e.g. 200 = +2pt). Negative tightens display
+    type; positive (+120..+300) opens tracked uppercase kickers."""
+    try:
+        txBody = textbox.text_frame._txBody
+        for p in txBody.findall(qn("a:p")):
+            for r in p.findall(qn("a:r")):
+                rPr = r.find(qn("a:rPr"))
+                if rPr is None:
+                    rPr = r.makeelement(qn("a:rPr"), {})
+                    r.insert(0, rPr)
+                rPr.set("spc", str(int(spc)))
+    except Exception:
+        pass
+
+
+def _add_arrowhead(connector, tail: bool = True, head: bool = False) -> None:
+    """Add triangle line-end(s) to a connector/line shape via DrawingML."""
+    try:
+        ln = connector.line._get_or_add_ln()
+        if tail:
+            te = ln.makeelement(qn("a:tailEnd"),
+                                {"type": "triangle", "w": "med", "len": "med"})
+            ln.append(te)
+        if head:
+            he = ln.makeelement(qn("a:headEnd"),
+                                {"type": "triangle", "w": "med", "len": "med"})
+            ln.append(he)
+    except Exception:
+        pass
+
+
+def _add_kicker(slide, x, y, w, text, t, color, *,
+                rule: bool = True, rule_color: RGBColor = None):
+    """Tracked uppercase eyebrow + optional hairline rule beneath it.
+    The editorial signature used across premium builders."""
+    if not text:
+        return None
+    # Kickers are bold uppercase display eyebrows. Floor the size at the
+    # WCAG large-text boundary (14pt bold) so an accent-coloured eyebrow is
+    # evaluated at the 3:1 threshold, not 4.5:1 — a 13pt caption token (e.g.
+    # ink-editorial) otherwise pushes a legible accent eyebrow into a false
+    # contrast block. 14pt bold tracked is the canonical editorial eyebrow.
+    kicker_size = t.sz_caption if t.sz_caption >= Pt(14) else Pt(14)
+    tx = _add_textbox(slide, x, y, w, Inches(0.4),
+                      str(text).upper(),
+                      font_name=t.font_body, font_size=kicker_size,
+                      color=color, bold=True)
+    _set_tracking(tx, 220)
+    if rule:
+        _add_hairline(slide, x, y + Inches(0.42), Inches(0.9),
+                      rule_color if rule_color is not None else color,
+                      weight_emu=19050)
+    return tx
 
 
 # ============================================================
@@ -297,15 +712,27 @@ def _simple_title(prs, slide, t: Tokens):
     s = _new_blank_slide(prs)
     _set_bg(s, t.bg_dark)
     _add_rect(s, 0, 0, SLIDE_W_EMU, Emu(54864), t.primary)  # 0.06" top bar
-    _add_textbox(s, Inches(1.2), Inches(2.2), Inches(10.9), Inches(1.8),
+    # Editorial eyebrow + hairline above the hero (asymmetric, anchored left).
+    _add_kicker(s, Inches(1.2), Inches(1.5), Inches(8.0),
+                slide.get("eyebrow") or slide.get("kicker") or "",
+                t, t.text_2_dark, rule_color=t.primary)
+    title_tx = _add_textbox(s, Inches(1.2), Inches(2.3), Inches(10.9), Inches(1.9),
                  slide.get("title", ""),
                  font_name=t.font_title, font_size=t.sz_hero,
                  color=t.text_dark)
+    _set_tracking(title_tx, -20)  # tighten display type
     if slide.get("subtitle"):
-        _add_textbox(s, Inches(1.2), Inches(4.2), Inches(10.9), Inches(0.8),
+        _add_textbox(s, Inches(1.2), Inches(4.4), Inches(10.9), Inches(0.8),
                      slide["subtitle"],
                      font_name=t.font_body, font_size=t.sz_subtitle,
                      color=t.secondary)
+    # Footer rule + meta (author / date / confidential) when supplied.
+    meta = slide.get("meta") or slide.get("footer_meta")
+    if meta:
+        _add_hairline(s, Inches(1.2), Inches(6.5), Inches(10.9), t.hairline_on_dark)
+        _add_textbox(s, Inches(1.2), Inches(6.65), Inches(10.9), Inches(0.5),
+                     str(meta), font_name=t.font_body, font_size=t.sz_caption,
+                     color=t.text_2_dark)
     _set_notes(s, slide.get("notes", ""))
     return s
 
@@ -347,18 +774,68 @@ def _simple_key_message(prs, slide, t: Tokens):
 
 
 def _simple_content(prs, slide, t: Tokens):
+    """C2 — editorial lead + supporting points, NOT a bullet dump.
+
+    Layout: tracked kicker, action title, an optional bold *lead*
+    standfirst, then <=3 supporting points rendered as tonal cards in a
+    right-weighted 2-col grid (or a single column for <=2 points). The
+    flat full-height `"•  {b}"` textbox is gone — that was antipattern-3
+    incarnate and it was the DEFAULT content layout."""
     s = _new_blank_slide(prs)
     _set_bg(s, t.bg_light)
-    _add_textbox(s, Inches(0.75), Inches(0.6), Inches(11.83), Inches(1.0),
+    _add_kicker(s, Inches(0.75), Inches(0.55), Inches(8.0),
+                slide.get("eyebrow") or slide.get("kicker") or "",
+                t, t.text_2_light, rule_color=t.primary)
+    _add_textbox(s, Inches(0.75), Inches(1.05), Inches(11.83), Inches(1.0),
                  slide.get("title", ""),
                  font_name=t.font_title, font_size=t.sz_title,
                  color=t.text_light)
+
     bullets = slide.get("bullets") or []
-    body_lines = [f"•  {b}" for b in bullets]
-    _add_textbox(s, Inches(0.75), Inches(1.9), Inches(11.83), Inches(5.0),
-                 body_lines,
-                 font_name=t.font_body, font_size=t.sz_body,
-                 color=t.text_light)
+    lead = slide.get("lead") or slide.get("standfirst")
+    # Back-compat: if no explicit lead and there are bullets, promote the
+    # first bullet to the lead so legacy specs still read editorially.
+    if not lead and bullets:
+        lead, bullets = bullets[0], bullets[1:]
+    points = list(bullets)[:3]  # hard cap at 3 supporting points
+
+    y = Inches(2.15)
+    if lead:
+        lead_tx = _add_textbox(s, Inches(0.75), y, Inches(11.83), Inches(1.2),
+                     str(lead),
+                     font_name=t.font_title, font_size=Pt(26),
+                     color=t.text_light, bold=False)
+        y = Inches(3.45)
+
+    if not points:
+        _set_notes(s, slide.get("notes", ""))
+        return s
+
+    # Tonal cards: 2-up for 3-4 points, single-col for <=2.
+    cols = 1 if len(points) <= 2 else 2
+    gutter = Inches(0.3)
+    body_left = Inches(0.75)
+    body_w = Inches(11.83)
+    card_w = (body_w - gutter * (cols - 1)) / cols
+    rows = (len(points) + cols - 1) // cols
+    avail_h = Inches(6.6) - y
+    card_h = (avail_h - gutter * (rows - 1)) / rows
+    for i, pt in enumerate(points):
+        ci = i % cols
+        ri = i // cols
+        cx = body_left + (card_w + gutter) * ci
+        cy = y + (card_h + gutter) * ri
+        _add_card(s, cx, cy, card_w, card_h, fill=t.card_fill,
+                  line=t.hairline, shadow=True)
+        # Accent index numeral + point text.
+        _add_textbox(s, cx + Inches(0.3), cy + Inches(0.2),
+                     Inches(0.8), Inches(0.6), f"{i + 1:02d}",
+                     font_name=t.font_title, font_size=Pt(22),
+                     color=t.primary, bold=True)
+        _add_textbox(s, cx + Inches(0.3), cy + Inches(0.85),
+                     card_w - Inches(0.6), card_h - Inches(1.0),
+                     str(pt), font_name=t.font_body, font_size=t.sz_body,
+                     color=t.text_light, anchor=MSO_ANCHOR.TOP)
     _set_notes(s, slide.get("notes", ""))
     return s
 
@@ -514,34 +991,78 @@ def _styled_hero_full_bleed(prs, slide, t: Tokens):
 
 
 def _styled_accent_block_left(prs, slide, t: Tokens):
-    """Left 4023360-EMU (4.4") accent panel + right body. §4.1."""
+    """Left 4023360-EMU (4.4") accent panel + right body. §4.1.
+
+    C9 fix: the eyebrow no longer sits as body-weight text directly on
+    the full-saturation accent panel (the canon-forbidden "body text on
+    saturated accent"). The panel now carries only a large tracked
+    *number/kicker* in a desaturated tint, plus a tint hairline; the
+    readable title lives off-accent on the light surface."""
     s = _new_blank_slide(prs)
     _set_bg(s, t.bg_light)
     _add_rect(s, 0, 0, Emu(4023360), SLIDE_H_EMU, t.primary)
-    _add_textbox(s, Inches(0.5), Inches(2.5), Inches(3.7), Inches(2.5),
-                 slide.get("eyebrow", "") or slide.get("kicker", ""),
-                 font_name=t.font_body, font_size=t.sz_subtitle,
-                 color=t.text_dark)
+    eyebrow = slide.get("eyebrow", "") or slide.get("kicker", "")
+    # Tint the accent panel text toward white so it's a tonal mark, not
+    # body copy fighting the saturated fill.
+    panel_tint = _tint(t.primary, 0.78)
+    if eyebrow:
+        kt = _add_textbox(s, Inches(0.55), Inches(2.2), Inches(3.4), Inches(0.5),
+                     str(eyebrow).upper(),
+                     font_name=t.font_body, font_size=t.sz_caption,
+                     color=panel_tint, bold=True)
+        _set_tracking(kt, 240)
+    _add_hairline(s, Inches(0.55), Inches(2.75), Inches(1.0), panel_tint,
+                  weight_emu=19050)
+    # Large index numeral / section number on the panel (optional).
+    num = slide.get("section_number") or slide.get("number")
+    if num:
+        nt = _add_textbox(s, Inches(0.5), Inches(3.1), Inches(3.5), Inches(2.0),
+                     str(num), font_name=t.font_title, font_size=Pt(96),
+                     color=panel_tint, bold=True)
+        _set_tracking(nt, -40)
     _add_textbox(s, Emu(4023360) + Inches(0.6), Inches(2.0),
                  Inches(8.0), Inches(3.5),
                  slide.get("title", ""),
                  font_name=t.font_title, font_size=t.sz_section,
                  color=t.text_light, anchor=MSO_ANCHOR.MIDDLE)
+    if slide.get("subtitle"):
+        _add_textbox(s, Emu(4023360) + Inches(0.6), Inches(5.0),
+                     Inches(8.0), Inches(1.2), slide["subtitle"],
+                     font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.text_2_light)
     _set_notes(s, slide.get("notes", ""))
     return s
 
 
 def _styled_metric_xxl(prs, slide, t: Tokens):
-    """200pt centred number on bg_dark. §4.1."""
+    """XXL number on bg_dark with delta/trend + unit styling. §4.1.
+
+    C-restyle: the bare number gains an optional delta arrow (▲/▼ in
+    focal/highlight tone), a unit suffix at reduced size, and a hairline
+    rule under the label for editorial structure."""
     s = _new_blank_slide(prs)
     _set_bg(s, t.bg_dark)
-    _add_textbox(s, Inches(0.75), Inches(1.5), Inches(11.83), Inches(4.0),
+    _add_kicker(s, Inches(0.75), Inches(0.9), Inches(8.0),
+                slide.get("eyebrow") or slide.get("kicker") or "",
+                t, t.text_2_dark, rule_color=t.primary)
+    metric_tx = _add_textbox(s, Inches(0.75), Inches(1.7), Inches(11.83), Inches(3.6),
                  str(slide.get("metric", "")),
                  font_name=t.font_title, font_size=t.sz_metric_xxl,
                  color=t.text_dark, align=PP_ALIGN.CENTER, bold=True,
                  anchor=MSO_ANCHOR.MIDDLE)
+    _set_tracking(metric_tx, -60)
+    # Delta / trend chip.
+    delta = slide.get("delta")
+    if delta:
+        up = not str(delta).strip().startswith("-")
+        arrow = "\u25B2" if up else "\u25BC"
+        chip_color = t.chart_focal if up else t.highlight
+        _add_textbox(s, Inches(0.75), Inches(5.35), Inches(11.83), Inches(0.55),
+                     f"{arrow}  {delta}", font_name=t.font_body,
+                     font_size=t.sz_subtitle, color=chip_color,
+                     align=PP_ALIGN.CENTER, bold=True)
     if slide.get("metric_label"):
-        _add_textbox(s, Inches(0.75), Inches(5.6), Inches(11.83), Inches(0.8),
+        _add_textbox(s, Inches(0.75), Inches(5.95), Inches(11.83), Inches(0.7),
                      slide["metric_label"],
                      font_name=t.font_body, font_size=t.sz_subtitle,
                      color=t.secondary, align=PP_ALIGN.CENTER)
@@ -646,8 +1167,10 @@ def _styled_chart_callout(prs, slide, t: Tokens):
                  color=t.text_light)
     asset = _first_asset(slide, kind="chart")
     if asset and asset.get("path") and os.path.exists(asset["path"]):
-        _add_picture(s, asset["path"], 0, Inches(1.4),
-                     Emu(SLIDE_HALF_EMU), Inches(5.6))
+        # C8: inset the chart to the safe margin — no x=0 edge-touch.
+        # Was x=0 (violated the system's own safe_area_inches=0.5).
+        _add_picture(s, asset["path"], Inches(0.5), Inches(1.5),
+                     Emu(SLIDE_HALF_EMU) - Inches(0.5), Inches(5.3))
     callouts = slide.get("callouts") or []
     if len(callouts) >= 1:
         _add_textbox(s, Inches(7.0), Inches(2.0), Inches(5.6), Inches(1.8),
@@ -678,6 +1201,14 @@ STYLED_BUILDERS = {
     "funnel":            None,
     "decision_options":  None,
     "appendix_dense":    None,
+    # Session 2026-06-08-c5d9e1a7 (C6) — editorial archetypes
+    "stat_grid_3up":       None,
+    "pull_quote_portrait": None,
+    "full_bleed_caption":  None,
+    "editorial_2col_6040": None,
+    "timeline_horizontal": None,
+    "agenda_toc":          None,
+    "closing_cta":         None,
 }
 
 
@@ -1049,13 +1580,12 @@ def _styled_flywheel(prs, slide, t: Tokens):
                      font_name=t.font_body, font_size=t.sz_caption,
                      color=t.text_light, align=PP_ALIGN.CENTER, bold=True)
 
-    # Arrows along the ring (curved approximated as straight tangent)
+    # C10: reinforcing arc arrows along the ring WITH arrowheads (was a
+    # straight tangent with no head — read as a polygon, not a flywheel).
     for i in range(n):
         a, b = node_centres[i], node_centres[(i + 1) % n]
-        # Arrow from edge of node i toward edge of node i+1
         ax, ay, _ = a
         bx, by, _ = b
-        # Pull toward ring (just connect node centres minus radius)
         dx, dy = bx - ax, by - ay
         L = (dx * dx + dy * dy) ** 0.5 or 1
         ux, uy = dx / L, dy / L
@@ -1063,9 +1593,10 @@ def _styled_flywheel(prs, slide, t: Tokens):
         sy = int(ay + uy * node_r)
         ex = int(bx - ux * node_r)
         ey = int(by - uy * node_r)
-        conn = s.shapes.add_connector(1, sx, sy, ex, ey)  # straight
-        conn.line.color.rgb = t.text_2_light
-        conn.line.width = Emu(20000)
+        conn = s.shapes.add_connector(3, sx, sy, ex, ey)  # 3 = curved arc
+        conn.line.color.rgb = t.primary
+        conn.line.width = Emu(28575)  # ~2.25pt
+        _add_arrowhead(conn)
 
     _set_notes(s, slide.get("notes", ""))
     return s
@@ -1106,16 +1637,36 @@ def _styled_funnel(prs, slide, t: Tokens):
 
     for i, st in enumerate(stages):
         y = int(body_top + stage_h * i)
-        w = widths[i]
-        x = int(cx - w / 2)
-        rect = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y + Emu(20000),
-                                  w, int(stage_h) - Emu(40000))
-        rect.fill.solid()
-        rect.fill.fore_color.rgb = t.primary if (i == leak_max_idx) else t.secondary
-        rect.line.fill.background()
-        # Stage label + count on the bar
-        _add_textbox(s, x + Inches(0.15), y + Inches(0.05),
-                     w - Inches(0.3), int(stage_h) - Emu(80000),
+        y_top = y + Emu(20000)
+        y_bot = int(body_top + stage_h * (i + 1)) - Emu(20000)
+        w_top = widths[i]
+        # C10: true trapezoidal taper — bottom edge narrows to the NEXT
+        # stage's width (last stage keeps a gentle close).
+        w_bot = widths[i + 1] if i < n - 1 else int(w_top * 0.9)
+        pts = [
+            (cx - w_top / 2, y_top),
+            (cx + w_top / 2, y_top),
+            (cx + w_bot / 2, y_bot),
+            (cx - w_bot / 2, y_bot),
+        ]
+        fill = t.primary if (i == leak_max_idx) else t.secondary
+        try:
+            fb = s.shapes.build_freeform(float(pts[0][0]), float(pts[0][1]), scale=1.0)
+            fb.add_line_segments([(float(x), float(yy)) for x, yy in pts[1:]],
+                                 close=True)
+            shp = fb.convert_to_shape()
+            shp.fill.solid(); shp.fill.fore_color.rgb = fill
+            shp.line.fill.background()
+        except Exception:
+            # Fallback: rectangle at top width.
+            x = int(cx - w_top / 2)
+            shp = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y_top,
+                                     w_top, y_bot - y_top)
+            shp.fill.solid(); shp.fill.fore_color.rgb = fill
+            shp.line.fill.background()
+        # Stage label + count centred on the band.
+        _add_textbox(s, int(cx - w_top / 2) + Inches(0.15), y + Inches(0.05),
+                     w_top - Inches(0.3), int(stage_h) - Emu(80000),
                      f"{st.get('label', '')}   ({int(st.get('count', 0)):,})",
                      font_name=t.font_body, font_size=t.sz_body,
                      color=t.text_dark, align=PP_ALIGN.CENTER, bold=True,
@@ -1128,7 +1679,7 @@ def _styled_funnel(prs, slide, t: Tokens):
             if rate is not None:
                 _add_textbox(s, cx + max_w / 2 + Inches(0.2), y - Inches(0.15),
                              Inches(2.5), Inches(0.4),
-                             f"↓ {rate * 100:.0f}%",
+                             f"\u2193 {rate * 100:.0f}%",
                              font_name=t.font_body, font_size=t.sz_caption,
                              color=t.text_2_light)
 
@@ -1365,6 +1916,283 @@ def _apply_footer_source(slide_obj, footer: dict, t: Tokens):
                      color=t.text_2_light, align=PP_ALIGN.RIGHT)
 
 
+# ============================================================
+# C6 — High-impact editorial archetypes (session 2026-06-08-c5d9e1a7)
+# ============================================================
+#
+# Seven crafted layouts built ON TOP of the C1 helpers (_add_card,
+# _add_hairline, _add_scrim, _set_tracking, _add_kicker). Geometry is
+# documented in pptx-engine/references/styled-recipes.md. These are the
+# archetypes the aesthetic-leap user request explicitly asks for.
+
+
+def _styled_stat_grid_3up(prs, slide, t: Tokens):
+    """Three big-number cards across the body: rounded-rect surface,
+    hairline border, 88pt number + delta arrow + 16pt label."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_kicker(s, Inches(0.75), Inches(0.55), Inches(8.0),
+                slide.get("eyebrow") or slide.get("kicker") or "", t,
+                t.text_2_light, rule_color=t.primary)
+    _add_textbox(s, Inches(0.75), Inches(1.05), Inches(11.83), Inches(0.9),
+                 slide.get("title", ""), font_name=t.font_title,
+                 font_size=t.sz_title, color=t.text_light)
+    stats = (slide.get("stats") or slide.get("cards") or [])[:3]
+    n = len(stats) or 1
+    gutter = Inches(0.4)
+    body_left = Inches(0.75); body_w = Inches(11.83)
+    card_w = (body_w - gutter * (n - 1)) / n
+    cy = Inches(2.3); card_h = Inches(3.8)
+    for i, st in enumerate(stats):
+        cx = body_left + (card_w + gutter) * i
+        _add_card(s, cx, cy, card_w, card_h, fill=t.card_fill,
+                  line=t.hairline, shadow=True)
+        # Defensive sizing: long values (e.g. "99.99%", "3.2B/day") must
+        # not wrap and overflow the card. Scale the numeral by length.
+        val = str(st.get("value", ""))
+        num_pt = 72 if len(val) <= 4 else (56 if len(val) <= 6 else 42)
+        num_tx = _add_textbox(s, cx + Inches(0.3), cy + Inches(0.6),
+                     card_w - Inches(0.6), Inches(1.6),
+                     val, font_name=t.font_title,
+                     font_size=Pt(num_pt), color=t.primary, bold=True,
+                     align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE)
+        _set_tracking(num_tx, -40)
+        delta = st.get("delta")
+        if delta:
+            up = not str(delta).strip().startswith("-")
+            arrow = "\u25B2" if up else "\u25BC"
+            _add_textbox(s, cx + Inches(0.3), cy + Inches(2.3),
+                         card_w - Inches(0.6), Inches(0.5),
+                         f"{arrow}  {delta}", font_name=t.font_body,
+                         font_size=t.sz_caption,
+                         color=t.chart_focal if up else t.highlight, bold=True)
+        _add_hairline(s, cx + Inches(0.3), cy + Inches(2.85),
+                      card_w - Inches(0.6), t.hairline)
+        _add_textbox(s, cx + Inches(0.3), cy + Inches(2.95),
+                     card_w - Inches(0.6), Inches(0.7),
+                     str(st.get("label", "")), font_name=t.font_body,
+                     font_size=Pt(16), color=t.text_2_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_pull_quote_portrait(prs, slide, t: Tokens):
+    """Left 1/3 portrait card (rounded) + right 2/3 display-face quote,
+    attribution, and role."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    # Portrait card on the left third.
+    port_w = Inches(3.9); port_x = Inches(0.75)
+    port_y = Inches(1.2); port_h = Inches(5.1)
+    img = slide.get("image_path")
+    if img and os.path.exists(img):
+        _add_card(s, port_x, port_y, port_w, port_h, fill=t.card_fill,
+                  line=t.hairline, shadow=True)
+        _add_picture(s, img, port_x + Inches(0.12), port_y + Inches(0.12),
+                     port_w - Inches(0.24), port_h - Inches(0.24))
+    else:
+        _add_card(s, port_x, port_y, port_w, port_h, fill=t.primary,
+                  line=None, shadow=True)
+    # Quote on the right.
+    qx = Inches(5.1); qw = Inches(7.4)
+    _add_textbox(s, qx, Inches(1.0), Inches(1.5), Inches(1.2), "\u201C",
+                 font_name=t.font_title, font_size=Pt(120),
+                 color=t.primary, bold=True)
+    quote_tx = _add_textbox(s, qx, Inches(2.1), qw, Inches(3.0),
+                 slide.get("quote", ""), font_name=t.font_title,
+                 font_size=Pt(30), color=t.text_light)
+    _set_tracking(quote_tx, -10)
+    _add_hairline(s, qx, Inches(5.4), Inches(1.0), t.primary, weight_emu=19050)
+    if slide.get("attribution"):
+        _add_textbox(s, qx, Inches(5.55), qw, Inches(0.5),
+                     str(slide["attribution"]), font_name=t.font_body,
+                     font_size=t.sz_subtitle, color=t.text_light, bold=True)
+    if slide.get("role"):
+        _add_textbox(s, qx, Inches(6.05), qw, Inches(0.5),
+                     str(slide["role"]), font_name=t.font_body,
+                     font_size=t.sz_caption, color=t.text_2_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_full_bleed_caption(prs, slide, t: Tokens):
+    """Full-bleed image + bottom gradient scrim + caption strip. The
+    scrim guarantees caption contrast over any image."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    asset = _first_asset(slide, kind="composite") or _first_asset(slide)
+    img = (asset and asset.get("path")) or slide.get("image_path")
+    if img and os.path.exists(img):
+        _add_picture(s, img, 0, 0, SLIDE_W_EMU, SLIDE_H_EMU)
+    # Bottom scrim for caption contrast (transparent → near-opaque).
+    _add_scrim(s, 0, Inches(4.3), SLIDE_W_EMU, Inches(3.2), t.scrim,
+               top_alpha=0, bottom_alpha=82)
+    _add_kicker(s, Inches(0.9), Inches(5.3), Inches(8.0),
+                slide.get("eyebrow") or slide.get("kicker") or "", t,
+                _tint(t.primary, 0.4), rule=False)
+    title_tx = _add_textbox(s, Inches(0.9), Inches(5.75), Inches(11.5), Inches(1.0),
+                 slide.get("title", ""), font_name=t.font_title,
+                 font_size=t.sz_section, color=t.text_dark, bold=False)
+    _set_tracking(title_tx, -20)
+    if slide.get("caption"):
+        _add_textbox(s, Inches(0.9), Inches(6.7), Inches(11.5), Inches(0.6),
+                     slide["caption"], font_name=t.font_body,
+                     font_size=t.sz_caption, color=_tint(t.scrim, 0.75))
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_editorial_2col_6040(prs, slide, t: Tokens):
+    """60% lead column (standfirst + <=3 points) + 40% tonal aside on a
+    surface_elevated card. Magazine-grade asymmetry."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_kicker(s, Inches(0.75), Inches(0.55), Inches(7.0),
+                slide.get("eyebrow") or slide.get("kicker") or "", t,
+                t.text_2_light, rule_color=t.primary)
+    _add_textbox(s, Inches(0.75), Inches(1.05), Inches(7.0), Inches(1.4),
+                 slide.get("title", ""), font_name=t.font_title,
+                 font_size=t.sz_title, color=t.text_light)
+    # Lead column.
+    lead = slide.get("lead") or slide.get("standfirst")
+    y = Inches(2.7)
+    if lead:
+        _add_textbox(s, Inches(0.75), y, Inches(6.7), Inches(1.4),
+                     str(lead), font_name=t.font_title, font_size=Pt(24),
+                     color=t.text_light)
+        y = Inches(4.1)
+    points = (slide.get("points") or slide.get("bullets") or [])[:3]
+    for i, pt in enumerate(points):
+        py = y + Inches(0.85) * i
+        _add_hairline(s, Inches(0.75), py, Inches(6.7), t.hairline)
+        _add_textbox(s, Inches(0.75), py + Inches(0.08), Inches(0.6), Inches(0.6),
+                     f"{i + 1:02d}", font_name=t.font_title, font_size=Pt(18),
+                     color=t.primary, bold=True)
+        _add_textbox(s, Inches(1.45), py + Inches(0.08), Inches(6.0), Inches(0.7),
+                     str(pt), font_name=t.font_body, font_size=t.sz_body,
+                     color=t.text_light)
+    # 40% tonal aside card.
+    aside_x = Inches(8.0); aside_w = Inches(4.58)
+    _add_card(s, aside_x, Inches(1.05), aside_w, Inches(5.6),
+              fill=t.card_fill, line=t.hairline, shadow=True)
+    aside = slide.get("aside") or {}
+    if isinstance(aside, str):
+        aside = {"body": aside}
+    _add_kicker(s, aside_x + Inches(0.35), Inches(1.45), aside_w - Inches(0.7),
+                aside.get("kicker", "Context"), t, t.primary, rule=False)
+    _add_textbox(s, aside_x + Inches(0.35), Inches(2.0), aside_w - Inches(0.7),
+                 Inches(4.4), aside.get("body", ""), font_name=t.font_body,
+                 font_size=t.sz_body, color=t.text_light)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_timeline_horizontal(prs, slide, t: Tokens):
+    """Baseline rule + milestone nodes + alternating date/label callouts."""
+    import math  # noqa: F401
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_light)
+    _add_kicker(s, Inches(0.75), Inches(0.55), Inches(8.0),
+                slide.get("eyebrow") or slide.get("kicker") or "", t,
+                t.text_2_light, rule_color=t.primary)
+    _add_textbox(s, Inches(0.75), Inches(1.05), Inches(11.83), Inches(0.9),
+                 slide.get("title", ""), font_name=t.font_title,
+                 font_size=t.sz_title, color=t.text_light)
+    milestones = slide.get("milestones") or slide.get("steps") or []
+    n = max(1, len(milestones))
+    axis_y = Inches(3.9)
+    left = Inches(1.2); right = Inches(12.13)
+    span = right - left
+    _add_hairline(s, left, axis_y, span, t.text_2_light, weight_emu=19050)
+    node_r = Inches(0.16)
+    for i, m in enumerate(milestones):
+        mx = int(left + span * (i / (n - 1))) if n > 1 else int(left + span / 2)
+        node = s.shapes.add_shape(MSO_SHAPE.OVAL, mx - node_r, axis_y - node_r,
+                                  node_r * 2, node_r * 2)
+        node.fill.solid()
+        node.fill.fore_color.rgb = t.primary if m.get("highlight") else t.secondary
+        node.line.color.rgb = t.bg_light
+        node.line.width = Emu(28575)
+        above = (i % 2 == 0)
+        ly = axis_y - Inches(1.5) if above else axis_y + Inches(0.4)
+        date_tx = _add_textbox(s, mx - Inches(1.3), ly, Inches(2.6), Inches(0.4),
+                     str(m.get("date", "")), font_name=t.font_body,
+                     font_size=t.sz_caption, color=t.primary,
+                     align=PP_ALIGN.CENTER, bold=True)
+        _set_tracking(date_tx, 120)
+        _add_textbox(s, mx - Inches(1.3), ly + Inches(0.4), Inches(2.6), Inches(1.0),
+                     str(m.get("label", "")), font_name=t.font_body,
+                     font_size=t.sz_body, color=t.text_light,
+                     align=PP_ALIGN.CENTER)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_agenda_toc(prs, slide, t: Tokens):
+    """Numbered sections with tracked numerals + hairline separators —
+    reuses the editorial kicker/numeral craft."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_kicker(s, Inches(0.9), Inches(0.7), Inches(8.0),
+                slide.get("eyebrow") or "Agenda", t, t.text_2_dark,
+                rule_color=t.primary)
+    _add_textbox(s, Inches(0.9), Inches(1.2), Inches(11.0), Inches(1.5),
+                 slide.get("title", "What we'll cover"),
+                 font_name=t.font_title, font_size=t.sz_section,
+                 color=t.text_dark)
+    items = slide.get("sections") or slide.get("items") or []
+    y0 = Inches(2.85)
+    row_h = (Inches(6.6) - y0) / max(1, len(items))
+    for i, it in enumerate(items):
+        y = y0 + row_h * i
+        label = it.get("label", "") if isinstance(it, dict) else str(it)
+        _add_hairline(s, Inches(0.9), y, Inches(11.5), t.hairline_on_dark)
+        nt = _add_textbox(s, Inches(0.9), y + Inches(0.1), Inches(1.4), row_h,
+                     f"{i + 1:02d}", font_name=t.font_title, font_size=Pt(34),
+                     color=t.primary, bold=True)
+        _set_tracking(nt, -20)
+        _add_textbox(s, Inches(2.5), y + Inches(0.1), Inches(9.0), row_h,
+                     label, font_name=t.font_body, font_size=t.sz_subtitle,
+                     color=t.text_dark, anchor=MSO_ANCHOR.MIDDLE)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
+def _styled_closing_cta(prs, slide, t: Tokens):
+    """Restrained closing/CTA: asymmetric headline, one accent rule,
+    contact block. No decorative noise."""
+    s = _new_blank_slide(prs)
+    _set_bg(s, t.bg_dark)
+    _add_rect(s, 0, 0, SLIDE_W_EMU, Emu(54864), t.primary)
+    _add_kicker(s, Inches(1.2), Inches(1.6), Inches(8.0),
+                slide.get("eyebrow") or "Thank you", t, t.text_2_dark,
+                rule_color=t.primary)
+    title_tx = _add_textbox(s, Inches(1.2), Inches(2.3), Inches(10.0), Inches(2.0),
+                 slide.get("title", ""), font_name=t.font_title,
+                 font_size=t.sz_hero, color=t.text_dark)
+    _set_tracking(title_tx, -20)
+    if slide.get("subtitle"):
+        _add_textbox(s, Inches(1.2), Inches(4.4), Inches(10.0), Inches(0.8),
+                     slide["subtitle"], font_name=t.font_body,
+                     font_size=t.sz_subtitle, color=t.secondary)
+    _add_hairline(s, Inches(1.2), Inches(5.6), Inches(10.9), t.hairline_on_dark)
+    contact = slide.get("contact") or {}
+    if isinstance(contact, str):
+        contact = {"email": contact}
+    parts = []
+    for key in ("name", "email", "phone", "url"):
+        if isinstance(contact, dict) and contact.get(key):
+            parts.append(str(contact[key]))
+    if not parts and slide.get("cta"):
+        parts = [str(slide["cta"])]
+    if parts:
+        _add_textbox(s, Inches(1.2), Inches(5.8), Inches(10.9), Inches(0.8),
+                     "    ".join(parts), font_name=t.font_body,
+                     font_size=t.sz_body, color=t.text_dark)
+    _set_notes(s, slide.get("notes", ""))
+    return s
+
+
 # Bind the archetype builders into STYLED_BUILDERS now they're defined.
 STYLED_BUILDERS["risk_heatmap"]     = _styled_risk_heatmap
 STYLED_BUILDERS["priority_matrix"]  = _styled_priority_matrix
@@ -1373,6 +2201,14 @@ STYLED_BUILDERS["flywheel"]         = _styled_flywheel
 STYLED_BUILDERS["funnel"]           = _styled_funnel
 STYLED_BUILDERS["decision_options"] = _styled_decision_options
 STYLED_BUILDERS["appendix_dense"]   = _styled_appendix_dense
+# C6 (session 2026-06-08-c5d9e1a7)
+STYLED_BUILDERS["stat_grid_3up"]       = _styled_stat_grid_3up
+STYLED_BUILDERS["pull_quote_portrait"] = _styled_pull_quote_portrait
+STYLED_BUILDERS["full_bleed_caption"]  = _styled_full_bleed_caption
+STYLED_BUILDERS["editorial_2col_6040"] = _styled_editorial_2col_6040
+STYLED_BUILDERS["timeline_horizontal"] = _styled_timeline_horizontal
+STYLED_BUILDERS["agenda_toc"]          = _styled_agenda_toc
+STYLED_BUILDERS["closing_cta"]         = _styled_closing_cta
 
 
 def _first_asset(slide, *, kind: str = None, recipe: str = None) -> dict | None:
@@ -1504,6 +2340,10 @@ def main() -> int:
             return 2
 
         args.out.parent.mkdir(parents=True, exist_ok=True)
+        # Final WCAG contrast guard: nudge only the text runs that fail AA
+        # against their effective background (mirrors check_pptx's resolver),
+        # so accent marks resolve with genuine contrast.
+        _enforce_text_contrast(prs, log)
         prs.save(str(args.out))
         print(f"SUCCESS: deck written to {args.out}")
         log.write(f"[done] {args.out}\n")

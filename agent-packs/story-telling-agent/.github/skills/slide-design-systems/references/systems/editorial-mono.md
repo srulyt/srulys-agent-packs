@@ -26,7 +26,7 @@ extremes), Presentation Zen (radical signal-to-noise).
     "divider": "#CCCCCC"
   },
   "type_scale": {"hero": 72, "section": 60, "title": 48, "subtitle": 24, "body": 22, "small": 18, "caption": 14, "fine_print": 11},
-  "fonts": {"title_family": "Helvetica Neue", "body_family": "Helvetica Neue", "mono_family": "JetBrains Mono"},
+  "fonts": {"title_family": "Space Grotesk", "body_family": "IBM Plex Sans", "mono_family": "IBM Plex Mono", "title_fallback": "Archivo", "body_fallback": "Inter", "mono_fallback": "IBM Plex Mono", "render_safe": ["Inter", "Source Serif 4", "IBM Plex Sans", "IBM Plex Mono", "Fraunces", "Space Grotesk", "Archivo", "DejaVu Sans", "Carlito", "Liberation Sans", "Liberation Serif", "Noto Sans"]},
   "grid": {"slide_width_inches": 13.333, "slide_height_inches": 7.5, "margin_inches": 0.6, "stripe_left_inches": 0.0, "snap_inches": 0.05},
   "accent_rules": {"top_bar_max_slides_pct": 0.0, "left_stripe_on_light": false, "title_underline_max": 0},
   "slide_type_defaults": {

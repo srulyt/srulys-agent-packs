@@ -84,6 +84,11 @@ missing `.story-telling-stm/runs/{sid}/` paths, prompt asks you to
 - `presentation-design` — positive design rules, including
   `references/style-gating.md` (when does a slide deserve styled?)
   and `references/typography.md` (Material 3 type scale)
+- `marp-engine` — **load only when `output_mode` is `marp` or `both`**.
+  Provides the Marp render manifest schema and the verify-or-block
+  policy. When the Marp toolchain is missing, the manifest is
+  `status: "blocked"`; apply the SAME graceful-block discipline as the
+  pptx path (emit `unverified-needs-user`, never `pass`).
 
 ## Input Expectations
 
@@ -131,6 +136,24 @@ duplicate-title detection.
 
 Read `structural-report.json` after execution.
 
+### Step 2b: Marp QA (only when `output_mode` is `marp` or `both`)
+
+When the run produced Marp output, also verify it:
+
+1. Read `agents/deck-builder/marp-renders/manifest.json` (written by
+   `marp-engine/scripts/render_marp.py`).
+2. If `manifest.status == "blocked"` (toolchain missing / no PNGs):
+   emit verdict `unverified-needs-user` with blocking finding
+   `marp_toolchain_unverified`, set `user-decision-required: true`, and
+   carry the manifest's `install_instructions` into the critic-verdict
+   block. **Do NOT report `pass`** for an unrendered Marp deck — same
+   verify-or-block discipline as the pptx path (B3).
+3. If `manifest.status == "rendered"`: run Step 3's per-slide visual
+   rubric over the Marp PNGs (`slide*.png` in `marp-renders/`) exactly
+   as you would for pptx renders.
+4. For `output_mode: both`, the pptx deck is judged by Steps 1–3 and the
+   Marp deck by this step; surface both outcomes.
+
 ### Step 3: Per-Slide Visual Critique
 
 For each `slide-{N}.png` in `renders/` (skip this step if
@@ -140,12 +163,27 @@ For each `slide-{N}.png` in `renders/` (skip this step if
 2. Apply the per-slide rubric from
    `pptx-visual-qa/references/visual-rubric.md`: focal point present,
    text density estimate, contrast pass, alignment, layout label,
-   antipatterns detected.
+   `aesthetic_craft` (1–5), antipatterns detected.
 3. Cross-check against `slide-critique`'s antipattern catalog —
    especially: accent-line-under-every-title, identical-layout
    repetition, text-heavy slides, decorative-shape-with-no-meaning,
    missing narrative rhythm.
-4. Record per-slide findings.
+4. **Aesthetic-craft bar (C5).** Score `aesthetic_craft` per the rubric's
+   1–5 scale (spacing rhythm, type tracking, tonal layering, accent
+   restraint, grid adherence). A slide with `aesthetic_craft <= 2` FAILS
+   the visual section even if every defect axis passes → add a concrete
+   restyle to `top-fixes-json` (add a card / hairline / tracked eyebrow /
+   tonal inset; break the flat fill).
+5. **Display-font CONCERN (B2).** Read `renders/manifest.json`
+   `font_substitutions` and `check_pptx.py`'s `font_not_render_present`.
+   An *unexpected* display-font substitution (a design face that fell
+   back to DejaVu/Liberation, i.e. NOT in the system's `render_safe`) is
+   a non-blocking `display_font_substituted` CONCERN — surface it with an
+   install recommendation (the curated free set: Inter, Source Serif 4,
+   IBM Plex Sans/Mono, Fraunces, Space Grotesk, Archivo). It is no longer
+   a silent pass: for an aesthetics-first deck the approved render must
+   show the typography the design system describes.
+6. Record per-slide findings.
 
 ### Step 4: Compose qa-report.json
 
@@ -180,6 +218,7 @@ conforming to `.story-telling-stm/schemas/qa-report.schema.json`:
         "focal_point_present": true,
         "text_density": "low",
         "contrast_pass": true,
+        "aesthetic_craft": 4,
         "antipatterns": []
       }
     ]
@@ -228,12 +267,18 @@ def decide_verdict(qa, structural, builder_summary):
         return "revise", blocking="dark_light_run_>=5_no_accent"
     # run >= 3 → warn (non-blocking)
 
-    # 5. Render outcome (OQ5 styled-deck policy)
+    # 5. Render outcome (OQ5 styled-deck + verify-or-block policy, B3)
     if qa.render_engine is None:
         if builder_summary.styled_count > 0:
             return "revise", blocking="render_unverified"
         else:
-            return "pass_unverified"   # simple-only deck — shippable
+            # B3 — NO silent downgrade. A simple-only deck shipped with
+            # zero render verification is STILL "quality not assured",
+            # which is exactly what the user said must not ship silently.
+            # Emit an explicit user-decision verdict instead of an
+            # auto-pass. The orchestrator (Phase 6) surfaces
+            # install / ship-unverified-with-consent / abort.
+            return "unverified-needs-user", blocking="render_unverified_simple"
 
     # 6. Other rubric items (visual antipatterns, layout variety, etc.)
     if visual_rubric_blockers(qa.visual):
@@ -244,13 +289,25 @@ def decide_verdict(qa, structural, builder_summary):
 
 **Key rules:**
 
-- **`pass_unverified`** is reachable ONLY when `render_engine is
-  None` AND every slide is `style: "simple"` (per OQ5,
-  decisions.md). This verdict ships the deck with a non-blocking
-  caveat surfaced to the user.
+- **`unverified-needs-user`** is reachable ONLY when `render_engine is
+  None` AND every slide is `style: "simple"` (per OQ5, decisions.md,
+  B3). This verdict does **NOT** ship the deck. It hands the
+  orchestrator a user-facing decision gate (install a render engine and
+  retry / ship unverified *with explicit consent* / abort). The
+  orchestrator must NOT auto-ship on this verdict. This replaces the
+  former silent `pass_unverified` downgrade, which contradicted the
+  user's "do not generate slides when output quality cannot be assured."
 - **`render_unverified` is BLOCKING** for any deck with at least
   one styled slide. Never downgrade a styled deck to `pass` /
-  `pass_unverified` on render failure.
+  `unverified-needs-user` on render failure.
+- **Marp verify-or-block (B1/B3 parity).** When `output_mode` is
+  `marp` or `both`, also read
+  `agents/deck-builder/marp-renders/manifest.json`. If its
+  `status == "blocked"` (toolchain missing) emit
+  `unverified-needs-user` with blocking `marp_toolchain_unverified` and
+  pass the manifest's `install_instructions` up — same graceful-block
+  discipline as the pptx path. Never report `pass` for an unrendered
+  Marp deck.
 - **G1 cross-check** — the critic MUST re-run
   `slide-design-systems/scripts/check_palettes.py` against the
   selected system. If the builder skipped G1, or the system's
@@ -274,7 +331,7 @@ Under `.story-telling-stm/runs/{sid}/agents/deck-critic/`:
 End your final assistant message with:
 
 ```status
-pass | pass_unverified | revise | error
+pass | unverified-needs-user | revise | error
 ```
 
 ```qa-report-json
@@ -287,11 +344,14 @@ pass | pass_unverified | revise | error
 ```
 
 ```critic-verdict
-verdict: pass | pass_unverified | revise
-blocking-findings: [palette_preflight_failed | overflow_violations | contrast_violations | contrast_unresolved_high | dark_light_run_>=7 | dark_light_run_>=5_no_accent | visual_assets_pre_render_failed | render_unverified | <visual-rubric-id>]
-non-blocking-findings: [...]
+verdict: pass | unverified-needs-user | revise
+blocking-findings: [palette_preflight_failed | overflow_violations | contrast_violations | contrast_unresolved_high | dark_light_run_>=7 | dark_light_run_>=5_no_accent | visual_assets_pre_render_failed | render_unverified | render_unverified_simple | marp_toolchain_unverified | aesthetic_craft_below_bar | <visual-rubric-id>]
+non-blocking-findings: [...]   # e.g. display_font_substituted (B2 install recommendation)
 styled-count: <N>
 render-engine: soffice | libreoffice | unoconv | null
+output-mode: pptx | marp | both
+user-decision-required: true | false   # true when verdict == unverified-needs-user
+install-instructions: [...]            # populated when user-decision-required
 ```
 
 ```palette-preflight
@@ -301,8 +361,8 @@ g1-failing-pairs: [{pair: "text_on_dark/background_dark", ratio: 3.8, threshold:
 
 ```styled-deck-policy
 deck-shape: simple-only | mixed | styled-heavy
-render-policy-applied: pass | pass_unverified | render_unverified
-oq5-binding: "pass_unverified is reachable only when render_engine is null AND styled-count == 0"
+render-policy-applied: pass | unverified-needs-user | render_unverified
+oq5-binding: "unverified-needs-user is reachable only when render_engine is null AND styled-count == 0; it surfaces a user decision (install/ship-with-consent/abort) and NEVER auto-ships (B3)"
 ```
 
 ```top-fixes-json
@@ -312,4 +372,4 @@ oq5-binding: "pass_unverified is reachable only when render_engine is null AND s
 ]
 ```
 
-(emit `[]` when verdict is `pass` or `pass_unverified`)
+(emit `[]` when verdict is `pass` or `unverified-needs-user`)
