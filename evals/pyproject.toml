@@ -16,6 +16,12 @@ addopts = [
     "--strict-markers",
     "--tb=short",
     "-p", "no:cacheprovider",
+    # `importlib` import mode lets two packs ship a test file with the same
+    # basename (e.g. `test_smoke_plugin_conformance.py` in both prd-pilot and
+    # product-knowledge-brain) without a whole-tree collection error. It does
+    # not manipulate sys.path; `_lib` stays importable via the explicit
+    # sys.path insert in conftest.py.
+    "--import-mode=importlib",
 ]
 # Per-test timeout (H1). 1500s = 25min, comfortably covers the longest
 # spec-author tests (timeout=1200 inside the test body) with headroom for

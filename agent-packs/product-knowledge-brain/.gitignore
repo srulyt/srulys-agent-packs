@@ -1,0 +1,4 @@
+# Pack-unique durable STM working state (in-flight cycle checkpoints).
+# The knowledge base itself is a deliverable and is NOT ignored — only the
+# transient short-term-memory run state lives here.
+.product-knowledge-brain-stm/

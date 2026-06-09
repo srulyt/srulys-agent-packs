@@ -90,9 +90,54 @@ class CopilotResult:
     Tests should mention ``result.crash_summary()`` in failure messages.
     """
 
+    timed_out: bool = False
+    """True when the subprocess was killed because it exceeded its (possibly
+    capped) wall-clock timeout. ``returncode`` is ``124`` in that case.
+
+    Behavioural pack evals that drive the live SUT should treat a
+    ``timed_out`` result as "SUT did not complete in this environment" and
+    ``pytest.skip`` rather than hang the suite or hard-fail (see H8 below).
+    """
+
+    skipped: bool = False
+    """True when the SUT was deliberately not launched because
+    ``EVALS_SKIP_SUT`` is set (H8). ``returncode`` is ``125`` in that case.
+
+    Tests should ``pytest.skip`` on a ``skipped`` result so an environment
+    that cannot run the live LLM SUT within budget completes deterministically
+    instead of consuming the whole eval-loop wall-clock budget.
+    """
+
     @property
     def ok(self) -> bool:
         return self.returncode == 0
+
+    @property
+    def usable(self) -> bool:
+        """True when the run produced real SUT output (not skipped/timed-out).
+
+        Behavioural tests gate on this: ``if not result.usable: pytest.skip(...)``.
+        """
+        return not (self.skipped or self.timed_out)
+
+    def unavailable_reason(self) -> str:
+        """One-line reason a behavioural test should skip, or ``""``.
+
+        Returns a non-empty, log-pointing message when the SUT was skipped
+        (``EVALS_SKIP_SUT``) or timed out, so tests can pass it straight to
+        ``pytest.skip``.
+        """
+        if self.skipped:
+            return (
+                "SUT not launched: EVALS_SKIP_SUT is set; this environment "
+                f"cannot run the live Copilot CLI within budget. See {self.log_path}."
+            )
+        if self.timed_out:
+            return (
+                "SUT did not complete within its (capped) wall-clock timeout "
+                f"in this environment. See {self.log_path}."
+            )
+        return ""
 
     def crash_summary(self) -> str:
         """Human-readable summary for failure messages.
@@ -112,6 +157,76 @@ class CopilotResult:
 
 class CopilotNotInstalled(RuntimeError):
     """Raised when no ``copilot`` binary can be found on PATH."""
+
+
+# ---- SUT budget controls (H8) -------------------------------------------
+#
+# Behavioural pack evals drive the *live* Copilot CLI, which makes multi-
+# minute, non-deterministic LLM calls. A single slow/non-responsive SUT
+# call (these tests requested timeouts up to 900s each, and one test runs
+# the SUT twice) can consume the entire eval-fix-loop wall-clock budget and
+# starve every other test in the suite, so the run never reaches a clean
+# pass/fail/skip for the remaining tests.
+#
+# Two opt-in, backward-compatible env controls bound this:
+#
+# * ``EVALS_SUT_TIMEOUT`` -- integer seconds. When set, every SUT subprocess
+#   timeout is clamped to ``min(requested, cap)`` so a slow/hung SUT fails
+#   fast (returncode 124, ``timed_out=True``) instead of burning its full
+#   requested budget. Unset => requested timeouts are used unchanged, so
+#   existing packs see no behaviour change.
+#
+# * ``EVALS_SKIP_SUT`` -- truthy ("1", "true", "yes"). When set, the SUT is
+#   NOT launched at all; ``run_agent`` returns a sentinel result with
+#   ``skipped=True`` and ``returncode=125``. This lets an environment that
+#   cannot run the live LLM SUT within budget complete the whole suite
+#   deterministically (every behavioural test skips cleanly) with zero
+#   tokens, instead of hanging. Structural/no-SUT evals are unaffected.
+
+
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _resolve_sut_timeout(requested: float) -> float:
+    """Clamp ``requested`` to ``EVALS_SUT_TIMEOUT`` when that env var is set.
+
+    Invalid/empty values are ignored (requested timeout used as-is).
+    """
+    raw = os.environ.get("EVALS_SUT_TIMEOUT", "").strip()
+    if not raw:
+        return requested
+    try:
+        cap = float(raw)
+    except ValueError:
+        return requested
+    if cap <= 0:
+        return requested
+    return min(requested, cap)
+
+
+def _skipped_result(*, cmd: Sequence[str], cwd: Path, log_path: Path,
+                    stdin_text: str | None) -> "CopilotResult":
+    """Build a sentinel ``skipped`` result without launching the SUT (H8)."""
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        f"$ {' '.join(cmd)}\n[cwd] {cwd}\n[exit] 125\n"
+        f"[skipped] EVALS_SKIP_SUT is set; SUT not launched.\n\n"
+        f"--- PROMPT (stdin) ---\n{stdin_text or ''}\n"
+        f"--- STDOUT ---\n\n--- STDERR ---\n",
+        encoding="utf-8",
+        errors="replace",
+    )
+    return CopilotResult(
+        returncode=125,
+        stdout="",
+        stderr="[copilot helper] EVALS_SKIP_SUT set; SUT not launched.\n",
+        duration_seconds=0.0,
+        log_path=log_path,
+        crash=None,
+        timed_out=False,
+        skipped=True,
+    )
 
 
 def find_copilot_bin() -> str:
@@ -263,6 +378,7 @@ def _run(
         duration_seconds=duration,
         log_path=log_path,
         crash=crash,
+        timed_out=timed_out,
     )
 
 
@@ -295,6 +411,16 @@ def run_agent(
     extra_args:
         Extra CLI flags appended verbatim (e.g. ``--name <run-id>``).
     """
+    # H8: short-circuit before touching the binary so an environment that
+    # opts out (or lacks the CLI) still completes deterministically.
+    if _truthy_env("EVALS_SKIP_SUT"):
+        agent_part = ["--agent", agent] if agent else []
+        return _skipped_result(
+            cmd=["<copilot>", *agent_part, "--allow-all", "--no-ask-user"],
+            cwd=workspace,
+            log_path=log_path,
+            stdin_text=prompt,
+        )
     bin_path = find_copilot_bin()
     # Feed the prompt via stdin rather than `-p <prompt>` so multi-line
     # prompts survive the Windows .CMD shim (which truncates `-p` arg
@@ -309,11 +435,12 @@ def run_agent(
     # user" mid-run).
     cmd += ["--allow-all", "--no-ask-user"]
     cmd += list(extra_args)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     return _run(
         cmd,
         cwd=workspace,
         log_path=log_path,
-        timeout=timeout,
+        timeout=_resolve_sut_timeout(timeout),
         stdin_text=prompt,
     )
 
