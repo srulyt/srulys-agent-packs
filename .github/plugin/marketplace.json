@@ -1,0 +1,24 @@
+{
+  "name": "srulys-agent-packs",
+  "owner": {
+    "name": "srulys-agent-packs"
+  },
+  "metadata": {
+    "description": "Copilot CLI agent plugins from the srulys-agent-packs repository.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "prd-pilot",
+      "description": "Lightweight guided workflow that produces a high-quality EARS-style PRD fast: gather context, grill-me interrogation to close gaps, outline approval, then format with EARS best practices.",
+      "version": "0.1.0",
+      "source": "agent-packs/prd-pilot"
+    },
+    {
+      "name": "product-knowledge-brain",
+      "description": "Maintain and evolve a Product Management knowledge base / living wiki from already-extracted text. Consolidate knowledge, link across product areas, preserve provenance and decision history, and update discovery indexes.",
+      "version": "0.1.0",
+      "source": "agent-packs/product-knowledge-brain"
+    }
+  ]
+}

@@ -50,23 +50,33 @@ Installing via the CLI is the recommended path: **VS Code automatically
 discovers CLI-installed plugins** under `~/.copilot/installed-plugins/`,
 so this one command surfaces the plugin in both hosts.
 
-```bash
-# From the published GitHub repo, pointing at the plugin subdirectory:
-copilot plugin install srulyt/srulys-agent-packs:agent-packs/prd-pilot
+This repo is a **plugin marketplace** (it ships a
+`.github/plugin/marketplace.json`). Register the marketplace once, then
+install the plugin with the `plugin@marketplace` syntax:
 
-# …or from a local clone of this repo:
-copilot plugin install ./agent-packs/prd-pilot
+```bash
+# Register this repo as a marketplace (one-time):
+copilot plugin marketplace add srulyt/srulys-agent-packs
+
+# Install the plugin from the registered marketplace:
+copilot plugin install prd-pilot@srulys-agent-packs
+
+# …or, from a local clone of this repo, point the marketplace at the path:
+copilot plugin marketplace add /absolute/path/to/srulys-agent-packs
+copilot plugin install prd-pilot@srulys-agent-packs
 ```
 
 Manage / verify:
 
 ```bash
+copilot plugin marketplace browse srulys-agent-packs   # discover plugins
 copilot plugin list
 copilot plugin enable prd-pilot     # if disabled
 ```
 
 Interactive equivalent inside a session:
-`/plugin install srulyt/srulys-agent-packs:agent-packs/prd-pilot`.
+`/plugin marketplace add srulyt/srulys-agent-packs` then
+`/plugin install prd-pilot@srulys-agent-packs`.
 
 **Invoke:** run `/prd-pilot:ears-prd-workflow` (optionally with a
 topic argument), or just ask the agent to "write an EARS PRD" — the entry

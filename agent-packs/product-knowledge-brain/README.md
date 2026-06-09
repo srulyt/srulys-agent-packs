@@ -72,23 +72,33 @@ Installing via the CLI is the recommended path: **VS Code automatically
 discovers CLI-installed plugins** under `~/.copilot/installed-plugins/`,
 so this one command surfaces the plugin in both hosts.
 
-```bash
-# From the published GitHub repo, pointing at the plugin subdirectory:
-copilot plugin install srulyt/srulys-agent-packs:agent-packs/product-knowledge-brain
+This repo is a **plugin marketplace** (it ships a
+`.github/plugin/marketplace.json`). Register the marketplace once, then
+install the plugin with the `plugin@marketplace` syntax:
 
-# …or from a local clone of this repo:
-copilot plugin install ./agent-packs/product-knowledge-brain
+```bash
+# Register this repo as a marketplace (one-time):
+copilot plugin marketplace add srulyt/srulys-agent-packs
+
+# Install the plugin from the registered marketplace:
+copilot plugin install product-knowledge-brain@srulys-agent-packs
+
+# …or, from a local clone of this repo, point the marketplace at the path:
+copilot plugin marketplace add /absolute/path/to/srulys-agent-packs
+copilot plugin install product-knowledge-brain@srulys-agent-packs
 ```
 
 Manage / verify:
 
 ```bash
+copilot plugin marketplace browse srulys-agent-packs   # discover plugins
 copilot plugin list
 copilot plugin enable product-knowledge-brain     # if disabled
 ```
 
 Interactive equivalent inside a session:
-`/plugin install srulyt/srulys-agent-packs:agent-packs/product-knowledge-brain`.
+`/plugin marketplace add srulyt/srulys-agent-packs` then
+`/plugin install product-knowledge-brain@srulys-agent-packs`.
 
 **Invoke:** run `/product-knowledge-brain:knowledge-brain` (optionally with
 the extracted text or a path argument), or just ask the agent to
