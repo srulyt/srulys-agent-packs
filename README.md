@@ -112,6 +112,22 @@ ln -s /path/to/agent-packs/{pack-name}/.roo .roo
 | Copilot Factory | Multi-agent system for creating Copilot CLI agent packs | [docs/copilot-factory.md](docs/copilot-factory.md) |
 | Example Pack | Starter template | [docs/example-pack.md](docs/example-pack.md) |
 
+## Copilot Plugins
+
+Installable GitHub Copilot plugins (`plugin.json` + skills/agents), registered in
+[`.github/plugin/marketplace.json`](.github/plugin/marketplace.json). Install with:
+
+```bash
+copilot plugin marketplace add srulyt/srulys-agent-packs
+copilot plugin install <name>@srulys-agent-packs
+```
+
+| Plugin | Description | Docs |
+|--------|-------------|------|
+| **eval-pilot** | Portable evals for Copilot agents/skills: binary **rubric** pass/fail checks, LLM-as-judge, and numeric **metric** history compared over time. Bundles the pip-installable `evalpilot` engine + `eval-author` / `eval-runner` / `eval-metrics` skills. | [agent-packs/eval-pilot/README.md](agent-packs/eval-pilot/README.md) |
+| prd-pilot | Guided EARS-style PRD authoring workflow. | [agent-packs/prd-pilot/README.md](agent-packs/prd-pilot/README.md) |
+| product-knowledge-brain | Maintain and evolve a Product Management knowledge base / living wiki. | [agent-packs/product-knowledge-brain/README.md](agent-packs/product-knowledge-brain/README.md) |
+
 ## Documentation
 
 Full documentation is in the [`docs/`](docs/) folder:

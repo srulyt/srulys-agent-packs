@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+# evalpilot eval suite config. `evalpilot` registers its fixtures + markers
+# as a pytest plugin, so no conftest.py wiring is required here.
+minversion = "8.0"
+testpaths = ["packs", "skills"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+norecursedirs = ["_runs", "_logs", "_metrics", "__pycache__", ".pytest_cache"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--tb=short",
+    "--import-mode=importlib",
+]
+# Per-test wall-clock safety net (requires pytest-timeout, an evalpilot dep).
+timeout = 1500
+timeout_method = "thread"

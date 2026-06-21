@@ -1,5 +1,22 @@
 # eval-framework agent pack
 
+> ## ⚠️ DEPRECATED — superseded by `eval-pilot`
+>
+> This pack is **deprecated**. Its sole artifact, the `@eval-judge` agent, has
+> been generalized and folded into the portable **`eval-pilot`** plugin
+> (`agent-packs/eval-pilot/`), which ships a byte-identical judge as package
+> data inside the pip-installable `evalpilot` engine
+> (`evalpilot/_data/agents/eval-judge.agent.md`).
+>
+> - The in-repo `evals/` harness no longer uses this pack: `evals/_lib/judge.py`
+>   re-exports `evalpilot.judge`, which stages the **bundled** judge into a
+>   throwaway workspace for each call.
+> - New repos should install `eval-pilot` instead — see
+>   [`agent-packs/eval-pilot/README.md`](../eval-pilot/README.md).
+>
+> This directory is retained only for backward reference and will be removed in
+> a future cleanup. **Do not build new work on it.**
+
 This pack ships **one custom agent**:
 
 - `@eval-judge` — scores a SUT artifact against free-form criteria and

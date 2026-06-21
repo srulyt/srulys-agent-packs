@@ -17,6 +17,19 @@
 | [Ralph Copilot CLI](./ralph-copilot-cli.md) | `agent-packs/ralph-copilot-cli/` | Agentic developer for GitHub Copilot CLI | Stable |
 | [Copilot Factory](./copilot-factory.md) | `agent-packs/copilot-factory/` | Multi-agent factory for Copilot CLI targeting Roo or Copilot | Stable |
 
+## Copilot Plugins
+
+Installable GitHub Copilot plugins (manifest + skills/agents, registered in
+`.github/plugin/marketplace.json`). Install with
+`copilot plugin marketplace add srulyt/srulys-agent-packs` then
+`copilot plugin install <name>@srulys-agent-packs`.
+
+| Plugin | Location | Description |
+|--------|----------|-------------|
+| eval-pilot | `agent-packs/eval-pilot/` | Portable evals for Copilot agents/skills: binary **rubric** pass/fail checks, LLM-as-judge, and numeric **metric** history compared over time. Bundles the pip-installable `evalpilot` engine + `eval-author` / `eval-runner` / `eval-metrics` skills. See its [README](../agent-packs/eval-pilot/README.md). |
+| prd-pilot | `agent-packs/prd-pilot/` | Guided EARS-style PRD authoring workflow. |
+| product-knowledge-brain | `agent-packs/product-knowledge-brain/` | Maintain and evolve a Product Management knowledge base / living wiki. |
+
 ## Quick Start
 
 ### Using the Factories (creating agent packs)

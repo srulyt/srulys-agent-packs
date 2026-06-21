@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evalpilot"
+version = "0.1.0"
+description = "Portable, repo-agnostic eval engine for GitHub Copilot agents and skills. Binary rubric + numeric metric results with JSONL trend tracking."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "srulys-agent-packs" }]
+keywords = ["evals", "copilot", "agents", "skills", "pytest", "llm-as-judge", "metrics"]
+dependencies = [
+    "pytest>=8.0",
+    "pytest-xdist>=3.0",
+    "pytest-reportlog>=0.4",
+    "pytest-timeout>=2.0",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest-html>=4.0"]
+
+[project.scripts]
+evalpilot = "evalpilot.cli:main"
+
+# Registers evalpilot's fixtures + markers as a pytest plugin so target
+# repos do not need to wire a conftest.py by hand.
+[project.entry-points.pytest11]
+evalpilot = "evalpilot.pytest_plugin"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+evalpilot = ["_data/agents/*.agent.md", "_data/templates/*", "_data/templates/**/*"]

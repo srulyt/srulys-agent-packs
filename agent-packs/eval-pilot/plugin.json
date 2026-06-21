@@ -1,0 +1,10 @@
+{
+  "name": "eval-pilot",
+  "description": "Portable evals for Copilot agents and skills: create and run rubric pass/fail checks plus numeric metric history to catch regressions over time. Keywords: create evals, run evals, evalpilot, rubric, metrics, regression, agents, skills.",
+  "version": "0.1.0",
+  "author": { "name": "srulys-agent-packs" },
+  "agents": "agents/",
+  "skills": "skills/",
+  "repository": "https://github.com/srulyt/srulys-agent-packs",
+  "keywords": ["evals", "testing", "rubric", "metrics", "regression", "copilot", "agents", "skills"]
+}

@@ -1,5 +1,14 @@
 # `evals/` — pytest-based eval framework
 
+> **Portable version:** the engine behind this harness is packaged as the
+> **`eval-pilot`** Copilot plugin (`agent-packs/eval-pilot/`) so any repo with
+> agents/skills can install it (`pip install` the bundled `evalpilot` engine)
+> and ask Copilot to *create and run evals* — both binary **rubric** pass/fail
+> checks and numeric **metric** results tracked over time in committed JSONL
+> history. This in-repo `evals/` **dogfoods** that package: `_lib/judge.py` and
+> `_lib/asserts.py` now re-export from `evalpilot`, so there is a single source
+> of truth. See `agent-packs/eval-pilot/README.md`.
+
 An eval is a pytest test. To run all evals:
 
 ```powershell
@@ -102,9 +111,12 @@ A maintainer reads this top-to-bottom and understands the eval in
 | `copilot_skill(name)` | `Workspace` with one skill staged | skill evals |
 | `judge` | `judge(artifact=, criteria=, threshold=)` callable | LLM-as-judge |
 
-The `judge` fixture invokes the `@eval-judge` agent (under
-`agent-packs/eval-framework/`) via Copilot CLI. Logs and the raw judge
-response are persisted under the test's pytest tmp_path for debugging.
+The `judge` fixture re-exports `evalpilot.judge`, which stages the
+bundled `eval-judge` agent (shipped as `evalpilot` package data) and
+invokes it via Copilot CLI. Logs and the raw judge response are
+persisted under the test's pytest tmp_path for debugging. (The legacy
+standalone judge under `agent-packs/eval-framework/` is superseded by
+this bundled agent.)
 
 ## Logs and failure analysis
 
