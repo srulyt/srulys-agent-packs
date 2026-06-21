@@ -56,8 +56,12 @@ evolve organizational product knowledge.
 
 Concretely, on every invocation, in this order:
 
-1. Resolve `kb_root` (default `knowledge-base/`) and compute
-   `input_hash = sha256(extracted-input)`.
+1. Resolve `kb_root` (default `knowledge-base/`), compute
+   `input_hash = sha256(extracted-input)`, and compute
+   `kb_namespace = slugify(basename(realpath(kb_root)))` (kebab-case,
+   lowercased final path segment; fall back to a short hash of the absolute
+   path if empty). This namespace prefixes every generated index skill and
+   scopes harness-dir cleanup (see `knowledge-indexing`).
 2. Read `.product-knowledge-brain-stm/current-session.json`. **Resume** the
    open run iff its `checkpoint.json` `input_hash` AND `kb_root` match;
    **else** auto-generate a new `{YYYY-MM-DD}-{8-char-hex}` session id
@@ -75,6 +79,7 @@ Concretely, on every invocation, in this order:
    - `.product-knowledge-brain-stm/runs/<session-id>/state.json`
      ```json
      { "session_id": "<id>", "kb_root": "knowledge-base/",
+       "kb_namespace": "knowledge-base",
        "cycle_phase": "step-1", "input_hash": "sha256:<hash>",
        "created_at": "<ISO-8601>", "updated_at": "<ISO-8601>" }
      ```
@@ -162,19 +167,40 @@ Write `state.json` and `checkpoint.json` as **complete files**
   backlinks, and the provenance / evidence schema.
 - **`knowledge-indexing`** — steps 7, 8: maintain discovery indexes, apply
   refactoring heuristics at size thresholds, and generate dynamic
-  specialized **index skills**. Generation is **mandatory** (it MUST emit
-  `<kb-root>/_skills/<slug>-knowledge-index/SKILL.md`) when an area's
+  specialized **index skills**. In **step 7** (routine indexing) it refreshes
+  `index.md`; it also generates/refreshes the top-level/root index skill at the
+  **bare** path `<kb-root>/_skills/knowledge-index/SKILL.md`
+  (`user-invocable: true`) — `index.md`'s installable twin — **when the caller
+  requests a top-level / repo-wide index skill or during a full repo-wide index
+  refresh**, keeping it in sync with `index.md`. This top-level skill is a
+  Step-7 index artifact, **not** a Step-8 dynamic output. In **step 8** (tiered
+  T2/T3 scaling) it adds a per-area/per-domain skill
+  `<kb-root>/_skills/<slug>-knowledge-index/SKILL.md` (bare) when an area's
   `knowledge/` holds **> 12** concept pages, when a discovery index lists
-  **> 25** pages, **or when the caller explicitly asks for a dynamic/
-  specialized index skill** for a named area/domain — even if other
-  thresholds are not crossed.
+  **> 25** pages, **or when the caller explicitly asks**. The `_skills/` source
+  dir names are **bare** (e.g. `feature-a-knowledge-index`) — they are **not**
+  namespaced at generation. The per-KB namespace `<kb-ns> =
+  slugify(basename(kb_root))` (recorded in `state.json.kb_namespace` at STEP 0)
+  is applied **by the install script** when it copies the dirs into the shared
+  harness dir. It also (re)generates `<kb-root>/_skills/install-skills.sh`,
+  `install-skills.ps1`, and `removed-skills.json` whenever any skill exists; the
+  install script globs `_skills/*/` (so it picks up both the top-level and
+  per-area skills) and writes `installed-skills.json` (the receipt) when the
+  user runs it.
 
-> **Committed deliverable.** When the caller explicitly asks for a dynamic
-> index skill (or an area is already past threshold at invocation time),
-> treat emitting `<kb-root>/_skills/<slug>-knowledge-index/SKILL.md` as a
-> **required deliverable of this run**, not an optional end-of-cycle nicety.
-> If you must abbreviate, still write this file — it is as mandatory as the
-> STM checkpoint. The run is non-conformant if it completes without it.
+> **Committed deliverable.** Whenever index skills exist under
+> `<kb-root>/_skills/` — a top-level `knowledge-index` (when requested or on a
+> repo-wide refresh) and/or any past-threshold or explicitly-requested
+> per-area/per-domain skill — treat the install scripts
+> (`install-skills.{sh,ps1}`) and `removed-skills.json` as **required
+> deliverables of the run**, not an optional end-of-cycle nicety. A narrow,
+> area-specific caller request (e.g. "just generate a dynamic index skill for
+> feature-a") yields that per-area skill; a request for a top-level / repo-wide
+> index skill yields the top-level one. If you must abbreviate, still write the
+> skills you were asked for plus their install scripts and manifest — they are
+> as mandatory as the STM checkpoint. **The agent generates these files into
+> `<kb-root>/_skills/`; the user runs the install script** (see the
+> end-of-cycle install prompt) — the agent never writes the harness dir.
 
 A caller may need only one specialist (e.g. "just update the indexes"); in
 that case load that skill directly. The default flow runs the whole cycle.
@@ -187,12 +213,14 @@ The host acts within them while running this workflow.
 | Permission | Allowed Paths |
 |------------|---------------|
 | **Read** | `<kb-root>/**`, `.product-knowledge-brain-stm/**`, this plugin's own `skills/**`, plus caller-provided extracted input |
-| **Write** | `<kb-root>/**` (the knowledge base, incl. generated `_skills/`) and `.product-knowledge-brain-stm/runs/{session-id}/**` (STM) **only** |
+| **Write** | `<kb-root>/**` (the knowledge base, incl. generated `_skills/` — the index skills, `install-skills.{sh,ps1}`, and `removed-skills.json`) and `.product-knowledge-brain-stm/runs/{session-id}/**` (STM) **only** |
 
 ## Must NOT
 
 - MUST NOT write outside `<kb-root>/` or the STM run dir — no source/repo
-  files, no `.github/`, no other packs.
+  files, no `.github/`, no other packs. (Installing index skills into the
+  harness skills dir is done by the **user-run** `_skills/install-skills.*`
+  script, **never** by this agent — see `knowledge-indexing` step 8a.)
 - MUST NOT write or mutate **raw source material**. The KB stores only
   curated pages and evidence **descriptors** (it does not own ingestion).
 - MUST NOT create a new page when an existing page should be updated
@@ -225,19 +253,47 @@ evals and downstream tooling can assert on the result:
 ````markdown
 ```knowledge-brain-summary
 kb_root: <path>
+kb_namespace: <slugify(basename(kb_root))>
 session_id: <YYYY-MM-DD>-<8hex>
 cycle_status: complete | resumed-complete | failed-empty-input | partial
 last_completed_step: <int 0..10>
 pages_created: <int>
 pages_updated: <int>
 relationships_added: <int>
-indexes_updated: ["<index path>", "..."]
+indexes_updated: ["<index path>", "..."]  # include <kb-root>/_skills/knowledge-index/SKILL.md (the top-level index skill — Step-7 installable twin of index.md) when it was generated/refreshed this cycle (on request or a repo-wide refresh), alongside index.md / area-index / discovery indexes
 contradictions: <int>            # detected this cycle
 evidence_added: ["E-<nnn>", "..."]
-dynamic_index_skills: ["<kb-root>/_skills/<name>/SKILL.md", "..."]  # [] if none
+dynamic_index_skills: ["<kb-root>/_skills/<slug>-knowledge-index/SKILL.md", "..."]  # PER-AREA/PER-DOMAIN skills only (Step 8); [] if none triggered. The top-level <kb-root>/_skills/knowledge-index/SKILL.md is NOT listed here — it is reported in indexes_updated as a Step-7 artifact.
+removed_index_skills: ["<slug>-knowledge-index", "..."]  # bare names appended to removed-skills.json this cycle; [] if none
+install_command: "<exact per-OS command to run the install script>"
+index_skills_installed: awaiting | yes | n/a   # 'awaiting' until the user runs the install script
 open_questions: ["<note>", "..."]  # [] if none
 ```
 ````
+
+## End-of-cycle install prompt (ask first; never silently install)
+
+As the **last** action of a cycle — **after** emitting the
+`knowledge-brain-summary` block — surface the install command and **ask** the
+user whether to run it. This is **non-blocking**: the cycle is already
+`complete` and the skills sit in `<kb-root>/_skills/` awaiting install; do
+**not** run the script or copy anything yourself (the agent never touches the
+harness dir). Pick the command for the detected OS:
+
+> *N* index skill(s) were (re)generated in `<kb-root>/_skills/`. To make them
+> auto-discoverable by your harness, run the install command now:
+>
+> - macOS / Linux: `sh <kb-root>/_skills/install-skills.sh`
+> - Windows (PowerShell): `pwsh -File <kb-root>/_skills/install-skills.ps1`
+>
+> This copies this KB's index skills into your harness skills directory and
+> removes any stale ones. It is safe to re-run. Run the command above to
+> install; I will not run it for you.
+
+If no harness dir resolves, the script exits non-zero with guidance and the
+skills remain in `_skills/` awaiting a manual install (re-run with an explicit
+`KB_HARNESS_SKILLS_DIR=<dir>`). Set `index_skills_installed: awaiting` in the
+summary until the user runs the script.
 
 ## Quality Checklist
 
@@ -249,5 +305,8 @@ open_questions: ["<note>", "..."]  # [] if none
 - [ ] Every important claim cites an `E-<nnn>`; evidence descriptors exist
       under `<kb-root>/evidence/`.
 - [ ] Contradictions resolved via change-log / ADR — no silent overwrite.
-- [ ] Affected discovery indexes and `area-index.md` refreshed (step 7).
+- [ ] Affected discovery indexes and `area-index.md` refreshed (step 7); and
+      when a top-level / repo-wide index skill was requested or a repo-wide
+      refresh ran, `index.md`'s installable twin
+      `_skills/knowledge-index/SKILL.md` is in sync with `index.md`.
 - [ ] Final response emits the `knowledge-brain-summary` block.

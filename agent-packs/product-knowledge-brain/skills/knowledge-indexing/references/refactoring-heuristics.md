@@ -5,6 +5,24 @@ fixed**. As knowledge grows, refactor to keep the repo navigable. All
 refactoring is **threshold-gated** — do not churn structure below the
 thresholds; record actions in `refactor-plan.json`.
 
+## Tiered index-skill scaling (T1/T2/T3)
+
+The **number** of generated index skills scales with KB size. Count =
+total `*.md` concept pages under `<kb-root>/areas/*/knowledge/` + root concept
+dirs (`personas/`, `segments/`, `strategic/`, `competitive/`).
+
+| Tier | KB size (concept pages) | Index skills generated |
+|------|-------------------------|------------------------|
+| **T1 (small)** | 1–30 pages (or ≤3 areas) | **Exactly one** top-level/root index skill routing to area/discovery indexes + key root concepts. No per-area skills. |
+| **T2 (medium)** | 31–100 pages, OR any area `knowledge/` > 12 pages, OR any discovery domain index > 25 pages | Top-level skill **plus** a per-area/per-domain skill for each crowded area/domain crossing its threshold. |
+| **T3 (large)** | > 100 pages OR > 6 areas | Top-level skill **plus** per-area skills for every area + per-domain skills for every crowded domain; top-level becomes a router-of-routers. |
+
+The **top-level/root skill is ALWAYS generated** once the KB has any curated
+pages (the T1 floor) — it is the deterministic baseline deliverable. The
+`> 12` (crowded area) and `> 25` (crowded domain) triggers below are the
+T2/T3 layer. See `dynamic-index-skills.md` for the templates and the per-KB
+namespace rule.
+
 ## Size thresholds (defaults)
 
 | Trigger | Threshold (default) | Action |
@@ -22,12 +40,13 @@ not when a single page nudges over.
 
 > **Exception — dynamic index skills are NOT covered by this hedge.** The
 > "favor stability / clearly crossed" guidance applies to
-> splits/merges/recategorization only. Generating a dynamic specialized
-> index skill is a **deterministic obligation**, not a stability judgement:
-> if an area's `knowledge/` holds **13+** pages, a domain index lists **26+**
-> pages, **or the caller explicitly requests one**, you MUST generate the
-> index skill (see `dynamic-index-skills.md`). An 18-page area or an
-> explicit caller request both clearly qualify — do not read "favor
+> splits/merges/recategorization only. The **top-level/root index skill is
+> always generated** (T1 floor), and generating a per-area/per-domain
+> specialized index skill is a **deterministic obligation**, not a stability
+> judgement: if an area's `knowledge/` holds **13+** pages, a domain index
+> lists **26+** pages, **or the caller explicitly requests one**, you MUST
+> generate the index skill (see `dynamic-index-skills.md`). An 18-page area or
+> an explicit caller request both clearly qualify — do not read "favor
 > stability" as license to skip generation.
 
 ## Refactoring actions

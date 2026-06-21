@@ -32,8 +32,13 @@ Two on-disk artifacts:
 1. **The knowledge base** (the primary deliverable) — a product-centric
    living wiki under a caller-named root (default `knowledge-base/`):
    curated concept pages, typed relationships + backlinks, evidence
-   descriptors, ADR-style decision history, discovery indexes, and
-   generated specialized **index skills**.
+   descriptors, ADR-style decision history, discovery indexes, and generated
+   specialized **index skills** under `_skills/` (a top-level/repo-wide router
+   — generated on request or during a repo-wide index refresh — plus
+   per-area/per-domain skills for crowded areas, all with **bare** names)
+   together with an **install script** (`install-skills.sh`/`.ps1`) that
+   namespaces them on install, a `removed-skills.json` manifest, and an
+   `installed-skills.json` receipt the script writes for uninstall-on-change.
 2. **A durable STM working state** under `.product-knowledge-brain-stm/`
    that checkpoints the in-flight evolution cycle between every step.
 
@@ -211,6 +216,43 @@ specialized index skills under `_skills/`. See
 `skills/knowledge-organization/references/repo-layout.md` for the full
 layout.
 
+### Generated index skills + install step
+
+The index skills **stay inside the KB** at `<kb-root>/_skills/` so the KB
+remains portable and self-contained. They are generated with **bare** names
+(`knowledge-index` for the top-level, `<slug>-knowledge-index` per area). The
+number scales with KB size (tiered):
+
+- **Top-level / repo-wide router** (`knowledge-index`, `user-invocable: true`)
+  — a routing layer (path + why-it-matters) pointing to the area/discovery
+  indexes. Generated/refreshed when the caller requests a top-level / repo-wide
+  index skill, or during a full repo-wide index refresh.
+- **Larger KBs (T2/T3):** additional per-area/per-domain index skills for
+  crowded areas (`knowledge/` > 12 pages) or domains (index > 25 pages), or on
+  an explicit request for a named area/domain.
+
+The per-KB namespace `<kb-ns> = slugify(basename(kb_root))` is **applied at
+install time, not at generation**: the install script renames each bare dir to
+`<kb-ns>-<bare-name>` when it copies it into the shared harness skills dir, so
+two KBs in one workspace never collide there.
+
+The agent does **not** install the skills into a harness dir itself. Instead
+it generates an **install script** into `_skills/` — run it after a cycle to
+namespace + copy this KB's skills into your harness skills dir and remove this
+KB's stale ones. The script keeps an **install receipt**
+(`installed-skills.json`) and, on each run, **uninstalls on change**: any skill
+it previously installed for this KB that is now gone or renamed is deleted from
+the harness dir (it also consumes `removed-skills.json`). All deletions are
+strictly scoped to this KB's `<kb-ns>-*` namespace, so it never touches another
+KB's skills. It is idempotent and safe to re-run:
+
+- macOS / Linux: `sh <kb-root>/_skills/install-skills.sh`
+- Windows (PowerShell): `pwsh -File <kb-root>/_skills/install-skills.ps1`
+
+The script resolves the harness dir (explicit override → repo
+`.github/skills/` → `~/.copilot/skills/` → documented fallback). At the end
+of each cycle the agent **asks** whether to run it (never silently installs).
+
 ## Durable STM (no-data-loss guarantee)
 
 The in-flight evolution cycle checkpoints to
@@ -224,9 +266,10 @@ one is a no-op), and continues from `next_step`. See
 ## Output contract
 
 The completing response emits a machine-parseable `knowledge-brain-summary`
-fenced block (`kb_root`, `session_id`, `cycle_status`, `pages_created`,
-`pages_updated`, `relationships_added`, `indexes_updated`,
+fenced block (`kb_root`, `kb_namespace`, `session_id`, `cycle_status`,
+`pages_created`, `pages_updated`, `relationships_added`, `indexes_updated`,
 `contradictions`, `evidence_added`, `dynamic_index_skills`,
+`removed_index_skills`, `install_command`, `index_skills_installed`,
 `open_questions`). See `skills/knowledge-brain/SKILL.md`.
 
 ## Evals
@@ -240,6 +283,9 @@ fenced block (`kb_root`, `session_id`, `cycle_status`, `pages_created`,
   `test_update_over_create.py`,
   `test_provenance_relationship_links.py`,
   `test_index_update.py`,
-  `test_dynamic_index_skill_generation.py`.
+  `test_dynamic_index_skill_generation.py` (explicit request + crowded area:
+  per-area skill, install scripts, removed-skills manifest),
+  `test_top_level_index_skill_and_install.py` (top-level index skill on
+  explicit repo-wide request + install artifacts).
 
 Run with `pytest evals/packs/product-knowledge-brain/`.

@@ -27,6 +27,25 @@ Last updated: <YYYY-MM-DD>
 - Strategic goals: [north-star-activation](strategic/north-star-activation.md)
 ```
 
+## Top-level index SKILL — `<kb-root>/_skills/knowledge-index/SKILL.md`
+
+A **Step-7 index artifact**: the **installable, auto-discoverable twin of
+`index.md`**. Generate or refresh it when the caller requests a top-level /
+repo-wide index skill, or during a full repo-wide index refresh; when you do,
+keep it in sync with `index.md` so the two do not drift. It renders the same
+repo-wide routing layer as a keyword-discoverable skill so a future agent can
+find the knowledge base without scanning the repo. It is **not** a Step-8
+"dynamic"/"refactor" output.
+
+- Bare name `knowledge-index` (the install script adds the `<kb-ns>-` prefix
+  on copy — see `harness-skills-dir.md`); `name` == `_skills/` dir name.
+- `user-invocable: true`; a **double-quoted**, keyword-rich `description`.
+- Body is a routing layer (path + why-it-matters) over the area indexes, the
+  discovery indexes, and the key root concepts — mirroring `index.md`.
+
+Full frontmatter + body template: see the **top-level / root index skill
+template** in [`dynamic-index-skills.md`](dynamic-index-skills.md).
+
 ## Discovery index — `<kb-root>/indexes/<domain>-index.md`
 
 One per knowledge domain (product, customer, competitive, research,
@@ -66,8 +85,12 @@ For each created/updated page in the cycle:
 2. Ensure it appears in the **discovery index** matching its
    front-matter `type:`.
 3. Ensure the **area** appears in the repo-wide `index.md` (add if new).
-4. Update each touched index's `Last updated:` date.
-5. Entries carry the **path + one-line why-it-matters**, derived from the
+4. **When (re)generating the top-level index SKILL
+   `_skills/knowledge-index/SKILL.md`** (on caller request or a repo-wide index
+   refresh), keep it in sync with `index.md` (it is `index.md`'s installable
+   twin).
+5. Update each touched index's `Last updated:` date.
+6. Entries carry the **path + one-line why-it-matters**, derived from the
    page's `## Current Understanding` — never copy the page body.
 
 ## Backlink reflection
@@ -79,5 +102,7 @@ Keep these as links, not duplicated prose.
 ## Staleness invariant
 
 After a cycle, no changed page may be absent from `index.md`, its
-`area-index.md`, and its type's discovery index. A stale index is a failure
-mode (index drift).
+`area-index.md`, and its type's discovery index. When the top-level index SKILL
+`_skills/knowledge-index/SKILL.md` is present, it must reflect the current
+`index.md` (its twin). A stale index — or a top-level skill out of sync with
+`index.md` — is a failure mode (index drift).

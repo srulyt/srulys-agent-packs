@@ -45,6 +45,7 @@ history/{session-id}/` on completion.
 {
   "session_id": "2026-06-08-1a2b3c4d",
   "kb_root": "knowledge-base/",
+  "kb_namespace": "knowledge-base",
   "cycle_phase": "step-4",
   "input_hash": "sha256:…",
   "created_at": "<ISO-8601>",
@@ -52,7 +53,14 @@ history/{session-id}/` on completion.
 }
 ```
 `cycle_phase` is one of `step-1`…`step-10`, `complete`,
-`failed-empty-input`.
+`failed-empty-input`. `kb_namespace = slugify(basename(kb_root))` is computed
+**once at STEP 0** and reused verbatim on every resume. The generated
+`_skills/` index-skill dirs are **bare** (`knowledge-index`,
+`<slug>-knowledge-index`); `kb_namespace` is **not** applied at generation —
+the install script reads `state.json.kb_namespace` (or recomputes it) and
+applies the `<kb-ns>-` prefix when it copies the dirs into the shared harness
+dir and scopes harness-dir cleanup. See
+`knowledge-indexing/references/harness-skills-dir.md`.
 
 ### `checkpoint.json`
 ```json

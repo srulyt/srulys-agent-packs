@@ -40,9 +40,25 @@ and are linked from area pages.
 │       ├── designs/
 │       └── knowledge/                # curated concept pages
 │           └── <concept-slug>.md
-└── _skills/                          # generated dynamic index skills
-    └── <area-or-domain>-knowledge-index/SKILL.md
+└── _skills/                            # generated index skills (stay in the KB; portable)
+    ├── knowledge-index/SKILL.md             # top-level/root router (on request / repo-wide refresh; bare name; user-invocable: true)
+    ├── <area-or-domain>-knowledge-index/SKILL.md  # per-area/per-domain (T2/T3; bare name; user-invocable: false)
+    ├── install-skills.sh                # namespaces+installs THIS KB's skills into the harness dir, self-cleans (user runs)
+    ├── install-skills.ps1               # PowerShell equivalent
+    ├── removed-skills.json              # manifest of obsoleted skills (bare names; script maps to <kb-ns>-* and deletes)
+    └── installed-skills.json            # install receipt (written by the script when the user runs it; drives uninstall-on-change)
 ```
+
+Source dir names under `_skills/` are **bare** (`knowledge-index`,
+`<slug>-knowledge-index`). The per-KB namespace
+`<kb-ns> = slugify(basename(kb_root))` is applied **by the install script** when
+it copies each dir into the shared harness skills dir (renaming to
+`<kb-ns>-<bare-name>`), so two KBs in one workspace never collide there. The
+**agent generates** the bare skills + scripts + `removed-skills.json` under
+`_skills/`; the **user runs** the install script, which namespaces on copy,
+writes `installed-skills.json`, and removes this KB's stale skills. See
+`knowledge-indexing/references/harness-skills-dir.md` and
+`removed-skills-manifest.md`.
 
 ## Scaffolding rules
 

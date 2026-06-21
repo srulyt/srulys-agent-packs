@@ -1,0 +1,334 @@
+# Harness Skills Dir Resolution & Install Script (reference)
+
+Overflow reference for `knowledge-indexing/SKILL.md` **step 8a**. Specifies
+the two install scripts the agent **generates** into `<kb-root>/_skills/`. The
+generated index-skill dirs under `_skills/` are **bare** (e.g.
+`knowledge-index`, `feature-a-knowledge-index`); the scripts apply the per-KB
+namespace `<kb-ns>-` **on copy** into the harness dir, write an install
+**receipt**, and self-clean (uninstall-on-change). The agent never namespaces
+the source dirs and never runs the scripts.
+
+## What the agent generates (and never runs)
+
+As part of step 8, the agent (re)writes, idempotently, both:
+
+- `<kb-root>/_skills/install-skills.sh` — POSIX `sh`/`bash` (macOS, Linux).
+- `<kb-root>/_skills/install-skills.ps1` — PowerShell (Windows; also `pwsh`
+  on macOS/Linux).
+
+Both implement the **identical** logic below — this reference is the single
+source of truth so the two cannot drift. **The agent emits them; the USER
+runs them** (surfaced via the end-of-cycle install prompt). The agent itself
+**never** copies skills into a harness dir and **never** writes outside
+`<kb-root>/`.
+
+> **Why two native scripts (not one Python script).** Native shells exist on
+> every target with zero install — `sh`/`bash` on macOS+Linux, PowerShell on
+> Windows. A single `python3` script would be cleaner as one source but adds
+> a hard runtime dependency that is **not guaranteed on Windows**, so it is
+> rejected as the primary. Maintainers who prefer single-source MAY ship a
+> `python3` script instead; the eval accepts either form.
+
+## Harness-dir resolution order (inside the script; first match wins)
+
+1. **Explicit override.** If invoked with a path argument **or** the
+   `KB_HARNESS_SKILLS_DIR=<path>` environment variable is set, use it
+   verbatim (create it if missing).
+2. **Repo-local `.github/skills/`** (preferred). Walk up from the KB root for
+   a `.git/` or an existing `.github/`; if found, target
+   `<repo-root>/.github/skills/` (create it if missing). All supported hosts
+   auto-discover repo-local `.github/skills/`; it is version-controlled,
+   reviewable, and repo-scoped.
+3. **User-level `~/.copilot/skills/`.** Else, if it exists or the home dir is
+   writable, target it (Copilot CLI user scope; create it if missing).
+4. **Fallback (resolve-nothing).** If none resolves, **print an explicit
+   message and exit non-zero** — copy nothing. The skills remain in
+   `_skills/`; the user can re-run with an explicit override
+   (`KB_HARNESS_SKILLS_DIR=...` or a path argument).
+
+The script **prints which rule fired** and the absolute destination so the
+operator can audit it.
+
+## Behaviour (idempotent, re-runnable, self-cleaning — mandatory)
+
+The scripts implement, in order:
+
+1. **Resolve `kb_namespace`** (`NS`): read `kb_namespace` from
+   `removed-skills.json` if present and non-empty; ELSE compute
+   `slugify(basename(KB_ROOT))` (kebab-cased, lowercased final path segment of
+   the KB root). Exit non-zero only if neither yields a value.
+2. **Resolve the harness skills dir** (`DEST`) via the order above; print which
+   rule fired + the absolute destination.
+3. **Namespace-at-install copy.** For each **bare** source dir
+   `_skills/<bare>-knowledge-index/` (and `_skills/knowledge-index/`), compute
+   the installed name `INSTALLED="$NS-$bare"` and copy the dir to
+   `<DEST>/$INSTALLED/`, overwriting in place. **Rewrite the copied
+   `SKILL.md`'s `name:` line** so it equals `$INSTALLED` (dir and frontmatter
+   `name` must match at the destination). Record each as a receipt entry
+   `{ source_bare_name, installed_name, hash }`.
+4. **Write the install receipt** `_skills/installed-skills.json` with
+   `kb_namespace`, the resolved `harness_dir`, `installed_at`, and the
+   `installed[]` list (schema in `removed-skills-manifest.md`).
+5. **Uninstall-on-change (self-clean).** Diff the **previous** receipt (if any)
+   against the **current** set of bare source dirs:
+   - for each previously-installed entry whose `source_bare_name` is **no
+     longer present** in `_skills/` (deleted or renamed), delete
+     `<DEST>/<installed_name>/` — **only if** `installed_name` starts with
+     `$NS-` (namespace-scoped).
+   - Also consume `removed-skills.json`: for each `removed[].name` (bare), map
+     to `$NS-<name>` and delete `<DEST>/$NS-<name>/` if present.
+   - Then overwrite the receipt with the new truth (step 4 above runs after the
+     diff so the receipt reflects the post-clean state).
+6. **Never delete a dir whose name does not start with `$NS-`** — this is how
+   the script never touches another KB's installed skills in a shared harness
+   dir. Deleting an absent dir is a no-op.
+
+Re-running with an unchanged `_skills/` yields an identical destination + an
+identical receipt — a no-op in effect. The script is safe to run any number of
+times, after any cycle.
+
+## `install-skills.sh` skeleton (POSIX)
+
+```sh
+#!/usr/bin/env sh
+# Generated by product-knowledge-brain. Installs this KB's BARE index skills
+# into the resolved harness skills dir, NAMESPACING each to <kb-ns>-<bare-name>
+# on copy, writes an install receipt, and removes this KB's stale skills
+# (uninstall-on-change). Safe to re-run. The agent generates this file; the
+# USER runs it.
+set -eu
+
+SKILLS_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"   # the _skills/ dir
+KB_ROOT="$(dirname -- "$SKILLS_DIR")"
+MANIFEST="$SKILLS_DIR/removed-skills.json"
+RECEIPT="$SKILLS_DIR/installed-skills.json"
+
+# 1) Resolve kb_namespace: removed-skills.json, else slugify(basename(KB_ROOT)).
+NS="$(grep -o '"kb_namespace"[^,]*' "$MANIFEST" 2>/dev/null | sed 's/.*: *"//;s/".*//')"
+if [ -z "${NS:-}" ]; then
+  NS="$(basename -- "$KB_ROOT" | tr '[:upper:]' '[:lower:]' \
+        | sed 's/[^a-z0-9]\{1,\}/-/g;s/^-//;s/-$//')"
+fi
+[ -n "${NS:-}" ] || { echo "ERROR: could not resolve kb_namespace"; exit 2; }
+
+# 2) Resolve destination harness skills dir.
+resolve_dest() {
+  if [ -n "${1:-}" ]; then echo "explicit-arg $1"; return; fi
+  if [ -n "${KB_HARNESS_SKILLS_DIR:-}" ]; then echo "env-override $KB_HARNESS_SKILLS_DIR"; return; fi
+  d="$KB_ROOT"
+  while [ "$d" != "/" ] && [ -n "$d" ]; do
+    if [ -d "$d/.git" ] || [ -d "$d/.github" ]; then echo "repo-github $d/.github/skills"; return; fi
+    d="$(dirname -- "$d")"
+  done
+  if [ -d "$HOME/.copilot" ] || [ -w "$HOME" ]; then echo "user-copilot $HOME/.copilot/skills"; return; fi
+  echo "none"; return
+}
+RULE_DEST="$(resolve_dest "${1:-}")"
+RULE="${RULE_DEST%% *}"; DEST="${RULE_DEST#* }"
+if [ "$RULE" = "none" ]; then
+  echo "ERROR: no harness skills dir resolved. Re-run with a path arg or KB_HARNESS_SKILLS_DIR=<dir>."
+  echo "Skills remain in $SKILLS_DIR awaiting install."
+  exit 3
+fi
+echo "Resolved harness skills dir via rule '$RULE': $DEST"
+mkdir -p "$DEST"
+
+# 3) Namespace-at-install copy: bare source dir -> <NS>-<bare> at destination,
+#    rewriting the copied SKILL.md 'name:' to match the destination dir.
+CUR_BARES=""        # space-separated list of bare names seen this run
+INSTALLED_JSON=""   # accumulates receipt entries
+for d in "$SKILLS_DIR"/*-knowledge-index "$SKILLS_DIR/knowledge-index"; do
+  [ -d "$d" ] || continue
+  bare="$(basename -- "$d")"
+  case "$bare" in "$NS"-*) ;; esac   # bare names are NOT pre-namespaced
+  installed="$NS-$bare"
+  CUR_BARES="$CUR_BARES $bare"
+  rm -rf "$DEST/$installed"
+  cp -R "$d" "$DEST/$installed"
+  # Rewrite frontmatter name: to equal the destination dir.
+  if [ -f "$DEST/$installed/SKILL.md" ]; then
+    sed "s/^name:.*/name: $installed/" "$DEST/$installed/SKILL.md" > "$DEST/$installed/SKILL.md.tmp" \
+      && mv "$DEST/$installed/SKILL.md.tmp" "$DEST/$installed/SKILL.md"
+  fi
+  h="$(ls -l "$d" 2>/dev/null | cksum | cut -d' ' -f1)"
+  INSTALLED_JSON="$INSTALLED_JSON  { \"source_bare_name\": \"$bare\", \"installed_name\": \"$installed\", \"hash\": \"$h\" },\n"
+  echo "installed: $bare -> $installed"
+done
+
+# 5a) Uninstall-on-change: anything in the PREVIOUS receipt whose source bare
+#     name is gone now (deleted/renamed) gets deleted from DEST (NS-scoped).
+if [ -f "$RECEIPT" ]; then
+  prev="$(grep -o '"installed_name"[^,]*' "$RECEIPT" 2>/dev/null | sed 's/.*: *"//;s/".*//')"
+  prevb="$(grep -o '"source_bare_name"[^,]*' "$RECEIPT" 2>/dev/null | sed 's/.*: *"//;s/".*//')"
+  # Walk previous installed_name + source_bare_name pairs line by line.
+  paste -d'|' <(printf '%s\n' "$prevb") <(printf '%s\n' "$prev") 2>/dev/null | while IFS='|' read -r pb pi; do
+    [ -n "$pi" ] || continue
+    still=0
+    for c in $CUR_BARES; do [ "$c" = "$pb" ] && still=1; done
+    if [ "$still" -eq 0 ]; then
+      case "$pi" in
+        "$NS"-*) if [ -d "$DEST/$pi" ]; then rm -rf "$DEST/$pi"; echo "uninstalled (gone/renamed): $pi"; fi ;;
+        *) echo "skip (not this KB's namespace): $pi" ;;
+      esac
+    fi
+  done
+fi
+
+# 5b) Also consume removed-skills.json (bare names) -> delete <NS>-<name>.
+for name in $(grep -o '"name"[^,]*' "$MANIFEST" 2>/dev/null | sed 's/.*: *"//;s/".*//'); do
+  inst="$NS-$name"
+  case "$inst" in
+    "$NS"-*) if [ -d "$DEST/$inst" ]; then rm -rf "$DEST/$inst"; echo "removed stale: $inst"; fi ;;
+  esac
+done
+
+# 4) Write the install receipt (current truth). Strip the trailing comma.
+ENTRIES="$(printf '%b' "$INSTALLED_JSON" | sed '/^[[:space:]]*$/d')"
+ENTRIES="$(printf '%s' "$ENTRIES" | sed '$ s/,[[:space:]]*$//')"
+{
+  printf '{\n  "kb_namespace": "%s",\n  "harness_dir": "%s",\n  "installed_at": "%s",\n  "installed": [\n' \
+    "$NS" "$DEST" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s\n' "$ENTRIES"
+  printf '  ]\n}\n'
+} > "$RECEIPT"
+echo "receipt written: $RECEIPT"
+echo "Done."
+```
+
+## `install-skills.ps1` skeleton (PowerShell)
+
+```powershell
+# Generated by product-knowledge-brain. Installs this KB's BARE index skills
+# into the resolved harness skills dir, NAMESPACING each to <kb-ns>-<bare-name>
+# on copy, writes an install receipt, and removes this KB's stale skills
+# (uninstall-on-change). Safe to re-run. The agent generates this file; the
+# USER runs it.
+param([string]$Dest)
+$ErrorActionPreference = 'Stop'
+
+$SkillsDir = Split-Path -Parent $MyInvocation.MyCommand.Path   # the _skills/ dir
+$KbRoot    = Split-Path -Parent $SkillsDir
+$manifest  = Join-Path $SkillsDir 'removed-skills.json'
+$receipt   = Join-Path $SkillsDir 'installed-skills.json'
+
+# 1) Resolve kb_namespace: removed-skills.json, else slugify(basename(KbRoot)).
+$NS = $null
+if (Test-Path $manifest) { $NS = (Get-Content $manifest -Raw | ConvertFrom-Json).kb_namespace }
+if (-not $NS) {
+  $NS = (Split-Path -Leaf $KbRoot).ToLower() -replace '[^a-z0-9]+','-' -replace '^-','' -replace '-$',''
+}
+if (-not $NS) { Write-Error 'could not resolve kb_namespace'; exit 2 }
+
+# 2) Resolve destination harness skills dir.
+function Resolve-Dest {
+  param([string]$Arg)
+  if ($Arg)                          { return @('explicit-arg', $Arg) }
+  if ($env:KB_HARNESS_SKILLS_DIR)    { return @('env-override', $env:KB_HARNESS_SKILLS_DIR) }
+  $d = $KbRoot
+  while ($d -and (Split-Path -Parent $d) -ne $d) {
+    if ((Test-Path (Join-Path $d '.git')) -or (Test-Path (Join-Path $d '.github'))) {
+      return @('repo-github', (Join-Path $d '.github/skills'))
+    }
+    $d = Split-Path -Parent $d
+  }
+  if (Test-Path (Join-Path $HOME '.copilot')) { return @('user-copilot', (Join-Path $HOME '.copilot/skills')) }
+  return @('none', '')
+}
+$r = Resolve-Dest -Arg $Dest
+$Rule = $r[0]; $Target = $r[1]
+if ($Rule -eq 'none') {
+  Write-Error "No harness skills dir resolved. Re-run with -Dest <dir> or `$env:KB_HARNESS_SKILLS_DIR. Skills remain in $SkillsDir."
+  exit 3
+}
+Write-Host "Resolved harness skills dir via rule '$Rule': $Target"
+New-Item -ItemType Directory -Force -Path $Target | Out-Null
+
+# Load previous receipt (for uninstall-on-change diff).
+$prev = @()
+if (Test-Path $receipt) { $prev = @((Get-Content $receipt -Raw | ConvertFrom-Json).installed) }
+
+# 3) Namespace-at-install copy: bare source dir -> <NS>-<bare>, rewrite name:.
+$curBares = @()
+$installed = @()
+Get-ChildItem -Path $SkillsDir -Directory |
+  Where-Object { $_.Name -like '*-knowledge-index' -or $_.Name -eq 'knowledge-index' } |
+  ForEach-Object {
+    $bare = $_.Name                       # bare names are NOT pre-namespaced
+    $instName = "$NS-$bare"
+    $curBares += $bare
+    $d = Join-Path $Target $instName
+    if (Test-Path $d) { Remove-Item -Recurse -Force $d }
+    Copy-Item -Recurse -Force $_.FullName $d
+    $skill = Join-Path $d 'SKILL.md'
+    if (Test-Path $skill) {
+      (Get-Content $skill -Raw) -replace '(?m)^name:.*$', "name: $instName" | Set-Content $skill
+    }
+    $h = (Get-FileHash -Algorithm SHA256 -Path $skill -ErrorAction SilentlyContinue).Hash
+    $installed += [pscustomobject]@{ source_bare_name = $bare; installed_name = $instName; hash = $h }
+    Write-Host "installed: $bare -> $instName"
+  }
+
+# 5a) Uninstall-on-change: previously-installed skills whose source bare name is
+#     gone now (deleted/renamed) get deleted from the harness dir (NS-scoped).
+foreach ($p in $prev) {
+  if ($curBares -notcontains $p.source_bare_name) {
+    if ($p.installed_name -like "$NS-*") {
+      $d = Join-Path $Target $p.installed_name
+      if (Test-Path $d) { Remove-Item -Recurse -Force $d; Write-Host "uninstalled (gone/renamed): $($p.installed_name)" }
+    } else {
+      Write-Host "skip (not this KB's namespace): $($p.installed_name)"
+    }
+  }
+}
+
+# 5b) Also consume removed-skills.json (bare names) -> delete <NS>-<name>.
+if (Test-Path $manifest) {
+  foreach ($e in @((Get-Content $manifest -Raw | ConvertFrom-Json).removed)) {
+    $inst = "$NS-$($e.name)"
+    if ($inst -like "$NS-*") {
+      $d = Join-Path $Target $inst
+      if (Test-Path $d) { Remove-Item -Recurse -Force $d; Write-Host "removed stale: $inst" }
+    }
+  }
+}
+
+# 4) Write the install receipt (current truth).
+[pscustomobject]@{
+  kb_namespace = $NS
+  harness_dir  = $Target
+  installed_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  installed    = $installed
+} | ConvertTo-Json -Depth 5 | Set-Content $receipt
+Write-Host "receipt written: $receipt"
+Write-Host 'Done.'
+```
+
+## Per-KB namespace (collision-free names in a shared harness dir)
+
+`kb_namespace = slugify(basename(realpath(kb_root)))` — the kebab-cased,
+lowercased final path segment of the resolved KB root (e.g. `knowledge-base/`
+→ `knowledge-base`; `/work/acme-product-kb/` → `acme-product-kb`). Strip to
+`[a-z0-9-]`, collapse repeats, trim leading/trailing `-`. If the basename
+slugifies to empty (KB at filesystem root), fall back to a short hash of the
+absolute path.
+
+The namespace is **applied at install time**, not at generation: the source
+dirs under `_skills/` stay bare and the install script renames each to
+`<kb-ns>-<bare-name>` on copy (rewriting the copied `SKILL.md` `name:` to
+match). The script resolves `<kb-ns>` by reading `kb_namespace` from
+`removed-skills.json` (the agent records it there + in `state.json.kb_namespace`
+at STEP 0), or by computing `slugify(basename(kb_root))` itself if absent — so
+the script is self-sufficient even if the receipt/manifest is missing.
+
+> **Caveat (documented edge).** Two distinct KB roots that share the same
+> final path segment (e.g. two `knowledge-base/` dirs in different repos
+> opened in one workspace) produce the **same** namespace and collide. Give
+> KB roots distinct final-segment names, or pass an explicit `kb_namespace`
+> override (and a matching `KB_HARNESS_SKILLS_DIR`) for one of them.
+
+## No-harness-detected UX (rule 4)
+
+When no harness dir resolves, the script exits **non-zero** with an explicit
+message and copies nothing. The agent's end-of-cycle prompt notes that the
+skills remain in `<kb-root>/_skills/` awaiting a manual install (e.g. re-run
+with `KB_HARNESS_SKILLS_DIR=<dir>`).
