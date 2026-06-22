@@ -14,6 +14,7 @@ import pytest
 from evalpilot import rubric, check_judge
 from evalpilot import metrics as M
 from evalpilot import discovery
+from evalpilot.workspace import Workspace
 from evalpilot.runners.base import get_runner, RunResult
 
 
@@ -211,6 +212,28 @@ def test_discovery_prunes_noise_dirs(tmp_path):
     _write(repo / ".github" / "agents" / "real.agent.md")
     names = {a.name for a in discovery.discover_agents(repo)}
     assert names == {"real"}
+
+
+def test_stage_agent_copies_legacy_pack_support_dirs(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    pack = repo / "agent-packs" / "product-brief" / ".github"
+    _write(pack / "agents" / "brief-orchestrator.agent.md", "---\nname: brief-orchestrator\n---\n")
+    _write(pack / "skills" / "product-brief-skill" / "SKILL.md", "---\nname: product-brief-skill\n---\n")
+    _write(pack / "instructions" / "product-brief.instructions.md", "instructions")
+
+    ws = Workspace(
+        root=tmp_path / "ws",
+        logs_dir=tmp_path / "_logs",
+        runner=object(),  # type: ignore[arg-type]
+        repo_root=repo,
+    )
+
+    ws.stage_agent("brief-orchestrator")
+
+    assert (ws.root / ".github" / "agents" / "brief-orchestrator.agent.md").is_file()
+    assert (ws.root / ".github" / "skills" / "product-brief-skill" / "SKILL.md").is_file()
+    assert (ws.root / ".github" / "instructions" / "product-brief.instructions.md").is_file()
 
 
 # ---- runner registry ----------------------------------------------------

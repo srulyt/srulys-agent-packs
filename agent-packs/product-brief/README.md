@@ -28,7 +28,8 @@ Specialist agents are invoked by the orchestrator:
 
 The orchestrator coordinates specialists to produce:
 
-- A concise single narrative brief (target 3–4 pages, hard ceiling 5 pages)
+- A concise single narrative brief — length matched to audience and content (typically 3–6 pages; longer when clarity requires)
+- Supports two brief types: **decision-brief** (asks for a decision/input) and **scope-brief** (describes scope; may omit Open Questions and Call to Action)
 - Natural, content-descriptive headings (never template headings)
 - Canonical section order with enforced section distinctness
 - Executive-grade tone with "so what?" test enforcement
@@ -45,20 +46,20 @@ This pack implements multiple quality gates:
 |------|---------------|------------|
 | Heading Naturalness | No framework template headings in output | Orchestrator editing pass |
 | Section Distinctness | Title, summary, problem serve distinct purposes | Orchestrator editing pass |
-| Brevity Hard Ceiling | Target 1,500–2,000 words; ceiling 2,500 words | Composer target + orchestrator rejection |
+| Right-Length Review | Flags filler/repetition past the typical range; never forces value-destroying cuts | Composer right-length discipline + orchestrator review |
 | "So What?" Test | Every paragraph contributes to the decision | Orchestrator editing pass |
 | Anti-Repetition | No duplicated content across sections | Orchestrator editing pass |
 | Standalone Document | Zero links, all info inlined | Composer rules + orchestrator check |
 | Markdown Lint | Proper formatting, heading hierarchy, consistent markers | Composer rules + orchestrator check |
 | Executive Tone | No filler phrases, no buzzword inflation | Composer skill + orchestrator review |
-| Eval suite | Delegation correctness, output-contract fences, scope discipline, model-pin honored, editing-pass applied, zero links, word-count ceiling, no bold-as-structure, heading naturalness | `evals/packs/product-brief/` |
+| Eval suite | Delegation correctness, output-contract fences, scope discipline, model-pin honored, editing-pass applied, zero links, length sanity (filler/repetition review, not a hard cap), no bold-as-structure, heading naturalness | `evals/packs/product-brief/` |
 | Model pin | Per-role model assignments are the single source of truth | `evals/packs/product-brief/spec.yaml` `models:` block |
 
 ## Included Agents
 
 | Agent | Role |
 |-------|------|
-| `brief-orchestrator` | Coordination, delegation, mandatory 12-point editing pass, quality gates, final artifact assembly |
+| `brief-orchestrator` | Coordination, delegation, mandatory 15-point editing pass, quality gates, final artifact assembly |
 | `evidence-analyst` | Decision-relevant evidence extraction, contradiction surfacing, compact table output |
 | `strategy-modeler` | Options/tradeoffs (recommendation-first), metrics, milestones, financial framing |
 | `brief-composer` | Executive-ready narrative drafting with agency-over-formatting and anti-bloat rules |
@@ -68,7 +69,7 @@ This pack implements multiple quality gates:
 
 | Skill | Purpose |
 |-------|---------|
-| `product-brief-framework` | Section order, section distinctness contract, brevity protocol, standalone policy, lint rules |
+| `product-brief-framework` | Brief type (decision-brief / scope-brief), section order, section distinctness contract, right-length protocol, standalone policy, lint rules |
 | `evidence-integrity` | Decision-relevance filter, compact evidence tables, no-links policy, confidence labeling |
 | `decision-metrics-financials` | Lead-with-recommendation, compact tables, KPI/OKR design, financial framing |
 | `executive-writing-style` | Decision-maker framing, persuasive structure, "so what?" test, tone rules, good/bad examples |
@@ -85,7 +86,7 @@ Decision needed: whether to fund and prioritize in the next planning cycle.
 
 ## Evals
 
-This pack ships pytest-based evals under `evals/packs/product-brief/`. Cases cover happy paths (late-stage decision ask, early-stage summary) and negatives (orchestrator paraphrase, evidence STM source leak).
+This pack ships pytest-based evals under `evals/packs/product-brief/`. Cases cover happy paths (late-stage decision ask, early-stage summary, scope-brief), and negatives (orchestrator paraphrase, evidence STM source leak).
 
 To run the suite from the monorepo:
 
@@ -98,6 +99,6 @@ See [`evals/README.md`](../../evals/README.md) for framework details.
 ## Notes
 
 - If required data is missing, the system preserves all sections and marks `Insufficient data`, with explicit `Assumptions` and `Open Questions`.
-- The orchestrator performs a mandatory 12-point editing pass on every draft before producing the final artifact.
-- Drafts exceeding the hard ceiling are rejected and returned to the composer for condensation.
+- The orchestrator performs a mandatory 15-point editing pass on every draft before producing the final artifact.
+- Over-length is reviewed for filler and repetition — load-bearing content is never cut to hit a word count.
 - The orchestrator is responsible for deterministic output paths and final quality validation.

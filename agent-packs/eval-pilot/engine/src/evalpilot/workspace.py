@@ -61,16 +61,19 @@ class Workspace:
         Copies the agent's containing ``agents/`` directory into
         ``.github/agents`` so the SUT loads it. If the agent belongs to a
         plugin, that plugin's ``skills/`` and ``instructions/`` directories
-        are staged too (unless ``include_skills=False``).
+        are staged too (unless ``include_skills=False``). Legacy pack layouts
+        with ``.github/agents`` also stage sibling ``.github/skills`` and
+        ``.github/instructions`` directories, matching a real install.
         """
         info = discovery.find_agent(name, self.repo_root)
         _copy_tree(info.agents_dir, self.root / ".github" / "agents", merge=True)
-        if include_skills and info.plugin_root is not None:
-            for sub in ("skills", "instructions"):
-                src = info.plugin_root / sub
-                if src.exists():
-                    _copy_tree(self._normalise_sub(src),
-                               self.root / ".github" / sub, merge=True)
+        if include_skills:
+            for src in _support_dirs_for_agent(info):
+                _copy_tree(
+                    self._normalise_sub(src),
+                    self.root / ".github" / src.name,
+                    merge=True,
+                )
 
     def stage_skill(self, name: str) -> None:
         """Stage exactly one discovered skill (no agents)."""
@@ -228,6 +231,18 @@ def _copy_tree(src: Path, dest: Path, *, merge: bool = False) -> None:
                 shutil.copy2(item, target)
     else:
         shutil.copytree(src, dest)
+
+
+def _support_dirs_for_agent(info: discovery.AgentInfo) -> list[Path]:
+    """Return skills/instructions dirs that should be staged with an agent."""
+    if info.plugin_root is not None:
+        base = info.plugin_root
+    elif info.agents_dir.parent.name == ".github":
+        base = info.agents_dir.parent
+    else:
+        return []
+    return [src for sub in ("skills", "instructions")
+            if (src := base / sub).exists()]
 
 
 __all__ = ["Workspace", "FixtureMissingError"]

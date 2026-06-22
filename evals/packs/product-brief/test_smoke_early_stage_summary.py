@@ -33,9 +33,9 @@ fine -- keep the brief short.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_early_stage_summary(copilot_pack, judge, tmp_path):
+def test_early_stage_summary(agent_pack, judge):
     """Early-stage brief from thin source material; strategy-modeler skipped."""
-    ws = copilot_pack("product-brief")
+    ws = agent_pack("brief-orchestrator")
 
     # Stage the concept note inside the workspace where the prompt expects it.
     inputs = ws.root / "inputs"
@@ -45,8 +45,10 @@ def test_early_stage_summary(copilot_pack, judge, tmp_path):
     result = ws.run_agent(
         prompt=PROMPT,
         agent="brief-orchestrator",
-        timeout=900,
+        timeout=600,
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"see {result.log_path}"
 
     briefs = ws.glob(".product-brief-agent-stm/runs/*/agents/brief-orchestrator/product-brief.md")
@@ -59,13 +61,23 @@ def test_early_stage_summary(copilot_pack, judge, tmp_path):
         artifact=briefs[0].read_text(encoding="utf-8"),
         criteria=(
             "The brief MUST:\n"
-            "1. Be focused and concise (well under 1500 words is "
-            "   expected for thin source material).\n"
+            "1. Be focused with no padding or filler -- length should match "
+            "   the thin source material, but do not penalize thoroughness "
+            "   where clarity requires it (no fixed word cap).\n"
             "2. Reference the 'Pinned Insights' / starred-items concept "
             "   from the user's note.\n"
             "3. End with a Summary-style closing section (NOT a 'Decision' or 'Recommendation' ask), "
             "   because the user said 'no decision being asked'.\n"
-            "Score 1.0 if all three. 0.5 if 2/3. 0 otherwise."
+            "4. Be free of writer-scaffolding / meta-commentary: no content-labels "
+            "   or announcing captions (e.g. 'What the customer gets:'), no design "
+            "   self-commentary ('...is deliberately simple', 'and that is the point'), "
+            "   no significance meta-commentary ('this matters because...', 'the value "
+            "   of this is...'), and no emphasis-only 'X, not Y' contrast where the "
+            "   positive claim already stands. Judge the CLASS (writer-narration that "
+            "   serves the author, not the reader), not these exact phrases -- penalize "
+            "   unseen variants that fit the class; do not reward a brief that merely "
+            "   avoided the listed phrases while keeping the pattern.\n"
+            "Score 1.0 if all four. 0.5 if 2-3. 0 otherwise."
         ),
         threshold=0.7,
     )

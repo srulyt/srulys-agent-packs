@@ -1,6 +1,6 @@
 ---
 name: product-brief-framework
-description: "Framework for decision-grade product briefs with canonical section order, agency-over-formatting rules, section distinctness contract, hardcore brevity protocol, standalone document policy, and markdown lint compliance. Trigger keywords: product brief, decision memo, section order, decision ask, closing section, recommendation, next steps, call to action, summary, FAQ, evidence log, brevity, standalone."
+description: "Framework for decision-grade product briefs with brief type axis (decision-brief vs scope-brief), canonical section order, agency-over-formatting rules, section distinctness contract, right-length protocol, standalone document policy, and markdown lint compliance. Trigger keywords: product brief, decision memo, scope brief, brief type, section order, decision ask, closing section, recommendation, next steps, call to action, summary, FAQ, evidence log, brevity, standalone."
 ---
 
 # Product Brief Framework
@@ -9,7 +9,7 @@ Use this skill to enforce structure, completeness, and quality for a decision-gr
 
 ## Stakeholder Championing Principle
 
-A product brief is not just a decision document — it is a **championing tool**. The reader must be able to use this brief to advocate for the investment in their own meetings, with their own stakeholders, without the author present.
+A product brief is a **championing tool**. The reader uses it to advocate for the investment in their own meetings, with their own stakeholders, without the author present.
 
 This principle shapes every other rule in this framework:
 
@@ -49,6 +49,28 @@ Instead of copying examples, internalize these traits for every heading:
 - **Professional**: Use plain, direct language. No marketing copy, no dramatic framing, no academic formality.
 - **Non-prescriptive**: Do not tell the reader how to feel. A heading that neutrally identifies the subject is better than one that frames a narrative conclusion.
 - **Simple is good**: A clear, straightforward label that accurately names the section topic is always acceptable. Not every heading needs to be clever or content-specific — clarity and professionalism beat creativity.
+
+## Brief Type
+
+Maturity scopes *which* sections appear; audience scopes *how much context*; Brief Type scopes the brief's *purpose*. The orchestrator assesses Brief Type before composition and passes it to the composer. Brief Type is orthogonal to Maturity and Audience — a scope-brief may still be any maturity and any audience.
+
+### decision-brief (default)
+
+Requests a decision, recommendation, action, or input. The Closing Section (one of the five Closing Section Types) is **required**. Risks / Open Questions may be included.
+
+### scope-brief
+
+Describes the scope of something rather than asking the reader to decide. Use when the source frames the work as "here is what is in and out of scope" (e.g. an MVP boundary, a feature-area definition) and asks for no decision, approval, or formal input.
+
+- **MAY omit** the Open Questions content and the Closing Section (Call to Action / Decision Ask). When omitted, do not manufacture a decision the source does not contain.
+- **Reallocates that space** to a fuller **Problem Scope** (what problem space is and is not addressed, for whom, why it matters) and **Solution Scope** (what the solution will and will not do — explicit in-scope vs. out-of-scope, surface by surface).
+- If genuine unknowns exist, fold them inline into Solution Scope as explicit "out of scope / not yet decided" items rather than a separate Open Questions section.
+
+### Selection signals (scope-brief)
+
+- Source says "scope," "MVP boundary," "in/out of scope," "what we will and won't build," "this describes, not proposes."
+- No approval, funding, go/no-go, or feedback request is present.
+- The reader's takeaway is "now I understand the boundary," not "now I must decide."
 
 ## Brief Maturity Levels
 
@@ -108,7 +130,7 @@ The orchestrator assesses the audience before composition and passes an `Audienc
 - Include a short **"Background and current landscape"** orientation early in the brief (one or two paragraphs) that situates the reader before the problem statement. This section is permitted even though it is "context" — for a non-expert audience it is decision-critical, not filler.
 - Explain the *why* behind each design choice, not just the *what*.
 - Prefer a concrete scenario/vignette over an abstract capability description when it aids comprehension.
-- The word-count ceiling is relaxed (see Hardcore Brevity Protocol) — clarity for a non-expert reader outranks brevity.
+- Typical length is relaxed for this audience (see Right-Length Protocol) — clarity for a non-expert reader outranks brevity.
 
 **Mixed audience**: calibrate to the least-expert reader who must act on the brief.
 
@@ -122,6 +144,8 @@ The orchestrator assesses the audience before composition and passes an `Audienc
 
 Sections are either required (always present) or optional (included only when the user's provided source material explicitly contains relevant information). The Closing Section (slot #11) is always required, but its type varies based on context — see the Closing Section Types section below. Do not generate or infer content for optional sections — omit them entirely when user context does not support them. See the Brief Maturity Levels section above for guidance on which optional sections are appropriate at each stage.
 
+Section requirements also vary by Brief Type (see Brief Type). For a **scope-brief**, the Closing Section (#11) and a standalone Open Questions treatment (#10) are optional; Problem Statement (#3) and Proposed Solution (#4) expand into **Problem Scope** and **Solution Scope** with explicit in-scope vs. out-of-scope content.
+
 When included, all sections follow this fixed order:
 
 1. Title *(required)*
@@ -134,7 +158,7 @@ When included, all sections follow this fixed order:
 8. Plan, Milestones, Dependencies *(optional)*
 9. Financials / Resourcing — decision framing *(optional)*
 10. Risks, Open Questions, Mitigations *(optional)*
-11. Closing Section *(required — type selected from: Decision Ask, Recommendation, Next Steps, Call to Action, Summary)*
+11. Closing Section *(required for decision-briefs; optional for scope-briefs — type selected from: Decision Ask, Recommendation, Next Steps, Call to Action, Summary)*
     See the Closing Section Types section below for selection rules and content requirements for each type.
 12. FAQ *(optional)*
 13. Evidence Log *(include ONLY when the user explicitly requests it — never auto-include)*
@@ -266,8 +290,12 @@ Each section has a unique purpose. Overlap between sections is a quality defect.
 | Financials/Resourcing | Investment needed and value returned. Must not restate the plan. |
 | Risks/Open Questions | What could go wrong and unresolved items. Must not duplicate known facts. |
 | Closing Section | Content depends on closing type. Decision Ask: exact decision, scope, timing. Recommendation: recommended direction with rationale. Next Steps: ordered actions with owners and timeline. Call to Action: specific input requested with context. Summary: key takeaways and current state. Must not summarize the entire brief regardless of type. |
+| Problem Scope *(scope-brief)* | The boundary of the problem space: who is in scope, who is out, why it matters. Must not restate the solution. |
+| Solution Scope *(scope-brief)* | Explicit in-scope vs. out-of-scope of the solution, surface by surface. Must not re-explain the problem. |
 | FAQ | Anticipated stakeholder questions. Must not duplicate prior sections. |
 | Evidence Log | Claim-to-source reference table (only when user explicitly requests it). Raw references only, no narrative. Sources must be user-provided external material — never `.product-brief-agent-stm/` or agent artifacts. |
+
+In a scope-brief, **Problem Scope and Solution Scope must stay distinct** — one bounds the problem, the other bounds the solution. Listing solution exclusions inside Problem Scope is an overlap defect.
 
 ## Section Completion Checks
 
@@ -319,17 +347,22 @@ Preference order for filling gaps:
 
 This policy applies to all agents in the pipeline — evidence-analyst, strategy-modeler, and brief-composer must all refuse to fabricate content that lacks source backing.
 
-## Hardcore Brevity Protocol
+## Right-Length Protocol
 
-Brevity is audience-conditional. The targets below are the default for an **expert** audience. For a **non-expert / adjacent** audience (see Audience Calibration), clarity outranks brevity: define terms, explain rationale, and relax the ceiling as noted.
+A brief should be **as short as possible but no shorter**. Clarity always outranks brevity. The figures below are *typical ranges that prompt a review*, never hard caps that justify deleting load-bearing content. Brevity is audience-conditional. For a **non-expert / adjacent** audience (see Audience Calibration), clarity outranks brevity even more strongly: define terms, explain rationale, and expand length as needed.
 
-### Word Count Targets
+### Typical length (review triggers, not limits)
 
-- **Target (expert audience)**: 1,500–2,000 words (3–4 pages)
-- **Hard ceiling (expert audience)**: 2,500 words (5 pages)
-- **Non-expert / adjacent audience**: target up to ~3,500 words and ceiling up to ~4,500 words when the added length is spent on first-mention term definitions, a background/landscape orientation, design rationale, or clarifying scenarios — never on filler, restatement, or padding.
-- Drafts exceeding the applicable ceiling are rejected and returned for condensation.
-- Early-stage briefs may be far shorter than target — that is expected and valid. Do not pad to hit a number.
+- **Expert audience**: usually 1,500–2,500 words (≈3–5 pages). Past ~2,500, *review for filler and repetition* — do not auto-cut.
+- **Non-expert / adjacent audience**: usually up to ~4,500 words; more is fine when the extra length is first-mention term definitions, background/landscape orientation, design rationale, or clarifying scenarios — never filler, restatement, or padding.
+- Early-stage and thin-source briefs may be far shorter — expected and valid. Do not pad to hit a number.
+
+### When a brief runs long
+
+1. First remove filler, repetition, and non-load-bearing content (the "so what?" sweep and AI-ism cleanup do this).
+2. If, after that, the brief is still over the typical range **and every remaining passage is load-bearing for the assessed audience, keep it.** Earned length is not a defect.
+3. **Never merge two distinct concepts into one paragraph to save words.** If a passage is genuinely too dense, the fix is to *split and add explanatory text*, not to compress.
+4. Re-request the composer only when over-length is caused by filler or repetition that survived the editing pass — never merely because a word count was exceeded.
 
 ### Anti-Bloat Rules
 
@@ -338,7 +371,7 @@ These apply at every audience level — extra length for a non-expert audience b
 1. No filler paragraphs that introduce the next section
 2. No restating content from a previous section
 3. No "in conclusion" or "to summarize" paragraphs within the body
-4. Prefer a single strong sentence over three weak ones
+4. Replace three weak sentences with one strong one only when they make the **same** point. Never collapse sentences that make **different** points — split them and, if needed, add a clarifying sentence.
 5. Tables and lists over paragraphs when the content is structured data
 6. No bridging paragraphs between sections
 7. No background context that does not directly inform the decision **for the assessed audience** (for a non-expert audience, orienting background and term definitions *do* inform the decision and are retained)
@@ -346,8 +379,8 @@ These apply at every audience level — extra length for a non-expert audience b
 ### Enforcement
 
 - Brief-composer applies these rules during drafting, calibrated to the `Audience Profile`
-- Orchestrator performs a condensation editing pass after receiving the draft, using the audience-appropriate ceiling
-- Orchestrator rejects drafts that exceed the applicable hard ceiling
+- Orchestrator performs a filler/repetition review pass after receiving the draft, using the audience-appropriate typical range as a review trigger
+- Over-length is a signal to re-check for filler and repetition — never a reason to delete load-bearing content or merge distinct concepts
 
 ## Naming and Terminology Discipline
 

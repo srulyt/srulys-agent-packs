@@ -30,11 +30,13 @@ Audience: VP Product.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_no_stm_paths_cited_as_evidence(copilot_pack):
-    ws = copilot_pack("product-brief")
+def test_no_stm_paths_cited_as_evidence(agent_pack):
+    ws = agent_pack("brief-orchestrator")
     ws.stage_files(FIXTURES, dest_subdir="inputs")
 
-    result = ws.run_agent(prompt=PROMPT, agent="brief-orchestrator", timeout=900)
+    result = ws.run_agent(prompt=PROMPT, agent="brief-orchestrator", timeout=600)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"brief-orchestrator failed; see {result.log_path}"
 
     evidence_logs = ws.glob(

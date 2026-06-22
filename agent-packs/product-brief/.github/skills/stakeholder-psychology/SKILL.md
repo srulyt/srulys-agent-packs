@@ -5,7 +5,7 @@ description: "Psychological principles for making product briefs championing-rea
 
 # Stakeholder Psychology
 
-Use this skill to ensure product briefs are not just analytically sound but psychologically optimized for stakeholder approval and internal championing.
+Use this skill to make product briefs psychologically optimized for stakeholder approval and internal championing, on top of analytic soundness.
 
 ## The Core Insight
 

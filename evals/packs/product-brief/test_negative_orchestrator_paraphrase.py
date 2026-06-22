@@ -32,11 +32,13 @@ Decision context: hiring plan for FY26. Audience: head of engineering.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_orchestrator_persists_draft_verbatim(copilot_pack, judge):
-    ws = copilot_pack("product-brief")
+def test_orchestrator_persists_draft_verbatim(agent_pack, judge):
+    ws = agent_pack("brief-orchestrator")
     ws.stage_files(FIXTURES, dest_subdir="inputs")
 
-    result = ws.run_agent(prompt=PROMPT, agent="brief-orchestrator", timeout=900)
+    result = ws.run_agent(prompt=PROMPT, agent="brief-orchestrator", timeout=600)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"brief-orchestrator failed; see {result.log_path}"
 
     drafts = ws.glob(

@@ -197,6 +197,30 @@ AI-generated prose carries recognizable verbal tics. The goal is **not** to hide
 
 **8. Promotional intensifiers.** "seamless," "robust," "cutting-edge," "game-changing," "best-in-class," "unlock," "empower," "elevate," "harness," "leverage" (as a verb), "supercharge." Use a specific, literal verb or claim instead. (See also Buzzword Inflation above.)
 
+### 9. Writer-scaffolding and meta-commentary (recognize the class)
+
+The single unifying tell behind most AI-isms: a sentence that serves the **writer's internal narration** instead of the **reader's need**. It narrates the writing, labels or announces what a passage is about, or editorializes on why something matters or how it was designed — instead of stating the fact and letting it stand. This is what Joseph Williams (*Style: Lessons in Clarity and Grace*) calls **metadiscourse**: writing about your writing. Learn to recognize the *category*, not a fixed list of phrases; strip new variants the same way you strip classic AI-isms when a reviewer simply says "remove the AI-isms" with no samples.
+
+Apply four questions to each sentence:
+
+1. **Reader-value or writer-narration?** Does it inform the reader, or describe the surrounding text? If it talks *about* the writing, cut it and keep the payload.
+2. **Is it a content-label / announcement?** Does it caption the point the next sentence already makes? Delete the label; keep the payload.
+3. **Is it significance/design meta-commentary?** Does it assert *that* something matters / is important / is deliberate, instead of showing the concrete consequence? Replace with the outcome itself.
+4. **Is the contrast emphasis-only?** Keep "X, not Y" only when the reader genuinely needs the rejected alternative to understand the claim (e.g. "this brief describes scope, not a specification"); cut it when the positive statement already stands alone.
+
+If a sentence trips question 1, 2, 3, or 4, it is in the class — regardless of its exact wording. Generalize: new phrasings you have never seen still belong to the class when they trip these questions.
+
+**Illustrative, not exhaustive — recognize the class, do not grep for these strings:** "What the customer gets:", "The publish step is deliberately simple.", "and that is the point", "This matters because…", "the value of this is…", "the benefit is…", "and this is explicit", "to be clear", "to be explicit", reflexive "explicitly / notably / clearly", "a different posture from…", and bare "X, not Y / rather than Y" used purely for emphasis.
+
+### Why these rules
+
+These edits cite established plain-language authority, not personal taste — so the *category* (not the phrase list) is the durable rule:
+
+- **Strunk & White, *The Elements of Style*** — "Omit needless words"; "Put statements in positive form" (the basis for cutting emphasis-only "not Y" contrast and significance meta-commentary).
+- **Orwell, *Politics and the English Language*** — "If it is possible to cut a word out, always cut it out"; never let phrasing perform thoughtfulness in place of meaning.
+- **U.S. Federal Plain Language Guidelines (plainlanguage.gov)** — write for the reader; cut words the reader does not need; do not announce what you are about to say.
+- **Williams, *Style: Lessons in Clarity and Grace*** — cut **metadiscourse** (writing about your writing). This is the scholarly name for the writer-scaffolding class above and the strongest anchor for the general heuristic.
+
 ### The naturalness test
 
 Read each sentence aloud. Ask: **"Would a busy human expert actually write this, or does it sound like it's performing thoughtfulness?"** If it performs rather than informs, rewrite it as the plainest true version of the point. A human author writing fast and well produces asymmetric, specific, occasionally blunt sentences — not balanced, hedged, adjective-padded ones.

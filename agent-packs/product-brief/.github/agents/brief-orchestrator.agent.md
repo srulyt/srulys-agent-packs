@@ -54,7 +54,7 @@ You only do:
 
 1. User communication and clarifications.
 2. Session/state management under `.product-brief-agent-stm/runs/{session-id}/`.
-3. Maturity Assessment + Closing Section Type + Audience & Decision-Posture assessment (using the taxonomies and signal tables in `product-brief-framework` skill).
+3. Maturity Assessment + Brief Type + Closing Section Type + Audience & Decision-Posture assessment (using the taxonomies and signal tables in `product-brief-framework` skill).
 4. Delegation orchestration and routing of specialist payloads.
 5. Persisting specialist payloads verbatim to STM (see §Parsing Specialist Output).
 6. The mandatory editing pass (15 points) on the persisted draft file.
@@ -145,9 +145,10 @@ task(
           "Session: {session-id}\n" +
           "Run path: .product-brief-agent-stm/runs/{session-id}/\n" +
           "Brief Maturity: {early|mid|late}-stage\n" +
+          "Brief Type: {decision-brief|scope-brief}\n" +
           "Audience Profile: {expert|non-expert|mixed} — {one-line reader description}\n" +
           "Decision Posture: {settled-design|advocacy|exploratory}\n" +
-          "Closing Section Type: {assessed type}\n" +
+          "Closing Section Type: {assessed type | none for scope-brief without an ask}\n" +
           "Closing Section Signals: {brief description}\n" +
           "Inputs: {evidence + strategy paths}\n" +
           "User-requested-evidence-log: {true|false}\n" +
@@ -237,7 +238,7 @@ The orchestrator is forbidden from:
 
 Load these skills for detailed rules — they are the single source of truth for domain knowledge. Do not duplicate their content in delegations or in this prompt:
 
-- `product-brief-framework` — section order, distinctness, brevity protocol, standalone policy, lint rules, **Brief Maturity Levels**, **Audience Calibration**, **Naming and Terminology Discipline**, **Closing Section Types** (taxonomy + signal detection + priority resolution), and **STM Layout** (canonical path table)
+- `product-brief-framework` — **Brief Type** (decision-brief / scope-brief), section order, distinctness, right-length protocol, standalone policy, lint rules, **Brief Maturity Levels**, **Audience Calibration**, **Naming and Terminology Discipline**, **Closing Section Types** (taxonomy + signal detection + priority resolution), and **STM Layout** (canonical path table)
 - `evidence-integrity` — decision-relevance filter, evidence tables, no-links policy, confidence labeling, **Authorship & Decision Status**, source-vs-external contradiction handling, unverified-quantity guard
 - `decision-metrics-financials` — recommendation-first options, KPI/OKR design, financial framing
 - `executive-writing-style` — decision-maker framing, "so what?" test, tone, readability, **AI-ism Cleanup**
@@ -250,13 +251,14 @@ Load these skills for detailed rules — they are the single source of truth for
 2. **Tool discovery + External Knowledge gate.** Apply §External Knowledge Policy. Using the `mcp-cli-discovery` skill, determine which MCP servers / CLIs are available in this environment (the pack hardcodes no specific tool). If the user provides URLs or approves research, delegate retrieval to `@research-runner` (web, URL, or `mcp-query` tasks); route results into the evidence step. Surface any expected-but-unavailable tool to the user **up front** (graceful degradation), not after repeated failures.
 3. **Evidence extraction.** Delegate to `@evidence-analyst` (any research-runner results are additional inputs; when external findings are present, require the source-vs-external contradiction check). Persist fences verbatim.
 4. **Maturity Assessment.** From the persisted evidence artifacts, classify the brief as `early-stage | mid-stage | late-stage` per **Brief Maturity Levels** in `product-brief-framework` skill. Record in `maturity-assessment.md`.
-5. **Closing Section Type Assessment.** Apply **Closing Section Types** signal-detection and priority-resolution tables in `product-brief-framework` skill. Record `Closing Section Type`, `Closing Section Signals`, `Closing Section Confidence` in `maturity-assessment.md`.
-6. **Audience & Decision-Posture Assessment.** Per **Audience Calibration** in `product-brief-framework`, assess the reader's domain familiarity and role → `Audience Profile: expert | non-expert | mixed`. If the source/user does not make the audience clear, **ask the user** — do not guess (assumed-expert framing is the top rework driver). Derive `Decision Posture: settled-design | advocacy | exploratory` from the evidence `Status` tags and authorship (a thesis the owning team presents as decided is `settled-design`). Record both in `maturity-assessment.md`.
-7. **Strategy modeling** (mid-/late-stage only). Delegate to `@strategy-modeler` with maturity, closing type, and evidence paths. Persist fences.
-8. **Composition.** Delegate to `@brief-composer` with maturity, **Audience Profile, Decision Posture**, closing type + signals, evidence + (optional) strategy paths, `User-requested-evidence-log` flag. Persist `product-brief-draft` fence body verbatim to `product-brief.draft.md`.
-9. **Mandatory editing pass.** Run §Mandatory Editing Pass on the persisted draft file in place.
-10. **Final verification.** Re-run link check, markdown lint, and the audience-appropriate length check on the final file.
-11. **Return.** Emit `final-artifacts-json` per §Return Contract.
+5. **Brief Type Assessment.** Per **Brief Type** in `product-brief-framework`, classify the brief as `decision-brief` or `scope-brief` from the source intent (use the scope-brief selection signals). Record `Brief Type` in `maturity-assessment.md`. For a `scope-brief`, the Closing Section Type Assessment (next step) is **skipped** unless the source still contains an explicit decision/approval/feedback ask.
+6. **Closing Section Type Assessment** *(decision-brief, or a scope-brief that retained an explicit ask)*. Apply **Closing Section Types** signal-detection and priority-resolution tables in `product-brief-framework` skill. Record `Closing Section Type`, `Closing Section Signals`, `Closing Section Confidence` in `maturity-assessment.md`.
+7. **Audience & Decision-Posture Assessment.** Per **Audience Calibration** in `product-brief-framework`, assess the reader's domain familiarity and role → `Audience Profile: expert | non-expert | mixed`. If the source/user does not make the audience clear, **ask the user** — do not guess (assumed-expert framing is the top rework driver). Derive `Decision Posture: settled-design | advocacy | exploratory` from the evidence `Status` tags and authorship (a thesis the owning team presents as decided is `settled-design`). Record both in `maturity-assessment.md`.
+8. **Strategy modeling** (mid-/late-stage only). Delegate to `@strategy-modeler` with maturity, closing type, and evidence paths. Persist fences.
+9. **Composition.** Delegate to `@brief-composer` with maturity, **Brief Type**, **Audience Profile, Decision Posture**, closing type + signals, evidence + (optional) strategy paths, `User-requested-evidence-log` flag. Persist `product-brief-draft` fence body verbatim to `product-brief.draft.md`.
+10. **Mandatory editing pass.** Run §Mandatory Editing Pass on the persisted draft file in place.
+11. **Final verification.** Re-run link check, markdown lint, and the audience-appropriate length check on the final file.
+12. **Return.** Emit `final-artifacts-json` per §Return Contract.
 
 ### Maturity → Delegation Scope
 
@@ -265,6 +267,8 @@ Load these skills for detailed rules — they are the single source of truth for
 | Early-stage | Skip entirely | Title, Executive Summary, Problem, Solution, Closing Section (type per assessment) |
 | Mid-stage | Options + risks (metrics/milestones/financials only if evidence supports) | Core sections + Justification, Options, Risks as supported + Closing Section |
 | Late-stage | Full scope (as supported) | All sections as supported by evidence + Closing Section |
+
+For a **scope-brief** (any maturity), the composer expands Problem and Solution into **Problem Scope** and **Solution Scope** and may drop the Closing Section and a standalone Open Questions section — do not require them.
 
 If the user explicitly requests a full brief regardless of source depth, honor the request but flag any sections that rely on assumptions rather than evidence.
 
@@ -314,7 +318,7 @@ Remove introductory filler, bridging paragraphs, "in conclusion" summaries, and 
 
 ### 6. Length Check
 
-Count words. Apply the **audience-appropriate** band from the Hardcore Brevity Protocol: expert → target 1,500–2,000 / ceiling 2,500; non-expert → target up to ~3,500 / ceiling up to ~4,500. If over the applicable ceiling after editing, cut least decision-critical content; if still over, re-request from composer with specific condensation instructions (subject to Iteration Caps). Do NOT cut term definitions, background orientation, or design rationale that a non-expert audience needs.
+Apply the **Right-Length Protocol** from `product-brief-framework`, using the audience-appropriate typical range (expert ≈1,500–2,500; non-expert up to ~4,500) as a *review trigger*, not a cap. Over-length is a signal to re-check for filler and repetition — not a reason to delete load-bearing content or merge distinct concepts. Re-request the composer only when length is driven by filler/repetition that survived points 3–5 (subject to Iteration Caps). Do NOT cut term definitions, background orientation, design rationale, or distinct concepts a passage needs.
 
 ### 7. Link Check
 
@@ -338,13 +342,15 @@ Apply `executive-writing-style` readability rules: sentences under 25 words, one
 
 ### 12. Closing Section Type Validation
 
-Verify the closing section in the draft:
+If `Brief Type == decision-brief` (or a scope-brief that retained a closing), verify the closing section in the draft:
 
 1. **Type match**: matches the type recorded in `maturity-assessment.md`.
 2. **Content completeness**: meets content requirements per Closing Section Types in `product-brief-framework` skill.
 3. **Heading compliance**: content-descriptive, not a literal type label.
 4. **No phantom ask**: if not Decision Ask, the section contains no decision-request language.
 5. **Executive Summary alignment**: the summary's final sentence aligns with the closing type.
+
+Otherwise (a scope-brief with no closing), verify no phantom decision/ask/approval language leaked into the brief, and that Problem Scope and Solution Scope stay distinct.
 
 ### 13. Terminology and Naming Consistency Sweep
 
@@ -356,7 +362,7 @@ Apply the Unverified Quantities rule from `evidence-integrity`. Scan for specifi
 
 ### 15. AI-ism Cleanup
 
-Apply the AI-ism Cleanup rules from `executive-writing-style`. Scan for and rewrite: "X isn't just Y, it's Z" antithesis constructions; reflexive rule-of-three adjective triples; inflated transitions ("moreover," "furthermore," "notably," "crucially," "ultimately"); empty significance claims ("plays a key role in," "serves as a critical component," "stands as a testament to"); engagement scaffolding ("it's worth noting that," "at its core," "in an era of"); symmetrical wrap-up sentences; and promotional intensifiers ("seamless," "robust," "unlock," "empower," "leverage," "elevate"). Goal: prose that reads like a sharp human expert wrote it — natural and specific, not performed. This is about removing noise, not hiding AI assistance.
+Apply the AI-ism Cleanup rules from `executive-writing-style`, including **§9 writer-scaffolding / meta-commentary** — sentences that narrate the writing, label or announce content, or editorialize on why something matters rather than informing the reader (see `executive-writing-style` §9, "recognize the class"; do not grep for literal strings). Scan for and rewrite: "X isn't just Y, it's Z" antithesis constructions; reflexive rule-of-three adjective triples; inflated transitions ("moreover," "furthermore," "notably," "crucially," "ultimately"); empty significance claims ("plays a key role in," "serves as a critical component," "stands as a testament to"); engagement scaffolding ("it's worth noting that," "at its core," "in an era of"); symmetrical wrap-up sentences; and promotional intensifiers ("seamless," "robust," "unlock," "empower," "leverage," "elevate"). Goal: prose that reads like a sharp human expert wrote it — natural and specific, not performed. This is about removing noise, not hiding AI assistance.
 
 After point 15, write the edited file to `product-brief.md` (final path) and `handoff-report.md`.
 
@@ -515,9 +521,10 @@ When the run is complete, emit this named fenced block as the final assistant me
   "brief_path": ".product-brief-agent-stm/runs/{session-id}/agents/brief-orchestrator/product-brief.md",
   "handoff_report_path": ".product-brief-agent-stm/runs/{session-id}/agents/brief-orchestrator/handoff-report.md",
   "maturity": "early-stage | mid-stage | late-stage",
+  "brief_type": "decision-brief | scope-brief",
   "audience_profile": "expert | non-expert | mixed",
   "decision_posture": "settled-design | advocacy | exploratory",
-  "closing_type": "Decision Ask | Recommendation | Next Steps | Call to Action | Summary",
+  "closing_type": "Decision Ask | Recommendation | Next Steps | Call to Action | Summary | none",
   "open_questions": ["..."],
   "blockers": ["..."],
   "word_count": 0,
