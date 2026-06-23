@@ -34,14 +34,16 @@ the critic MUST set ``verdict: revise`` and include
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_render_skipped_on_styled_blocks(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_render_skipped_on_styled_blocks(agent_pack):
+    ws = agent_pack("story-orchestrator")
     ws.stage_files(
         FIXTURES,
         dest_subdir=f".story-telling-stm/runs/{SESSION}/agents/deck-builder",
     )
 
     result = ws.run_agent(prompt=PROMPT, agent="story-orchestrator", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     qa_reports = ws.glob(

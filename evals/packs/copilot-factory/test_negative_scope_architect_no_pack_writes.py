@@ -20,10 +20,12 @@ turn.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_architect_does_not_write_pack_files(copilot_pack, judge):
-    ws = copilot_pack("copilot-factory")
+def test_architect_does_not_write_pack_files(agent_pack, judge):
+    ws = agent_pack("copilot-factory")
 
     result = ws.run_agent(prompt=PROMPT, agent="copilot-factory", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"copilot-factory invocation failed; see {result.log_path}"
 
     arch_files = ws.glob(".copilot-factory/sessions/*/artifacts/architecture.md")

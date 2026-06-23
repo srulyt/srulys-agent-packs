@@ -18,9 +18,7 @@ addopts = [
     "-p", "no:cacheprovider",
     # `importlib` import mode lets two packs ship a test file with the same
     # basename (e.g. `test_smoke_plugin_conformance.py` in both prd-pilot and
-    # product-knowledge-brain) without a whole-tree collection error. It does
-    # not manipulate sys.path; `_lib` stays importable via the explicit
-    # sys.path insert in conftest.py.
+    # product-knowledge-brain) without a whole-tree collection error.
     "--import-mode=importlib",
 ]
 # Per-test timeout (H1). 1500s = 25min, comfortably covers the longest

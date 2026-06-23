@@ -60,11 +60,13 @@ GITIGNORED_TOKENS = [
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_no_gitignored_cite_in_published_spec(copilot_pack):
-    ws = copilot_pack("spec-author")
+def test_no_gitignored_cite_in_published_spec(agent_pack):
+    ws = agent_pack("spec-author")
     ws.stage_files(FIXTURES, dest_subdir=".")
 
     result = ws.run_agent(prompt=PROMPT, agent="spec-author", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"spec-author failed; see {result.log_path}"
 
     spec = ws.find_one("docs/specs/digest-evidence.md")

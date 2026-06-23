@@ -35,16 +35,6 @@ def _build_pytest_dir(tmp_path: Path) -> Path:
     (tmp_path / "conftest.py").write_text(
         repo_conftest.read_text(encoding="utf-8"), encoding="utf-8"
     )
-    # Reuse the project's _lib so the conftest can import it.
-    lib_link = tmp_path / "_lib"
-    src_lib = Path(__file__).resolve().parents[1] / "_lib"
-    # Plain copy (cheap; small package).
-    import shutil
-
-    if lib_link.exists():
-        shutil.rmtree(lib_link)
-    shutil.copytree(src_lib, lib_link, ignore=shutil.ignore_patterns("__pycache__"))
-
     (tmp_path / "test_flush_target.py").write_text(
         textwrap.dedent(
             """

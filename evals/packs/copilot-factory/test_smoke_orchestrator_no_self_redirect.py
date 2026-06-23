@@ -27,10 +27,12 @@ FORBIDDEN_REDIRECT_PATTERNS = [
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_orchestrator_does_not_self_redirect(copilot_pack):
-    ws = copilot_pack("copilot-factory")
+def test_orchestrator_does_not_self_redirect(agent_pack):
+    ws = agent_pack("copilot-factory")
 
     result = ws.run_agent(prompt=PROMPT, agent="copilot-factory", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"copilot-factory invocation failed; see {result.log_path}"
 
     # Intake must produce a session with state.json and a captured

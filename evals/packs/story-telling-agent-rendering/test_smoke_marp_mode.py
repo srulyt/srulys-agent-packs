@@ -46,8 +46,8 @@ block decision is surfaced.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.timeout(960)  # belt-and-suspenders: just over run_agent's 900s
-def test_output_mode_marp_renders_or_blocks(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_output_mode_marp_renders_or_blocks(agent_pack):
+    ws = agent_pack("story-orchestrator")
     ws.stage_files(
         FIXTURES / "intake.json",
         dest_subdir=f".story-telling-stm/runs/{SESSION}/agents/story-orchestrator",
@@ -58,6 +58,8 @@ def test_output_mode_marp_renders_or_blocks(copilot_pack):
     )
 
     result = ws.run_agent(prompt=PROMPT, agent="story-orchestrator", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     manifests = ws.glob(

@@ -55,11 +55,13 @@ No CHANGELOG (creation mode).
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_stop_a_disambiguation_and_partial_answer(copilot_pack):
-    ws = copilot_pack("spec-author")
+def test_stop_a_disambiguation_and_partial_answer(agent_pack):
+    ws = agent_pack("spec-author")
     ws.stage_files(FIXTURES, dest_subdir=".")
 
     result = ws.run_agent(prompt=PROMPT, agent="spec-author", timeout=1200)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"spec-author failed; see {result.log_path}"
 
     spec = ws.find_one("docs/specs/digest.md")

@@ -52,10 +52,10 @@ instructs you to run multiple workflow phases yourself.
 
 | Permission | Allowed Paths |
 |------------|---------------|
-| **Read** | `.copilot-factory/sessions/{session-id}/` (architecture, context, state), `.github/skills/` (skill references, templates), `evals/PYTEST.md` (authoring guide), `evals/_templates/` (test file templates), `evals/packs/copilot-factory/` (worked-example test) |
+| **Read** | `.copilot-factory/sessions/{session-id}/` (architecture, context, state), `.github/skills/` (skill references, templates), `.github/skills/agent-builder/references/eval-authoring.md` (eval-pilot authoring guide), `agent-packs/eval-pilot/README.md` and `agent-packs/eval-pilot/skills/eval-author/SKILL.md` (runtime/source-of-truth docs), `evals/packs/product-brief/` (migrated worked-example tests) |
 | **Write** | `agent-packs/{pack-name}/` (output artifacts), `evals/packs/{pack-name}/` (pytest test files for the generated pack), `.copilot-factory/sessions/{session-id}/artifacts/` (build manifest) |
 
-**Do NOT write to**: `agent-packs/eval-framework/`,
+**Do NOT write to**: `agent-packs/eval-pilot/`,
 other `agent-packs/` directories, other `evals/packs/` directories,
 `.github/agents/`, `.github/skills/`, `.local/`, or any path outside
 the designated output and session directories. If you need a file
@@ -69,7 +69,7 @@ request.
   `.copilot-factory/sessions/{session-id}/artifacts/`.
 - Modify other packs under `agent-packs/` or other pack specs under
   `evals/packs/`.
-- Modify `agent-packs/eval-framework/`, `.local/`, or
+- Modify `agent-packs/eval-pilot/`, `.local/`, or
   this factory's own files (`agent-packs/copilot-factory/`) — the
   factory cannot self-modify during a normal build. Self-modification
   only happens via the `improvement` mode targeting this pack.
@@ -294,35 +294,43 @@ Using the architect's `eval-plan-json` block and the
 [`agent-builder/references/eval-authoring.md`](../skills/agent-builder/references/eval-authoring.md)
 reference:
 
-1. For each scenario in the eval plan, copy
-   `evals/_templates/test_pack_eval.py.template` to
-   `evals/packs/<pack>/test_<scenario>.py` (kebab-case → snake_case).
-   Replace placeholders (`__PACK_NAME__`, `__AGENT_NAME__`,
-   `__SCENARIO__`, `__GLOB_PATTERN__`, `__REPLACE_ME__`) with concrete
-   values. The orchestrator's prompt goes into the `PROMPT` constant
-   verbatim — do **not** include the expected answer in the prompt.
-2. Each test must:
+1. For each scenario in the eval plan, create
+   `evals/packs/<pack>/test_<scenario>.py` (kebab-case → snake_case)
+   using the eval-pilot pattern from
+   `agent-builder/references/eval-authoring.md` and the migrated
+   `evals/packs/product-brief/` suite. The orchestrator's prompt goes
+   into the `PROMPT` constant verbatim — do **not** include the expected
+   answer in the prompt.
+2. Create `evals/packs/<pack>/conftest.py` that re-exports the
+   eval-pilot fixtures used by the tests, for example:
+   `from evalpilot.pytest_plugin import agent_pack, judge  # noqa: F401`.
+3. Each test must:
+   - Call `ws = agent_pack("<entry-agent>")`.
+   - Run the SUT with `ws.run_agent(prompt=PROMPT, agent="<entry-agent>", timeout=...)`.
+   - If `not result.usable`, call `pytest.skip(result.unavailable_reason())`.
    - Be marked `@pytest.mark.pack`, `@pytest.mark.slow`, and
-     `@pytest.mark.judge` (drop `judge` if no LLM call).
+     `@pytest.mark.judge` (drop `judge` if no LLM call; add `metric` if
+     recording metrics).
    - Make at least one structural `assert` (artifact existence, count,
      etc.) before invoking the judge.
-   - Reference `result.log_path` in the failure message of the SUT-run
-     assertion so operators can find the log.
+   - Reference `result.log_path` in SUT and structural failure messages
+     so operators can find the log.
    - Use a strict `criteria` string for `judge(...)` — describe what
      the artifact MUST contain, not what it MIGHT contain.
-3. Create `evals/packs/<pack>/README.md` (one paragraph: what these
-   evals cover, plus `pytest evals/packs/<pack>/` to run them).
-4. Verify the test collects:
+4. Create `evals/packs/<pack>/README.md` (one paragraph: what these
+   evals cover, plus `evalpilot run evals/packs/<pack>` and
+   `pytest evals/packs/<pack>/` as run options).
+5. Verify the test collects:
    `pytest --collect-only evals/packs/<pack>/`. The exit code must be
-   `0`. Do NOT execute the test (that requires the `copilot` CLI and
-   real LLM tokens; CI runs it).
-5. If `improvement_strategy: "incremental"`, skip this step UNLESS the
+   `0`. Do NOT execute the full test (that requires the `copilot` CLI
+   and real LLM tokens; CI/factory eval-runner runs it through
+   `evalpilot run`).
+6. If `improvement_strategy: "incremental"`, skip this step UNLESS the
    improvement analysis explicitly flags eval changes.
 
 For skill evals (when the architecture introduces a reusable skill),
-mirror the above using
-`evals/_templates/test_skill_eval.py.template` →
-`evals/skills/<skill>/test_<scenario>.py`.
+mirror the above under `evals/skills/<skill>/test_<scenario>.py`, using
+`skill` (and `judge`/`metric` as needed) from `evalpilot.pytest_plugin`.
 
 #### Step 5: Update Build Manifest
 ```json
@@ -426,8 +434,8 @@ When invoked with `Mode: fix` and an `Eval run path:` referencing
   Access Boundaries.
 - Create new agents, skills, or eval cases (those need an architect
   + full build).
-- Modify `evals/packs/{pack}/test_*.py` (or `evals/_lib/`,
-  `evals/conftest.py`) unless an explicit failure lists the test file
+- Modify `evals/packs/{pack}/test_*.py` (or that pack's
+  `conftest.py`) unless an explicit failure lists the test file
   in its `fixable_in[]` (rare; usually means a judge `criteria` was
   too loose or a structural assertion was wrong).
 - Re-run the eval harness yourself. The orchestrator will re-delegate

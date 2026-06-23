@@ -57,11 +57,13 @@ def _stage_template(ws):
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_template_path_round_trip(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_template_path_round_trip(agent_pack):
+    ws = agent_pack("story-orchestrator")
     _stage_template(ws)
 
     result = ws.run_agent(prompt=PROMPT, agent="story-orchestrator", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     deck_specs = ws.glob(

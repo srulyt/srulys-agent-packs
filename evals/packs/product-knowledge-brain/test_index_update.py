@@ -27,8 +27,8 @@ future agents can find this knowledge.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_index_update(copilot_pack):
-    ws = copilot_pack("product-knowledge-brain")
+def test_index_update(product_knowledge_brain):
+    ws = product_knowledge_brain
 
     result = ws.run_agent(prompt=PROMPT, timeout=900)
     if not result.usable:

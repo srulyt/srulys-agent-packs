@@ -1,10 +1,10 @@
 """TEMPLATE: pytest eval for an agent pack.
 
 Copy this file to ``evals/packs/<pack-name>/test_<scenario>.py`` and
-customise. Replace ``__PACK_NAME__``, ``__AGENT_NAME__``, ``__SCENARIO__``,
+customise. Replace ``__ENTRY_AGENT_NAME__``, ``__AGENT_NAME__``, ``__SCENARIO__``,
 and the prompt + assertions.
 
-The fixtures used here (``copilot_pack``, ``judge``) come from
+The fixtures used here (``agent_pack``, ``judge``) come from
 ``evals/conftest.py``. No imports needed.
 """
 
@@ -22,9 +22,9 @@ Be specific about what the agent must produce and where.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test___SCENARIO__(copilot_pack, judge):
+def test___SCENARIO__(agent_pack, judge):
     """One-line description of what this eval verifies."""
-    ws = copilot_pack("__PACK_NAME__")
+    ws = agent_pack("__ENTRY_AGENT_NAME__")
 
     result = ws.run_agent(
         prompt=PROMPT,

@@ -29,11 +29,13 @@ analysis.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_incremental_improvement_honoured(copilot_pack, judge):
-    ws = copilot_pack("copilot-factory")
+def test_incremental_improvement_honoured(agent_pack, judge):
+    ws = agent_pack("copilot-factory")
     ws.stage_files(FIXTURES)
 
     result = ws.run_agent(prompt=PROMPT, agent="copilot-factory", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"copilot-factory invocation failed; see {result.log_path}"
 
     manifest_files = ws.glob(

@@ -9,7 +9,7 @@ reasoning + cited evidence.
 The judge agent ships as package data
 (``evalpilot/_data/agents/eval-judge.agent.md``) and is staged into a
 throwaway workspace for each call, so this works in any repository without
-the monorepo's ``agent-packs/eval-framework`` layout.
+older repository-specific layouts.
 """
 
 from __future__ import annotations

@@ -33,10 +33,10 @@ write anything to disk.
 @pytest.mark.skill
 @pytest.mark.slow
 @pytest.mark.judge
-def test_agent_builder_emits_valid_agent_md(copilot_skill, judge):
+def test_agent_builder_emits_valid_agent_md(skill, judge):
     """Agent-builder skill produces a syntactically and semantically
     valid `.agent.md` for a trivial echo-bot specification."""
-    ws = copilot_skill("agent-builder")
+    ws = skill("agent-builder")
 
     result = ws.run_skill(
         skill="agent-builder",
@@ -44,6 +44,8 @@ def test_agent_builder_emits_valid_agent_md(copilot_skill, judge):
         timeout=300,
         log_name="agent-builder",
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, (
         f"copilot exited {result.returncode}; see {result.log_path}"
     )

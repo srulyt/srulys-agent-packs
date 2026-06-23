@@ -81,12 +81,7 @@ for /d %%D in ("%ROOT%agent-packs\copilot-factory\.github\*") do (
     )
 )
 
-:: NOTE: agent-packs\eval-framework is DEPRECATED. Its @eval-judge agent is
-:: superseded by the eval-pilot plugin's bundled judge (shipped as evalpilot
-:: package data), which the evals/ harness stages automatically. We no longer
-:: install the eval-framework agent into .github\agents.
-if exist "%ROOT%agent-packs\eval-framework\.github\agents" (
-    echo   [SKIP] eval-framework is deprecated; use the eval-pilot plugin ^(agent-packs\eval-pilot^) instead
+:: Evalpilot bundles its judge agent as package data; no separate judge pack is installed.
 )
 
 :done

@@ -27,11 +27,13 @@ review to `@factory-critic` and report the verdict.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_critic_blocks_weak_architecture(copilot_pack, judge):
-    ws = copilot_pack("copilot-factory")
+def test_critic_blocks_weak_architecture(agent_pack, judge):
+    ws = agent_pack("copilot-factory")
     ws.stage_files(FIXTURES)
 
     result = ws.run_agent(prompt=PROMPT, agent="copilot-factory", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"copilot-factory invocation failed; see {result.log_path}"
 
     review_files = ws.glob(

@@ -34,15 +34,17 @@ waiting for further user input.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_initial_draft_lands_at_draft_state(copilot_pack, judge):
+def test_initial_draft_lands_at_draft_state(agent_pack, judge):
     """A newly created spec lands at draft state with no CHANGELOG."""
-    ws = copilot_pack("spec-author")
+    ws = agent_pack("spec-author")
 
     result = ws.run_agent(
         prompt=PROMPT_INITIAL_DRAFT,
         agent="spec-author",
         timeout=900,
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"see {result.log_path}"
 
     # Spec landed at canonical path.

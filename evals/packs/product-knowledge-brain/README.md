@@ -38,14 +38,14 @@ The seven behavioural evals each drive the *live* Copilot CLI (one runs it
 twice), so a single slow/non-responsive SUT call can otherwise consume the
 whole eval-fix-loop wall-clock budget and starve the rest of the suite. Two
 opt-in, backward-compatible env controls (implemented in
-`evals/_lib/copilot.py`) keep the suite terminating deterministically:
+`evalpilot.runners.copilot`) keep the suite terminating deterministically:
 
-- **`EVALS_SUT_TIMEOUT=<seconds>`** — clamps every SUT subprocess timeout to
+- **`EVALPILOT_SUT_TIMEOUT=<seconds>`** — clamps every SUT subprocess timeout to
   `min(requested, cap)`. A hung/slow SUT is force-killed at the cap
   (returncode 124, `result.timed_out`), and the behavioural tests then
   `pytest.skip` instead of hanging or hard-failing. Set this to fit the
-  runner's per-loop budget (e.g. `EVALS_SUT_TIMEOUT=180`).
-- **`EVALS_SKIP_SUT=1`** — does not launch the SUT at all; behavioural tests
+  runner's per-loop budget (e.g. `EVALPILOT_SUT_TIMEOUT=180`).
+- **`EVALPILOT_SKIP_SUT=1`** — does not launch the SUT at all; behavioural tests
   skip cleanly (`result.skipped`, returncode 125) with zero tokens. Use when
   the environment cannot run the live LLM SUT within budget. The structural
   conformance smoke still runs.

@@ -60,8 +60,8 @@ Run the evolution cycle and consolidate this into the brain.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_update_over_create(copilot_pack, judge):
-    ws = copilot_pack("product-knowledge-brain")
+def test_update_over_create(product_knowledge_brain, judge):
+    ws = product_knowledge_brain
 
     # Seed an existing page + its evidence descriptor.
     seed_path = ws.root / "knowledge-base" / "areas" / "feature-a" / "knowledge" / "onboarding-flow.md"

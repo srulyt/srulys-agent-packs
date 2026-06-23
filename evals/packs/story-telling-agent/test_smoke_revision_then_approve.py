@@ -44,9 +44,11 @@ file.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_proposal_revision_then_approve(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_proposal_revision_then_approve(agent_pack):
+    ws = agent_pack("story-orchestrator")
     result = ws.run_agent(prompt=PROMPT, agent="story-orchestrator", timeout=1200)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     states = ws.glob(".story-telling-stm/runs/*/state.json")

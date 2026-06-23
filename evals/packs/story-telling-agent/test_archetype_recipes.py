@@ -284,8 +284,8 @@ Use the ``appendix_dense`` styled recipe. Set
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.parametrize("recipe,prompt_body", ARCHETYPES)
-def test_archetype_recipe(copilot_pack, recipe, prompt_body):
-    ws = copilot_pack("story-telling-agent")
+def test_archetype_recipe(agent_pack, recipe, prompt_body):
+    ws = agent_pack("story-orchestrator")
     prompt = "@story-orchestrator\n\n" + prompt_body
     # Per-agent timeout sized for the full live-SUT pipeline: this is a
     # multi-agent build (intake -> strategist -> deck-builder -> deck-critic),
@@ -294,12 +294,13 @@ def test_archetype_recipe(copilot_pack, recipe, prompt_body):
     # revise loop. A single correct pass already needs ~950-1000s (build done,
     # critic mid-review) and one revise round pushes it to ~1700s; the old 900s
     # killed runs mid first-critic pass (returncode 124). 1800s gives headroom
-    # for build + one revise round. The harness (evals/_lib/copilot.py) passes
-    # this straight to subprocess.communicate(timeout=...) with no clamp, so the
-    # value here is the effective helper budget. NOTE for the eval runner: at
+    # for build + one revise round. Evalpilot may clamp this in constrained
+    # environments via EVALPILOT_SUT_TIMEOUT. NOTE for the eval runner: at
     # 1800s/case this approaches the per-loop wall-clock budget, so shard these
     # archetype cases ~1 per loop.
     result = ws.run_agent(prompt=prompt, agent="story-orchestrator", timeout=1800)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     deck_specs = ws.glob(

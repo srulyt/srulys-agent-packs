@@ -22,9 +22,11 @@ That's all I have for you. Go.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_thin_brief_surfaces_gaps_and_blocks_build(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_thin_brief_surfaces_gaps_and_blocks_build(agent_pack):
+    ws = agent_pack("story-orchestrator")
     result = ws.run_agent(prompt=PROMPT, agent="story-orchestrator", timeout=600)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     states = ws.glob(".story-telling-stm/runs/*/state.json")

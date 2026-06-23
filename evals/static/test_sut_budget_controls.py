@@ -8,12 +8,12 @@ budget and starve the rest of the suite, so the run never reached a clean
 pass/fail/skip for the remaining tests.
 
 These deterministic, no-SUT tests pin the two opt-in controls added to
-``evals/_lib/copilot.py`` so they can't silently regress:
+``evalpilot.runners.copilot`` so they can't silently regress:
 
-* ``EVALS_SUT_TIMEOUT`` -- clamps every SUT subprocess timeout so a hung SUT
+* ``EVALPILOT_SUT_TIMEOUT`` -- clamps every SUT subprocess timeout so a hung SUT
   fails fast (returncode 124, ``timed_out=True``) instead of burning its full
   requested budget.
-* ``EVALS_SKIP_SUT`` -- short-circuits ``run_agent`` so an environment that
+* ``EVALPILOT_SKIP_SUT`` -- short-circuits ``run_agent`` so an environment that
   cannot run the live LLM SUT within budget completes the whole suite
   deterministically (every behavioural test skips cleanly) with zero tokens.
 
@@ -30,30 +30,29 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from _lib import copilot  # noqa: E402
+from evalpilot.runners import copilot
+from evalpilot.runners.base import RunResult
 
 
 # ---- timeout clamping ---------------------------------------------------
 
 
 def test_resolve_sut_timeout_passthrough_when_unset(monkeypatch):
-    monkeypatch.delenv("EVALS_SUT_TIMEOUT", raising=False)
+    monkeypatch.delenv("EVALPILOT_SUT_TIMEOUT", raising=False)
     assert copilot._resolve_sut_timeout(900) == 900
 
 
 def test_resolve_sut_timeout_clamps_when_set(monkeypatch):
-    monkeypatch.setenv("EVALS_SUT_TIMEOUT", "30")
+    monkeypatch.setenv("EVALPILOT_SUT_TIMEOUT", "30")
     assert copilot._resolve_sut_timeout(900) == 30
     # Never raises the requested timeout above what the caller asked for.
     assert copilot._resolve_sut_timeout(10) == 10
 
 
 def test_resolve_sut_timeout_ignores_garbage(monkeypatch):
-    monkeypatch.setenv("EVALS_SUT_TIMEOUT", "not-a-number")
+    monkeypatch.setenv("EVALPILOT_SUT_TIMEOUT", "not-a-number")
     assert copilot._resolve_sut_timeout(900) == 900
-    monkeypatch.setenv("EVALS_SUT_TIMEOUT", "0")
+    monkeypatch.setenv("EVALPILOT_SUT_TIMEOUT", "0")
     assert copilot._resolve_sut_timeout(900) == 900
 
 
@@ -63,17 +62,17 @@ def test_resolve_sut_timeout_ignores_garbage(monkeypatch):
      ("0", False), ("", False), ("false", False), ("nope", False)],
 )
 def test_truthy_env(monkeypatch, value, expected):
-    monkeypatch.setenv("EVALS_SKIP_SUT", value)
-    assert copilot._truthy_env("EVALS_SKIP_SUT") is expected
+    monkeypatch.setenv("EVALPILOT_SKIP_SUT", value)
+    assert copilot._truthy_env("EVALPILOT_SKIP_SUT") is expected
 
 
-# ---- EVALS_SKIP_SUT short-circuit ---------------------------------------
+# ---- EVALPILOT_SKIP_SUT short-circuit ---------------------------------------
 
 
 def test_skip_sut_short_circuits_without_binary(monkeypatch, tmp_path):
-    """With EVALS_SKIP_SUT set, run_agent must NOT consult the binary and must
+    """With EVALPILOT_SKIP_SUT set, run_agent must NOT consult the binary and must
     return a clean ``skipped`` sentinel that tests can pytest.skip on."""
-    monkeypatch.setenv("EVALS_SKIP_SUT", "1")
+    monkeypatch.setenv("EVALPILOT_SKIP_SUT", "1")
     # Point COPILOT_BIN at a path that does not exist: if the short-circuit
     # regresses and find_copilot_bin runs, this would surface (the override is
     # returned verbatim, then Popen would fail) -- proving the skip path runs
@@ -81,8 +80,8 @@ def test_skip_sut_short_circuits_without_binary(monkeypatch, tmp_path):
     monkeypatch.setenv("COPILOT_BIN", str(tmp_path / "does-not-exist"))
 
     log = tmp_path / "agent.log"
-    res = copilot.run_agent(
-        prompt="hello", workspace=tmp_path, log_path=log, timeout=900
+    res = copilot.CopilotRunner().run_agent(
+        prompt="hello", workspace=tmp_path, agent=None, log_path=log, timeout=900
     )
 
     assert res.skipped is True
@@ -94,7 +93,7 @@ def test_skip_sut_short_circuits_without_binary(monkeypatch, tmp_path):
 
 
 def test_usable_true_for_normal_result():
-    res = copilot.CopilotResult(
+    res = RunResult(
         returncode=0, stdout="", stderr="", duration_seconds=0.0,
         log_path=Path("x"),
     )

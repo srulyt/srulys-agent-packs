@@ -28,15 +28,17 @@ is a non-interactive run, so do not pause for additional input.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_buy_in_deck_happy_path(copilot_pack, judge):
+def test_buy_in_deck_happy_path(agent_pack, judge):
     """Story orchestrator runs the full happy-path flow and produces a deck."""
-    ws = copilot_pack("story-telling-agent")
+    ws = agent_pack("story-orchestrator")
 
     result = ws.run_agent(
         prompt=PROMPT,
         agent="story-orchestrator",
         timeout=1200,
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"see {result.log_path}"
 
     # The pack writes everything under .story-telling-stm/runs/<run-id>/.

@@ -1,6 +1,6 @@
 """Copilot CLI :class:`SUTRunner` implementation.
 
-Ported from the monorepo harness's ``evals/_lib/copilot.py``. Drives the
+Drives the
 ``copilot`` binary non-interactively inside a workspace and returns a
 normalised :class:`~evalpilot.runners.base.RunResult`.
 

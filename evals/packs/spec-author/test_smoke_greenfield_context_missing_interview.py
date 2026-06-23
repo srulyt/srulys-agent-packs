@@ -47,11 +47,13 @@ check it), then immediately apply the answers above and proceed.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_greenfield_with_interview(copilot_pack):
-    ws = copilot_pack("spec-author")
+def test_greenfield_with_interview(agent_pack):
+    ws = agent_pack("spec-author")
     ws.stage_files(FIXTURES, dest_subdir=".")
 
     result = ws.run_agent(prompt=PROMPT, agent="spec-author", timeout=1200)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"spec-author failed; see {result.log_path}"
 
     assert ws.find_one("docs/specs/digest.md"), (

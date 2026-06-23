@@ -59,8 +59,8 @@ Rationale for concept {n}.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_top_level_index_skill_and_install(copilot_pack):
-    ws = copilot_pack("product-knowledge-brain")
+def test_top_level_index_skill_and_install(product_knowledge_brain):
+    ws = product_knowledge_brain
 
     kb = ws.root / "knowledge-base"
     knowledge_dir = kb / "areas" / "feature-a" / "knowledge"

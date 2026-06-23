@@ -38,3 +38,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 evalpilot = ["_data/agents/*.agent.md", "_data/templates/*", "_data/templates/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

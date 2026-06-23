@@ -48,8 +48,8 @@ You do NOT need to assemble a deck.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_palette_preflight_blocks_rollback(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_palette_preflight_blocks_rollback(agent_pack):
+    ws = agent_pack("story-orchestrator")
     # Overwrite the in-workspace customer-coral.md with the rollback
     # fixture.
     target = (
@@ -67,6 +67,8 @@ def test_palette_preflight_blocks_rollback(copilot_pack):
     target.write_text(ROLLBACK.read_text(encoding="utf-8"), encoding="utf-8")
 
     result = ws.run_agent(prompt=PROMPT, agent="deck-critic", timeout=600)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"deck-critic failed; see {result.log_path}"
 
     qa_reports = ws.glob(

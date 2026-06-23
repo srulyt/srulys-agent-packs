@@ -31,9 +31,9 @@ just produce your interrogation questions.
 @pytest.mark.skill
 @pytest.mark.slow
 @pytest.mark.judge
-def test_question_discipline(copilot_skill, judge):
+def test_question_discipline(skill, judge):
     """Grill-me questions are well-formed, tagged, and MC-vs-freeform correct."""
-    ws = copilot_skill("grill-me-interrogation")
+    ws = skill("grill-me-interrogation")
 
     result = ws.run_skill(
         skill="grill-me-interrogation",
@@ -41,6 +41,8 @@ def test_question_discipline(copilot_skill, judge):
         timeout=300,
         log_name="grill-me-question-discipline",
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, (
         f"copilot exited {result.returncode}; see {result.log_path}"
     )

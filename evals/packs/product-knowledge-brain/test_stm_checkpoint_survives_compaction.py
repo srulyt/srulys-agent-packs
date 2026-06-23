@@ -29,8 +29,8 @@ compaction.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_stm_checkpoint_survives_compaction(copilot_pack):
-    ws = copilot_pack("product-knowledge-brain")
+def test_stm_checkpoint_survives_compaction(product_knowledge_brain):
+    ws = product_knowledge_brain
 
     # First run — establishes the KB and the STM session.
     first = ws.run_agent(prompt=PROMPT, timeout=900, log_name="first")

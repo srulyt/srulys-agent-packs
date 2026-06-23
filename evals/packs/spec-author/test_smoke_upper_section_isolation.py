@@ -52,9 +52,11 @@ def _section(text: str, name: str, max_chars: int = 800) -> str:
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_upper_section_isolation(copilot_pack):
-    ws = copilot_pack("spec-author")
+def test_upper_section_isolation(agent_pack):
+    ws = agent_pack("spec-author")
     result = ws.run_agent(prompt=PROMPT, agent="spec-author", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"spec-author failed; see {result.log_path}"
 
     spec = ws.find_one("docs/specs/sla-dashboard.md")

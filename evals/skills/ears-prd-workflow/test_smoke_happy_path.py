@@ -26,9 +26,9 @@ emit the `prd-outline` and `prd-summary` blocks in your final response.
 @pytest.mark.skill
 @pytest.mark.slow
 @pytest.mark.judge
-def test_smoke_happy_path(copilot_skill, judge):
+def test_smoke_happy_path(skill, judge):
     """The workflow skill runs all 4 steps and produces a valid EARS PRD."""
-    ws = copilot_skill("ears-prd-workflow")
+    ws = skill("ears-prd-workflow")
 
     result = ws.run_skill(
         skill="ears-prd-workflow",
@@ -36,6 +36,8 @@ def test_smoke_happy_path(copilot_skill, judge):
         timeout=300,
         log_name="ears-prd-workflow-smoke",
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, (
         f"copilot exited {result.returncode}; see {result.log_path}"
     )

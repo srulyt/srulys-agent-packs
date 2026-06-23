@@ -37,8 +37,8 @@ RELATIONSHIP_FM_RE = re.compile(r"rel:\s*\S+")
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_provenance_relationship_links(copilot_pack):
-    ws = copilot_pack("product-knowledge-brain")
+def test_provenance_relationship_links(product_knowledge_brain):
+    ws = product_knowledge_brain
 
     result = ws.run_agent(prompt=PROMPT, timeout=1500)
     if not result.usable:

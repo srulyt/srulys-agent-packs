@@ -32,9 +32,9 @@ Respond to this rejection. Do not write the full PRD yet.
 @pytest.mark.skill
 @pytest.mark.slow
 @pytest.mark.judge
-def test_outline_rejection_loop(copilot_skill, judge):
+def test_outline_rejection_loop(skill, judge):
     """Rejecting the outline loops back to steps 1-2 and re-presents."""
-    ws = copilot_skill("ears-prd-workflow")
+    ws = skill("ears-prd-workflow")
 
     result = ws.run_skill(
         skill="ears-prd-workflow",
@@ -42,6 +42,8 @@ def test_outline_rejection_loop(copilot_skill, judge):
         timeout=300,
         log_name="ears-prd-workflow-rejection-loop",
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, (
         f"copilot exited {result.returncode}; see {result.log_path}"
     )

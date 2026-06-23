@@ -3,7 +3,7 @@
 Copy this file to ``evals/skills/<skill-name>/test_<scenario>.py`` and
 customise. Replace ``__SKILL_NAME__``, ``__SCENARIO__``, and the prompt.
 
-The fixtures used here (``copilot_skill``, ``judge``) come from
+The fixtures used here (``skill``, ``judge``) come from
 ``evals/conftest.py``. No imports needed.
 """
 
@@ -21,9 +21,9 @@ dependency on any agent pack. Be specific about expected output.
 @pytest.mark.skill
 @pytest.mark.slow
 @pytest.mark.judge
-def test___SCENARIO__(copilot_skill, judge):
+def test___SCENARIO__(skill, judge):
     """One-line description of what this skill eval verifies."""
-    ws = copilot_skill("__SKILL_NAME__")
+    ws = skill("__SKILL_NAME__")
 
     result = ws.run_skill(
         skill="__SKILL_NAME__",

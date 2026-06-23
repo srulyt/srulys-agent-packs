@@ -3,7 +3,7 @@
 Each test is a pytest function that:
 
 1. Stages the pack (and shared skills/instructions) into a tmpdir
-   workspace via the ``copilot_pack`` fixture.
+   workspace via the ``agent_pack`` fixture.
 2. Runs ``copilot -p ... --agent copilot-factory`` non-interactively.
 3. Asserts on the artifacts the factory produces.
 4. Optionally calls the LLM-as-judge helper (``judge`` fixture) to score
@@ -43,9 +43,9 @@ land everything under your normal session directory.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_creates_two_agent_triage_pack(copilot_pack, judge):
+def test_creates_two_agent_triage_pack(agent_pack, judge):
     """Factory designs and builds a 2-agent issue-triage pack end-to-end."""
-    ws = copilot_pack("copilot-factory")
+    ws = agent_pack("copilot-factory")
 
     result = ws.run_agent(
         prompt=PROMPT_ISSUE_TRIAGE,
@@ -53,6 +53,8 @@ def test_creates_two_agent_triage_pack(copilot_pack, judge):
         timeout=900,
         log_name="copilot-factory",
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
 
     # Run must complete cleanly. If it didn't, the log path tells the
     # operator (or @factory-engineer fix-loop) where to look.

@@ -46,11 +46,13 @@ Proceed end-to-end without waiting for further user input.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_redraft_remove_inwindow_fr_no_residue(copilot_pack):
-    ws = copilot_pack("spec-author")
+def test_redraft_remove_inwindow_fr_no_residue(agent_pack):
+    ws = agent_pack("spec-author")
     ws.stage_files(FIXTURES, dest_subdir=".")
 
     result = ws.run_agent(prompt=PROMPT, agent="spec-author", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"spec-author failed; see {result.log_path}"
 
     spec = ws.find_one("docs/specs/notif-prefs.md")

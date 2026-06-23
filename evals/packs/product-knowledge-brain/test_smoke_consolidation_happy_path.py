@@ -32,8 +32,8 @@ Run the full evolution cycle and report the summary.
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
-def test_smoke_consolidation_happy_path(copilot_pack, judge):
-    ws = copilot_pack("product-knowledge-brain")
+def test_smoke_consolidation_happy_path(product_knowledge_brain, judge):
+    ws = product_knowledge_brain
 
     result = ws.run_agent(prompt=PROMPT, timeout=900)
     if not result.usable:

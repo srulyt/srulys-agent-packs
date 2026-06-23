@@ -66,8 +66,8 @@ class Issue:
         return f"{self.severity.upper():5s} {rel}: {self.message}"
 
 
-def is_copilot_pack(pack_dir: Path) -> bool:
-    """A pack is a Copilot pack iff it ships ``.github/agents/`` or
+def is_agent_pack(pack_dir: Path) -> bool:
+    """A pack is an agent pack iff it ships ``.github/agents/`` or
     ``.github/skills/``. Roo-only packs (``.roomodes`` / ``.roo/``) are
     out of scope for this linter.
     """
@@ -88,9 +88,9 @@ def lint_pack(pack_dir: Path) -> list[Issue]:
     if not pack_dir.is_dir():
         return [Issue("error", pack_dir, "Pack directory does not exist")]
 
-    if not is_copilot_pack(pack_dir):
+    if not is_agent_pack(pack_dir):
         # Roo-only or unknown layout; skip silently. The caller can use
-        # ``is_copilot_pack`` to decide whether to include the pack.
+        # ``is_agent_pack`` to decide whether to include the pack.
         return []
 
     if not (pack_dir / "README.md").exists():
@@ -197,7 +197,7 @@ def discover_packs() -> list[Path]:
     if not PACKS_ROOT.exists():
         return []
     return sorted(
-        p for p in PACKS_ROOT.iterdir() if p.is_dir() and is_copilot_pack(p)
+        p for p in PACKS_ROOT.iterdir() if p.is_dir() and is_agent_pack(p)
     )
 
 

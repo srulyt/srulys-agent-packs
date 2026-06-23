@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from _lib.asserts import assert_prose_not_contains
+from evalpilot import assert_prose_not_contains
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

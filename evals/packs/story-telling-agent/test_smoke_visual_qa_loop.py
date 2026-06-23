@@ -45,9 +45,11 @@ Return the final .pptx path once QA verdicts pass.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_qa_revise_loop(copilot_pack):
-    ws = copilot_pack("story-telling-agent")
+def test_qa_revise_loop(agent_pack):
+    ws = agent_pack("story-orchestrator")
     result = ws.run_agent(prompt=PROMPT, agent="story-orchestrator", timeout=1500)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"story-orchestrator failed; see {result.log_path}"
 
     pptx = ws.glob(".story-telling-stm/runs/*/agents/deck-builder/output.pptx")

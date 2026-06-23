@@ -42,10 +42,12 @@ waiting for further user input.
 
 @pytest.mark.pack
 @pytest.mark.slow
-def test_initial_draft_has_no_change_tracking(copilot_pack):
-    ws = copilot_pack("spec-author")
+def test_initial_draft_has_no_change_tracking(agent_pack):
+    ws = agent_pack("spec-author")
 
     result = ws.run_agent(prompt=PROMPT, agent="spec-author", timeout=900)
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, f"spec-author failed; see {result.log_path}"
 
     spec = ws.find_one("docs/specs/quick-toggle.md")

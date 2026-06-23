@@ -27,9 +27,9 @@ Raw requirements:
 @pytest.mark.skill
 @pytest.mark.slow
 @pytest.mark.judge
-def test_ears_shape(copilot_skill, judge):
+def test_ears_shape(skill, judge):
     """Formatted FRs are valid EARS with one shall each and testable ACs."""
-    ws = copilot_skill("ears-prd-format")
+    ws = skill("ears-prd-format")
 
     result = ws.run_skill(
         skill="ears-prd-format",
@@ -37,6 +37,8 @@ def test_ears_shape(copilot_skill, judge):
         timeout=300,
         log_name="ears-prd-format-shape",
     )
+    if not result.usable:
+        pytest.skip(result.unavailable_reason())
     assert result.ok, (
         f"copilot exited {result.returncode}; see {result.log_path}"
     )
