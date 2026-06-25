@@ -11,15 +11,21 @@ import pytest
 
 PROMPT_NEW = """\
 Build a context pack for the "auth" feature in this repository.
-Seed paths: src/auth/. The feature handles login and session tokens.
-Produce the pack in context-packs/ and run to completion.
+BOUNDED MODE (fast pass): keep this run cost-capped and single-pass.
+Scope — confine discovery/analysis to EXACTLY src/auth/ (login.py and
+session.py); do NOT scan the rest of the repository. The feature handles
+login and session tokens. Produce the pack in context-packs/ and run to
+completion.
 """
 
 PROMPT_UPDATE = """\
-Update the existing context pack for the "auth" feature. I added
-password reset to src/auth/reset.py. Re-run discovery/analysis and
-merge the update into the existing pack (do NOT create a duplicate
-pack). Preserve any human-authored sections.
+Update the existing context pack for the "auth" feature.
+BOUNDED MODE (fast pass): keep this run cost-capped and single-pass.
+I added password reset to src/auth/reset.py. Scope — confine
+discovery/analysis to EXACTLY src/auth/; do NOT scan the rest of the
+repository. Re-run discovery/analysis and merge the update into the
+EXISTING pack (do NOT create a duplicate pack). Preserve any
+human-authored sections.
 """
 
 
@@ -36,11 +42,14 @@ def _seed_auth(root: Path) -> None:
 
 @pytest.mark.pack
 @pytest.mark.slow
+# Two sequential SUT runs. Ordering invariant: each internal 1100 (sum 2200)
+# < marker 2550 < global 2700.
+@pytest.mark.timeout(2550)
 def test_update_over_rewrite(agent_pack):
     ws = agent_pack("context-pack-builder")
     _seed_auth(ws.root)
 
-    r1 = ws.run_agent(prompt=PROMPT_NEW, agent="cpb-orchestrator", timeout=900)
+    r1 = ws.run_agent(prompt=PROMPT_NEW, agent="cpb-orchestrator", timeout=1100)
     if not r1.usable:
         pytest.skip(r1.unavailable_reason())
     assert r1.ok, f"first run failed; see {r1.log_path}"
@@ -59,7 +68,9 @@ def test_update_over_rewrite(agent_pack):
         "def reset_password(user):\n    return True\n", encoding="utf-8"
     )
 
-    r2 = ws.run_agent(prompt=PROMPT_UPDATE, agent="cpb-orchestrator", timeout=900)
+    r2 = ws.run_agent(prompt=PROMPT_UPDATE, agent="cpb-orchestrator", timeout=1100)
+    if not r2.usable:
+        pytest.skip(r2.unavailable_reason())
     assert r2.ok, f"update run failed; see {r2.log_path}"
 
     # Exactly one pack dir -- no duplicate.

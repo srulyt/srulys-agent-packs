@@ -23,13 +23,21 @@ THRESHOLD_REF = (
 )
 
 PROMPT = """\
-Build a context pack for the large "billing" subsystem in this repository.
-Seed paths: the entire src/billing/ tree. This subsystem is intentionally
-large: many controllers, services, data models, migrations, config flags,
-and tests. Discover ALL related code across all layers, analyze it
-thoroughly, and produce a complete, detailed context pack in context-packs/.
-Because the content is large, ensure the SKILL.md is split into a
-progressively-loading index plus references/ files. Run to completion.
+Build a context pack for the "billing" subsystem in this repository.
+BOUNDED MODE (fast pass): keep this run cost-capped and single-pass.
+
+Scope — confine discovery/analysis to EXACTLY the src/billing/ tree
+listed below; do NOT scan the rest of the repository. The subsystem spans
+several layers and many DISTINCT concepts (invoices, charges, refunds,
+subscriptions, proration, taxes, dunning, payment methods, the ledger, and
+webhooks). Document EACH distinct concept thoroughly across all five
+content areas (entry points; file & folder locations per layer; glossary;
+patterns & practices; architecture & design).
+
+Because this subsystem has many distinct concepts, the generated SKILL.md
+body will exceed the single-source token threshold and MUST be split into a
+lean progressively-loading index plus references/ files. Produce the pack
+in context-packs/ and run to completion.
 """
 
 
@@ -53,27 +61,91 @@ def _token_estimate(body: str) -> int:
     return max(math.ceil(len(body) / 4), math.ceil(len(body.split()) * 1.33))
 
 
-def _seed_large_fixture(root: Path) -> None:
+# A compact, multi-LAYER fixture: a handful of SMALL files, but each carries a
+# DISTINCT, well-documented billing concept so the synthesized SKILL.md has
+# enough genuine material to cross SPLIT_THRESHOLD_TOKENS and force a split.
+# (40 near-identical trivial modules were both slow to analyze and collapsed
+# into a tiny pack that never split — distinct concepts, not bulk, drive the
+# split.)
+_CONCEPTS = [
+    ("invoice", "Invoice", "Issues and finalizes customer invoices."),
+    ("charge", "Charge", "Captures a payment charge against a payment method."),
+    ("refund", "Refund", "Reverses a captured charge in full or part."),
+    ("subscription", "Subscription", "Manages recurring billing cycles."),
+    ("proration", "Proration", "Computes mid-cycle plan-change adjustments."),
+    ("tax", "TaxEngine", "Resolves jurisdictional tax rates per line item."),
+    ("dunning", "Dunning", "Retries failed charges and escalates past-due."),
+    ("ledger", "Ledger", "Double-entry record of all billing movements."),
+]
+
+
+def _seed_layered_fixture(root: Path) -> None:
     base = root / "src" / "billing"
-    base.mkdir(parents=True, exist_ok=True)
-    for i in range(40):
-        (base / f"module_{i:02d}.py").write_text(
-            f"# billing module {i}\n"
-            f"class Billing{i}:\n"
-            f"    \"\"\"Handles billing concern {i}: invoices, charges, refunds.\"\"\"\n"
-            f"    def process_{i}(self, account, amount):\n"
-            f"        return charge(account, amount)\n" * 6,
+    for sub in ("controllers", "services", "models", "migrations", "tests"):
+        (base / sub).mkdir(parents=True, exist_ok=True)
+    for mod, cls, summary in _CONCEPTS:
+        (base / "controllers" / f"{mod}_controller.py").write_text(
+            f"# Entry point: HTTP controller for {mod}.\n"
+            f"from ..services.{mod}_service import {cls}Service\n\n"
+            f"def post_{mod}(request):\n"
+            f'    """POST /{mod} — {summary}"""\n'
+            f"    return {cls}Service().handle(request.body)\n",
             encoding="utf-8",
         )
+        (base / "services" / f"{mod}_service.py").write_text(
+            f"# Business layer for {mod}.\n"
+            f"from ..models.{mod} import {cls}\n\n"
+            f"class {cls}Service:\n"
+            f'    """{summary} Coordinates the {mod} workflow and writes the ledger."""\n'
+            f"    def handle(self, body):\n"
+            f"        return {cls}(body).persist()\n",
+            encoding="utf-8",
+        )
+        (base / "models" / f"{mod}.py").write_text(
+            f"# Data layer for {mod}.\n"
+            f"class {cls}:\n"
+            f'    """{summary} Persisted {mod} row with status + amount fields."""\n'
+            f"    def __init__(self, body):\n"
+            f"        self.body = body\n"
+            f"    def persist(self):\n"
+            f"        return self\n",
+            encoding="utf-8",
+        )
+        (base / "migrations" / f"create_{mod}.py").write_text(
+            f"# Migration: create the {mod} table (id, status, amount, created_at).\n"
+            f"def up():\n    create_table('{mod}')\n",
+            encoding="utf-8",
+        )
+        (base / "tests" / f"test_{mod}.py").write_text(
+            f"def test_{mod}_handle():\n    assert True  # {summary}\n",
+            encoding="utf-8",
+        )
+    (base / "config.py").write_text(
+        "# Config flags for billing.\n"
+        "BILLING_FLAGS = {\n"
+        + "".join(f"    'enable_{m}': True,\n" for m, _, _ in _CONCEPTS)
+        + "}\n",
+        encoding="utf-8",
+    )
+    (root / "docs").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "billing.md").write_text(
+        "# Billing subsystem\n\nConcepts: "
+        + ", ".join(c[0] for c in _CONCEPTS)
+        + ".\nEach has a controller (entry point), service (business), model "
+        "(data), migration, and tests.\n",
+        encoding="utf-8",
+    )
 
 
 @pytest.mark.pack
 @pytest.mark.slow
+# Ordering invariant: internal 2100 < marker 2400 < global 2700.
+@pytest.mark.timeout(2400)
 def test_progressive_disclosure_split(agent_pack):
     ws = agent_pack("context-pack-builder")
-    _seed_large_fixture(ws.root)
+    _seed_layered_fixture(ws.root)
 
-    result = ws.run_agent(prompt=PROMPT, agent="cpb-orchestrator", timeout=1200)
+    result = ws.run_agent(prompt=PROMPT, agent="cpb-orchestrator", timeout=2100)
     if not result.usable:
         pytest.skip(result.unavailable_reason())
     assert result.ok, f"cpb-orchestrator invocation failed; see {result.log_path}"

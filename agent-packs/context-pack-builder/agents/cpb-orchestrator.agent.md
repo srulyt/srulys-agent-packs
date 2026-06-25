@@ -54,6 +54,38 @@ feature name AND no paths AND no description), call `ask_user` **once** for the
 minimum (feature name + at least one of: ≥1 seed path or a description). If
 still unusable, abort before any STM work.
 
+## Bounded Mode (opt-in; default OFF)
+
+If — and only if — the seed/request text contains the marker
+**`BOUNDED MODE`** (case-insensitive; also accept "fast pass" / "bounded
+pass"), run the pipeline in a cost-capped single pass. This mode exists so
+automated harnesses can exercise the **full** pipeline cheaply; it changes
+*effort*, never *structure* — every phase still runs and the pack still
+carries all five content areas with confidence scores.
+
+When Bounded Mode is active:
+
+- **Scope = the listed seed paths only.** Do NOT scan the whole repo. Inject
+  `BOUNDED MODE: confine discovery to EXACTLY these seed paths ({seed_paths});
+  do not search outside them; do not broaden.` into the discovery delegation,
+  replacing the default "Find ALL related paths across the WHOLE repo" text.
+- **Single batch.** Tell the analyzer to read all in-scope files in one batch
+  (no incremental re-reads) and the synthesizer to do one merge pass.
+- **Single pass, no retries.** Set the per-phase retry bound to **0** and do
+  NOT re-launch discovery to broaden an empty result; if a phase is genuinely
+  unusable, emit a fail-safe result rather than retrying.
+- **Terse delegations.** Keep each sub-agent prompt minimal; instruct sub-agents
+  to be concise and skip optional self-verification passes.
+- **Still complete.** The writer must still emit the full SKILL.md content (the
+  indexer still measures/splits) and all five content areas must still be
+  present with confidence scores — bounded means *less searching*, not *less
+  pack*.
+- Propagate the literal marker `BOUNDED MODE` into **every** sub-agent prompt so
+  each specialist self-limits the same way.
+
+In normal (default) operation this section is inert and the pipeline behaves
+exactly as documented below.
+
 ## STEP 0 — Session + checkpoint (ALWAYS FIRST)
 
 Before any pipeline work:

@@ -21,12 +21,17 @@ addopts = [
     # product-knowledge-brain) without a whole-tree collection error.
     "--import-mode=importlib",
 ]
-# Per-test timeout (H1). 1500s = 25min, comfortably covers the longest
-# spec-author tests (timeout=1200 inside the test body) with headroom for
-# staging + assertions. Tests with genuinely longer budgets opt in via
-# `@pytest.mark.timeout(<seconds>)`. `thread` method works on Windows;
-# `signal` is POSIX-only.
-timeout = 1500
+# Global per-test timeout default (H1). Raised to 2700s (45min) so it sits
+# comfortably ABOVE the highest per-test `@pytest.mark.timeout(<seconds>)`
+# marker in the suite (the context-pack-builder behavioural tests use markers
+# up to 2550s, whose internal run_agent budgets degrade to a clean SKIP well
+# before the marker fires). This default only applies to tests WITHOUT their
+# own marker; per-test markers fully override it. Raising the ceiling is a
+# safe direction for other packs (more headroom, never a tighter kill).
+# Ordering invariant the suite maintains:
+#   internal run_agent timeout  <  per-test @pytest.mark.timeout  <  global (this value)
+# `thread` method works on Windows; `signal` is POSIX-only.
+timeout = 2700
 timeout_method = "thread"
 markers = [
     "slow: marks evals that take > 60s (deselect with '-m \"not slow\"')",

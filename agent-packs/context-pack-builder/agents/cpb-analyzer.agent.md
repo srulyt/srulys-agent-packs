@@ -48,6 +48,11 @@ STM `analysis/`. Do not widen scope beyond the inventory you were given.
 
 ## Workflow
 
+> **Bounded Mode (opt-in):** if the prompt contains the marker `BOUNDED MODE`,
+> read every in-scope file in a **single** batch (no incremental re-reads),
+> keep notes terse, and skip optional self-verification passes. All five
+> content areas with confidence scores are still required.
+
 1. Read the discovery inventories under
    `.context-pack-builder-stm/runs/{sid}/discovery/`.
 2. Read the listed files **in batches** (do not exceed the inventory).

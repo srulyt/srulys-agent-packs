@@ -49,6 +49,15 @@ to run multiple pipeline phases yourself.
 STM `discovery/`. If you need anything else, return control to
 `@cpb-orchestrator`.
 
+## Bounded Mode (opt-in)
+
+If the prompt contains the marker **`BOUNDED MODE`**, do a single cost-capped
+pass: confine the search to **exactly the seed paths the orchestrator lists**
+(and their immediate, already-present neighbours under the same directory) —
+do **not** crawl the whole repo and do **not** broaden by reference. Still
+record every layer (use "none found" + confidence where a layer is absent in
+scope). This trades breadth for speed; it never changes the output contract.
+
 ## Workflow
 
 1. Read the manifest (seed: feature name, description, seed paths).

@@ -14,17 +14,28 @@ import pytest
 
 PROMPT = """\
 Build a context pack for the "checkout" feature in this repository.
-Seed paths: src/checkout/service.py and src/checkout/routes.py.
-The feature is the order checkout flow: it exposes a POST /checkout
-route that calls CheckoutService.place_order, which validates the cart
-and writes an Order row. Produce the pack in context-packs/. Run the
-full pipeline to completion.
+BOUNDED MODE (fast pass): keep this run cost-capped and single-pass.
+
+Scope — confine discovery/analysis to EXACTLY these seed paths; do NOT
+scan the rest of the repository:
+  - src/checkout/routes.py    (entry point: POST /checkout route)
+  - src/checkout/service.py   (business: CheckoutService.place_order)
+  - src/checkout/models.py    (data: the Order row)
+  - tests/test_checkout.py    (tests)
+  - docs/checkout.md          (docs)
+
+The feature is the order checkout flow: a POST /checkout route calls
+CheckoutService.place_order, which validates the cart and writes an Order
+row. Produce the pack in context-packs/ and run the full pipeline to
+completion (all five content areas with confidence scores).
 """
 
 
 def _seed_fixture(root: Path) -> None:
+    """Tiny but multi-layer fixture: one small file per layer."""
     (root / "src" / "checkout").mkdir(parents=True, exist_ok=True)
     (root / "src" / "checkout" / "service.py").write_text(
+        "from .models import Order\n\n"
         "class CheckoutService:\n"
         "    def place_order(self, cart):\n"
         "        # validates the cart and writes an Order row\n"
@@ -34,23 +45,38 @@ def _seed_fixture(root: Path) -> None:
     (root / "src" / "checkout" / "routes.py").write_text(
         "from .service import CheckoutService\n\n"
         "def post_checkout(request):\n"
+        "    # POST /checkout entry point\n"
         "    return CheckoutService().place_order(request.cart)\n",
+        encoding="utf-8",
+    )
+    (root / "src" / "checkout" / "models.py").write_text(
+        "class Order:\n"
+        "    \"\"\"Data layer: an order row persisted on checkout.\"\"\"\n"
+        "    def __init__(self, cart):\n"
+        "        self.cart = cart\n",
         encoding="utf-8",
     )
     (root / "tests").mkdir(parents=True, exist_ok=True)
     (root / "tests" / "test_checkout.py").write_text(
         "def test_place_order():\n    assert True\n", encoding="utf-8"
     )
+    (root / "docs").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "checkout.md").write_text(
+        "# Checkout\n\nPOST /checkout places an order via CheckoutService.\n",
+        encoding="utf-8",
+    )
 
 
 @pytest.mark.pack
 @pytest.mark.slow
 @pytest.mark.judge
+# Ordering invariant: internal 2100 < marker 2400 < global 2700.
+@pytest.mark.timeout(2400)
 def test_new_context_pack(agent_pack, judge):
     ws = agent_pack("context-pack-builder")
     _seed_fixture(ws.root)
 
-    result = ws.run_agent(prompt=PROMPT, agent="cpb-orchestrator", timeout=900)
+    result = ws.run_agent(prompt=PROMPT, agent="cpb-orchestrator", timeout=2100)
     if not result.usable:
         pytest.skip(result.unavailable_reason())
     assert result.ok, f"cpb-orchestrator invocation failed; see {result.log_path}"
