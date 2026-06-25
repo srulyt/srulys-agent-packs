@@ -1,0 +1,10 @@
+{
+  "name": "context-pack-builder",
+  "description": "Generate and update codebase context packs as Copilot Skills: multi-agent discovery across all layers, a uniform SKILL.md index with progressively-disclosed references, idempotent update-over-rewrite, and write+copy-back round-trip. Keywords: context pack, codebase context, onboarding, code map, feature context, skill generation.",
+  "version": "0.1.0",
+  "author": { "name": "srulys-agent-packs" },
+  "agents": "agents/",
+  "skills": "skills/",
+  "repository": "https://github.com/srulyt/srulys-agent-packs",
+  "keywords": ["context-pack", "codebase-context", "onboarding", "code-map", "feature-context", "skill-generation", "agents", "skills"]
+}

@@ -1,0 +1,5 @@
+# Pack-unique durable STM working state (in-flight pipeline checkpoints).
+# Generated context packs are deliverables written to the context repo's
+# context-packs/ dir and are NOT ignored — only the transient short-term-memory
+# run state lives here.
+.context-pack-builder-stm/

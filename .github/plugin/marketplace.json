@@ -25,6 +25,12 @@
       "description": "Portable evals for Copilot agents and skills: rubric pass/fail checks, LLM-as-judge, numeric metric history, and regression gates.",
       "version": "0.1.0",
       "source": "agent-packs/eval-pilot"
+    },
+    {
+      "name": "context-pack-builder",
+      "description": "Generate and update codebase context packs as progressively-disclosed Copilot Skills, with multi-layer discovery and a write+copy-back round-trip.",
+      "version": "0.1.0",
+      "source": "agent-packs/context-pack-builder"
     }
   ]
 }
