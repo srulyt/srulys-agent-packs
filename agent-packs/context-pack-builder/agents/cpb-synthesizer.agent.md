@@ -1,5 +1,5 @@
 ---
-name: Context Pack Synthesizer
+name: "Context Pack Synthesizer"
 description: "Context-pack pipeline synthesis specialist. Merges per-area analyzer notes into a unified draft mapped to the 5 content areas, resolves conflicts, and aggregates confidence — working from notes only. Delegation-only; invoked by @cpb-orchestrator."
 tools: ["read", "edit", "search"]
 user-invocable: false

@@ -29,6 +29,7 @@ Installable GitHub Copilot plugins (manifest + skills/agents, registered in
 | eval-pilot | `agent-packs/eval-pilot/` | Portable evals for Copilot agents/skills: binary **rubric** pass/fail checks, LLM-as-judge, and numeric **metric** history compared over time. Bundles the pip-installable `evalpilot` engine + `eval-author` / `eval-runner` / `eval-metrics` skills. See its [README](../agent-packs/eval-pilot/README.md). |
 | prd-pilot | `agent-packs/prd-pilot/` | Guided EARS-style PRD authoring workflow. |
 | product-knowledge-brain | `agent-packs/product-knowledge-brain/` | Maintain and evolve a Product Management knowledge base / living wiki. |
+| context-pack-builder | `agent-packs/context-pack-builder/` | Generate and update codebase context packs as progressively-disclosed Copilot Skills: multi-agent multi-layer discovery, idempotent update-over-rewrite, and a write+copy-back round-trip. See its [README](../agent-packs/context-pack-builder/README.md). |
 
 ## Quick Start
 

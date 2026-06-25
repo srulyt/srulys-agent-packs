@@ -127,6 +127,7 @@ copilot plugin install <name>@srulys-agent-packs
 | **eval-pilot** | Portable evals for Copilot agents/skills: binary **rubric** pass/fail checks, LLM-as-judge, and numeric **metric** history compared over time. Bundles the pip-installable `evalpilot` engine + `eval-author` / `eval-runner` / `eval-metrics` skills. | [agent-packs/eval-pilot/README.md](agent-packs/eval-pilot/README.md) |
 | prd-pilot | Guided EARS-style PRD authoring workflow. | [agent-packs/prd-pilot/README.md](agent-packs/prd-pilot/README.md) |
 | product-knowledge-brain | Maintain and evolve a Product Management knowledge base / living wiki. | [agent-packs/product-knowledge-brain/README.md](agent-packs/product-knowledge-brain/README.md) |
+| context-pack-builder | Generate and update codebase **context packs** as progressively-disclosed Copilot Skills: multi-agent multi-layer discovery, idempotent update-over-rewrite, and a write+copy-back round-trip. | [agent-packs/context-pack-builder/README.md](agent-packs/context-pack-builder/README.md) |
 
 ## Documentation
 

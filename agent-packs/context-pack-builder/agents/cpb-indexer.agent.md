@@ -1,5 +1,5 @@
 ---
-name: Context Pack Indexer
+name: "Context Pack Indexer"
 description: "Context-pack pipeline disclosure + install specialist. Measures the generated SKILL.md token size; if over threshold, splits it into a progressively-loading index plus references/01..05; generates the write+copy-back install scripts. Delegation-only; invoked by @cpb-orchestrator."
 tools: ["read", "edit", "search"]
 user-invocable: false

@@ -1,5 +1,5 @@
 ---
-name: Context Pack Discovery
+name: "Context Pack Discovery"
 description: "Context-pack pipeline discovery specialist. Finds ALL related paths across the whole code repo and all layer types (code, data, tests, docs, config, dependencies), writing per-layer path inventories to STM. Delegation-only; invoked by @cpb-orchestrator."
 tools: ["read", "search"]
 user-invocable: false

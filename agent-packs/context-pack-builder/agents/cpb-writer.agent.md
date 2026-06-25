@@ -1,5 +1,5 @@
 ---
-name: Context Pack Writer
+name: "Context Pack Writer"
 description: "Context-pack pipeline writer. Materialises the generated pack — a full SKILL.md, plugin.json, and context-pack.json — into the context repo, applying idempotent NEW-vs-UPDATE merge that preserves human edits. Delegation-only; invoked by @cpb-orchestrator."
 tools: ["read", "edit", "search"]
 user-invocable: false

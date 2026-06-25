@@ -1,5 +1,5 @@
 ---
-name: Context Pack Orchestrator
+name: "Context Pack Orchestrator"
 description: "Generate and update codebase context packs as Copilot Skills. Owns the discovery → analysis → synthesis → write → disclosure pipeline, NEW-vs-UPDATE routing, STM checkpoints, and the write+copy-back round-trip. Use to build or refresh a context pack for a feature. Keywords: context pack, codebase context, code map, onboarding, feature context, build context pack, update context pack."
 tools: ["read", "edit", "search", "agent"]
 disable-model-invocation: true
@@ -82,7 +82,11 @@ conversation memory.
 
 `task` is the **only** way to invoke a sub-agent. The `@cpb-*` labels are
 user-facing shorthand; the value you pass as `agent_type` MUST be the
-sub-agent's **frontmatter `name`** (verbatim, with spaces/capitalization).
+sub-agent's **bare filename id** — the `.agent.md` filename without its
+extension, e.g. `cpb-discovery` (the Copilot CLI registers each agent under
+its filename id, NOT its frontmatter `name`). The frontmatter `name`
+(e.g. "Context Pack Discovery") is a friendly **display label only** and must
+never be passed as `agent_type`.
 Required `task` params: `agent_type`, `name`, `description`, `prompt`. Optional:
 `mode` (use `"sync"` for every phase — the pipeline is strictly sequential),
 `model` (do not override). Pass file **paths**, not file contents. Parse each
@@ -92,10 +96,10 @@ body. Canonical `task` semantics:
 
 All five delegations are `mode: "sync"`. Worked example per sub-agent:
 
-**Phase 1 — Discovery** (`Context Pack Discovery`):
+**Phase 1 — Discovery** (id `cpb-discovery`, display "Context Pack Discovery"):
 ```
 task(
-  agent_type: "Context Pack Discovery",
+  agent_type: "cpb-discovery",
   name: "discover-paths",
   description: "Find all related paths",
   mode: "sync",
@@ -110,10 +114,10 @@ task(
 )
 ```
 
-**Phase 2 — Analysis** (`Context Pack Analyzer`):
+**Phase 2 — Analysis** (id `cpb-analyzer`, display "Context Pack Analyzer"):
 ```
 task(
-  agent_type: "Context Pack Analyzer",
+  agent_type: "cpb-analyzer",
   name: "analyze-batches",
   description: "Extract per-area notes",
   mode: "sync",
@@ -127,10 +131,10 @@ task(
 )
 ```
 
-**Phase 3 — Synthesis** (`Context Pack Synthesizer`):
+**Phase 3 — Synthesis** (id `cpb-synthesizer`, display "Context Pack Synthesizer"):
 ```
 task(
-  agent_type: "Context Pack Synthesizer",
+  agent_type: "cpb-synthesizer",
   name: "synthesize-draft",
   description: "Merge notes to draft",
   mode: "sync",
@@ -144,10 +148,10 @@ task(
 )
 ```
 
-**Phase 4 — Write** (`Context Pack Writer`):
+**Phase 4 — Write** (id `cpb-writer`, display "Context Pack Writer"):
 ```
 task(
-  agent_type: "Context Pack Writer",
+  agent_type: "cpb-writer",
   name: "write-pack",
   description: "Materialise the pack",
   mode: "sync",
@@ -165,10 +169,10 @@ task(
 )
 ```
 
-**Phase 5 — Disclosure + Install** (`Context Pack Indexer`):
+**Phase 5 — Disclosure + Install** (id `cpb-indexer`, display "Context Pack Indexer"):
 ```
 task(
-  agent_type: "Context Pack Indexer",
+  agent_type: "cpb-indexer",
   name: "split-and-install",
   description: "Split + emit scripts",
   mode: "sync",

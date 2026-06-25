@@ -1,5 +1,5 @@
 ---
-name: Context Pack Analyzer
+name: "Context Pack Analyzer"
 description: "Context-pack pipeline analysis specialist. Reads discovered files in batches and extracts structured, confidence-scored notes per content area into STM. Delegation-only; invoked by @cpb-orchestrator."
 tools: ["read", "search"]
 user-invocable: false

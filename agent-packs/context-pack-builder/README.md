@@ -46,21 +46,96 @@ Only `@cpb-orchestrator` is user-invocable. The five specialists are invoked
 | `context-discovery` | Multi-layer search heuristics (code, data, tests, docs, config, dependencies). |
 | `progressive-disclosure` | The token-split threshold (single source), the uniform index schema, and the write+copy-back install spec. |
 
-## Install
+## Installation
 
-This pack is a plugin registered in `.github/plugin/marketplace.json`. From a
-Copilot CLI host that has this repo's marketplace configured:
+This pack is a conformant **Copilot agent plugin**: a `plugin.json` manifest at
+the pack root plus `agents/` and `skills/` directories. It is registered in this
+repo's plugin marketplace (`.github/plugin/marketplace.json`).
 
+### 1. GitHub Copilot CLI (primary — also lights up VS Code)
+
+Installing via the CLI is the recommended path: **VS Code automatically
+discovers CLI-installed plugins** under `~/.copilot/installed-plugins/`, so this
+one command surfaces the plugin in both hosts.
+
+This repo is a **plugin marketplace**. Register the marketplace once, then
+install the plugin with the `plugin@marketplace` syntax:
+
+```bash
+# Register this repo as a marketplace (one-time):
+copilot plugin marketplace add srulyt/srulys-agent-packs
+
+# Install the plugin from the registered marketplace:
+copilot plugin install context-pack-builder@srulys-agent-packs
+
+# …or, from a local clone of this repo, point the marketplace at the path:
+copilot plugin marketplace add /absolute/path/to/srulys-agent-packs
+copilot plugin install context-pack-builder@srulys-agent-packs
 ```
-copilot plugin install context-pack-builder
+
+Manage / verify:
+
+```bash
+copilot plugin marketplace browse srulys-agent-packs   # discover plugins
+copilot plugin list
+copilot plugin enable context-pack-builder             # if disabled
 ```
 
-Or use it in-repo: with the repo open, the agents under `agents/` and skills
-under `skills/` are auto-discovered. Invoke the orchestrator:
+Interactive equivalent inside a session:
+`/plugin marketplace add srulyt/srulys-agent-packs` then
+`/plugin install context-pack-builder@srulys-agent-packs`.
+
+**Invoke:** address the orchestrator (the only user-facing agent) by its
+**filename id**, `@cpb-orchestrator`:
 
 ```
 @cpb-orchestrator build a context pack for the "checkout" feature, seed paths: src/checkout/
 ```
+
+> **Agent ids vs. display names.** The Copilot CLI registers and resolves each
+> agent by its **filename id** (`cpb-orchestrator`, `cpb-discovery`, …), so you
+> invoke `@cpb-orchestrator` and the orchestrator delegates with
+> `task(agent_type: "cpb-discovery", …)`. Each agent's friendly frontmatter
+> `name` (e.g. "Context Pack Orchestrator") is a **display label only** and is
+> never used for invocation.
+
+### 2. VS Code GitHub Copilot (agent plugin)
+
+1. **Enable the preview feature gate:** turn on the `chat.plugins.enabled`
+   setting (it may be org-managed).
+2. **Discover the plugin** by any of:
+   - **Auto-discovery from the CLI install (zero extra steps):** if you ran the
+     Copilot CLI install above, the plugin already appears under **Agent
+     Plugins – Installed** and its agents/skills are loaded.
+   - **Install From Source (Git URL):** Command Palette → **Chat: Install Plugin
+     From Source** → enter
+     `https://github.com/srulyt/srulys-agent-packs.git`.
+   - **Local folder for development** via the `chat.pluginLocations` setting,
+     pointing directly at the plugin directory:
+     ```jsonc
+     // settings.json
+     "chat.pluginLocations": {
+       "/absolute/path/to/srulys-agent-packs/agent-packs/context-pack-builder": true
+     }
+     ```
+
+> **Note:** the **Chat: Install Plugin From Source** command takes a Git URL for
+> the repository; it does not take a subdirectory path. Use the Copilot CLI
+> install (option 1) or the `chat.pluginLocations` local-folder setting when you
+> need to target this plugin's subdirectory specifically.
+
+### 3. In-repo (no install)
+
+With this repository open as your workspace, stage the agents/skills under the
+workspace `.github/` tree (`.github/agents/` + `.github/skills/`) so the CLI
+auto-loads them by bare id from cwd — this is exactly what the eval harness does
+(`evals/packs/context-pack-builder/conftest.py`). Then invoke
+`@cpb-orchestrator` as above.
+
+> **Preview status.** The VS Code agent-plugin feature is **preview**; the
+> commands and settings above are accurate to the verified specs at the time of
+> writing but may change. See the **Preview status** section below for the
+> published token-threshold / `plugin.json` field caveats.
 
 ## Round-trip (copy-back) testing
 
