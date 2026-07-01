@@ -1,41 +1,57 @@
-# Fixtures, Markers, and Environment
+# Staging, Tags, Runners, and Environment
 
-## Pytest Fixtures
+## Staging (the `## Setup` section)
 
-| Fixture | Purpose |
-|---|---|
-| `evalpilot_config` | Session-scoped resolved `Config`. |
-| `sut` | The active `SUTRunner`. |
-| `workspace` | Bare isolated `Workspace`; tests stage what they need. |
-| `agent_pack(name)` | Factory returning a workspace with the named agent staged. Pass `include_skills=False` to stage only the agent. |
-| `skill(name)` | Factory returning a workspace with the named skill staged. |
-| `judge` | LLM-as-judge callable: `judge(artifact=..., criteria=..., threshold=..., golden=..., timeout=...)`. |
-| `metric` | Records a metric bound to the pytest node id: `metric(name, value, **kwargs)`. |
+Each eval runs in an isolated workspace. Staging controls what is placed there
+before the `## Act` prompt runs.
 
-## Workspace and RunResult API
+```yaml
+stage: { agent: my-agent }          # stage an agent (+ its plugin skills)
+# stage: { agent: my-agent, include_skills: false }   # agent only
+# stage: { skill: my-skill }        # stage a single skill in isolation
+# stage: { all: true }              # stage every discoverable agent + skill
+files:                              # optional seed files copied into the workspace
+  - { copy: "fixtures/**", dest: "." }
+  - { copy: "fixtures/input.md", dest: "docs/input.md" }
+```
 
-Common workspace methods:
+If you omit `## Setup`, the stage is **inferred** from the frontmatter
+`target` + `kind` (`kind: agent` → stage that agent; `kind: skill` → stage that
+skill; `kind: none` → stage nothing).
 
-- `ws.run_agent(prompt=..., agent=..., timeout=600, log_name="agent")`
-- `ws.run_skill(skill=..., prompt=..., timeout=300, log_name="skill")`
-- `ws.glob("**/*.md")`
-- `ws.find_one("**/artifact.md")`
-- `ws.read("relative/path.txt")`
+## Value references (for metrics)
 
-`RunResult` fields: `returncode`, `stdout`, `stderr`, `duration_seconds`, `log_path`, `timed_out`, `skipped`, `extra`; properties: `ok`, `usable`; method: `unavailable_reason()`.
+Metric `value:` may be a literal number or a `$`-reference resolved at run time:
+`$judge.score`, `$judge.<name>.score`, `$duration`,
+`$stdout.words|chars|lines`, `$assertions.pass_rate`, `$checks.pass_rate`.
 
-## Markers
+## Tags
 
-| Marker | Meaning |
-|---|---|
-| `pack` | Exercises a full agent pack/plugin. |
-| `skill` | Exercises a single skill in isolation. |
-| `judge` | Invokes LLM-as-judge; slower and token-consuming. |
-| `slow` | Takes >60s; deselect with `-m "not slow"`. |
-| `tooling` | Fast, no-LLM tooling smoke eval. |
-| `metric` | Records a numeric metric tracked over time. |
+Tags replace the old pytest markers. They are arbitrary labels in the
+frontmatter `tags: [...]` list and drive selection at run time:
 
-## Environment Variables
+```bash
+evalpilot run -t smoke            # only 'smoke'
+evalpilot run -t "smoke,-slow"    # include 'smoke', exclude 'slow'
+```
+
+Common conventions: `smoke`, `slow`, `judge`, `metric`, `skill`, `pack`.
+
+## Runners
+
+The SUT is driven by a pluggable runner selected with `EVALPILOT_RUNNER` or
+`--runner`:
+
+- `copilot` (default) — launches the real Copilot CLI.
+- `mock` — deterministic, offline; runs staging, assertions, judge, metrics,
+  and rendering with no `copilot` binary and no tokens. Script it with
+  `EVALPILOT_MOCK_STDOUT`, `EVALPILOT_MOCK_FILES` (JSON), and
+  `EVALPILOT_MOCK_JUDGE_SCORE`.
+
+Add a runner by subclassing `evalpilot.runners.base.SUTRunner`, decorating it
+with `@register_runner`, and selecting it via `EVALPILOT_RUNNER`.
+
+## Environment variables
 
 | Variable | Effect |
 |---|---|
@@ -44,8 +60,9 @@ Common workspace methods:
 | `EVALPILOT_METRICS_ROOT` | Override metric history location. |
 | `EVALPILOT_RUNNER` | Select SUT runner; default is `copilot`. |
 | `EVALPILOT_JUDGE_THRESHOLD` | Default judge pass threshold; default is `0.7`. |
-| `EVALPILOT_SKIP_SUT` | Do not launch the SUT; live SUT tests produce skipped results. |
+| `EVALPILOT_SKIP_SUT` | Do not launch the SUT; live evals produce `SKIP` results. |
 | `EVALPILOT_SUT_TIMEOUT` | Clamp every SUT subprocess timeout. |
 | `COPILOT_BIN` | Path to the `copilot` binary. |
 
-The engine also accepts legacy aliases `EVALS_SKIP_SUT`, `EVALS_SUT_TIMEOUT`, and `EVAL_JUDGE_THRESHOLD` in the runner/judge paths.
+The engine also accepts legacy aliases `EVALS_SKIP_SUT`, `EVALS_SUT_TIMEOUT`,
+and `EVAL_JUDGE_THRESHOLD` in the runner/judge paths.

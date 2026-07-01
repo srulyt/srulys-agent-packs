@@ -22,15 +22,40 @@ from __future__ import annotations
 
 from .asserts import assert_prose_contains, assert_prose_not_contains
 from .config import Config, find_eval_root, find_metrics_root, find_repo_root
+from .executor import run_eval, run_specs
 from .judge import JudgeError, Verdict, judge
+from .loaders import Eval, load_markdown_eval, parse_markdown_eval
 from .metrics import MetricResult, load_history, record_metric, summarize
+from .model import (
+    AssertionResult,
+    EvalResult,
+    EvalRunReport,
+    JudgeResult,
+    MetricRecord,
+)
 from .rubric import Check, RubricResult, check_judge, rubric
 from .runners.base import RunResult, SUTRunner, get_runner
+from .spec import EvalSpec
 from .workspace import FixtureMissingError, Workspace
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
+    # authoring surfaces
+    "Eval",
+    "load_markdown_eval",
+    "parse_markdown_eval",
+    "EvalSpec",
+    # execution
+    "run_eval",
+    "run_specs",
+    # result model
+    "EvalResult",
+    "EvalRunReport",
+    "AssertionResult",
+    "JudgeResult",
+    "MetricRecord",
+    # primitives (still public)
     "Workspace",
     "FixtureMissingError",
     "judge",

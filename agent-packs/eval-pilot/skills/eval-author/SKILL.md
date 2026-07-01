@@ -1,131 +1,165 @@
 ---
 name: eval-author
-description: "Entry workflow for creating evalpilot evals for Copilot agents and skills. Bootstraps evals/, discovers targets, writes pytest rubric and metric tests, and hands off to eval-runner. Trigger keywords: create evals, author evals, test my agent, test my skill, evalpilot, rubric, metric, regression."
+description: "Entry workflow for creating evalpilot evals for Copilot agents and skills. Bootstraps evals/, discovers targets, scaffolds a Markdown *.eval.md (or Python builder) spec, and hands off to eval-runner. Trigger keywords: create evals, author evals, test my agent, test my skill, evalpilot, eval.md, rubric, metric, regression."
 argument-hint: "<agent or skill name / scenario>"
 user-invocable: true
 ---
 
 # Eval Author (entry skill)
 
-Use this skill when the user asks to create evals for a Copilot agent, agent pack, or skill. You are authoring pytest tests for the host repository; the Python engine lives in the `evalpilot` package and must already be installed or installed from this plugin's `engine/` directory. Do **not** modify the engine.
+Use this skill when the user asks to create evals for a Copilot agent, agent
+pack, or skill. Modern evalpilot evals are **single self-contained files** that
+read top-to-bottom, so a reader understands the eval at a glance and an author
+needs only a few steps to create one. The Python engine lives in the
+`evalpilot` package and must already be installed (see the plugin README). Do
+**not** modify the engine.
 
-## Workflow
+## The two authoring surfaces
 
-1. **Bootstrap the repo**
-   - Ensure `evalpilot` is importable. If not, install from the plugin engine:
-     - development checkout: `pip install -e <plugin>/engine`
-     - installed plugin copy: `pip install <plugin>/engine`
-   - If `evals/` does not exist, run `evalpilot init`. It scaffolds sample tests under `evals/packs/_example/` and `evals/skills/_example/`.
-2. **Discover targets**
-   - Run `evalpilot discover` (or `evalpilot discover --json` if you need machine-readable output).
-   - Choose `evals/packs/<agent>/test_*.py` for an agent/pack, or `evals/skills/<skill>/test_*.py` for a skill.
-3. **Author both result types**
-   - A binary **rubric** with structural checks plus, when useful, `judge(...)` and `check_judge(...)`.
-   - At least one numeric **metric** via the `metric` fixture for trend tracking.
-4. **Hand off to execution**
-   - Load/use `eval-runner`, or run `evalpilot run <target>` directly.
-   - For metric trend interpretation, load/use `eval-metrics` or run `evalpilot metrics`.
+Every eval compiles to one `EvalSpec`, from either surface:
 
-## Authoring Rules
+1. **Markdown DSL — `*.eval.md`** (preferred; prompts/criteria read naturally).
+2. **Python builder — `*.eval.py`** (power-user escape hatch: compute prompts,
+   share fixtures, register `check(...)` predicates).
 
-- Never put the expected answer in the SUT prompt; make the agent solve the task.
-- Keep judge criteria strict and concrete. Say what earns 1.0 and what partial credit means.
-- Always include `result.log_path` in failure messages: `assert result.ok, f"... {result.log_path}"`, `rubric(...).assert_passed(log_path=result.log_path)`, and `m.assert_no_regression(log_path=result.log_path)`.
-- If `result.usable` is false, skip with `pytest.skip(result.unavailable_reason())` so timeouts or `EVALPILOT_SKIP_SUT` are reported clearly.
-- Add markers: `@pytest.mark.pack` or `@pytest.mark.skill`, plus `slow`, `judge`, and/or `metric` as appropriate.
-- Prefer stable artifacts and structural assertions before asking the judge.
-- Record metrics that are meaningful over time: score, latency, word count, artifact count, coverage ratio, token/cost proxy.
+Both are discovered by `evalpilot run` / `evalpilot lint`.
 
-## Worked Example: Agent Rubric + Judge Score Metric
+## Workflow (how many steps to create an eval?)
 
-```python
-from __future__ import annotations
+1. **Ensure `evalpilot` is importable** and, if `evals/` does not exist, run
+   `evalpilot init` (scaffolds `evals/examples/` + `_metrics/`).
+2. **Discover the target**: `evalpilot discover` → pick the agent or skill name.
+3. **Scaffold**: `evalpilot new <name> --target <target> --kind agent|skill`
+   (add `--python` for a builder file). This writes a ready-to-edit spec.
+4. **Fill in three things**: the `## Act` prompt, the `## Assert` structural
+   checks, and the `judge:` criteria. Keep at least one `metric` for trends.
+5. **Validate without the SUT**: `evalpilot lint <file>` (parses + validates).
+6. **Hand off**: load/use `eval-runner`, or run `evalpilot run <file>`. For
+   trends, load/use `eval-metrics` or run `evalpilot metrics`.
 
-import pytest
+## Description-first authoring (write intent, then implement)
 
-from evalpilot import check_judge, rubric
+A `.eval.md` needs only a **title, `> summary`, and `## Description`** to be a
+valid *stub* — the executable `## Setup` / `## Act` / `## Assert` can come
+later. This supports a natural workflow: a human writes what the eval should
+check in plain English, then an agent implements the rest.
 
-AGENT_NAME = "my-agent"
-PROMPT = "Create a concise migration plan for moving a Python CLI from argparse to Typer."
+1. **Scaffold a stub from a description**:
+   `evalpilot new <name> --target <target> --kind agent --describe "In plain
+   English, describe the scenario, the action, and what a correct result is."`
+   This writes a prose-only `## Description` file with no Act/Assert yet.
+2. **Lint** it: `evalpilot lint <file>` reports it as `[stub]`
+   ("described, awaiting implementation") — **not** an error, and it does not
+   fail the lint run. (Use `evalpilot lint --strict` to fail on stubs in CI.)
+3. **Implement**: from the `## Description`, fill in `## Act` (the prompt) and
+   `## Assert` (structural checks + `judge:` criteria + a `metric`). Once an
+   act prompt and at least one check exist, lint flips from `[stub]` to `[ ok ]`.
+4. **Run**: `evalpilot run <file>`.
 
+## The `*.eval.md` shape
 
-@pytest.mark.pack
-@pytest.mark.slow
-@pytest.mark.judge
-@pytest.mark.metric
-def test_agent_migration_plan(agent_pack, judge, metric):
-    ws = agent_pack(AGENT_NAME)
+```markdown
+---
+name: my-agent-migration-plan
+target: my-agent            # agent or skill name
+kind: agent                 # agent | skill
+tags: [smoke, slow, judge]
+timeout: 600
+---
 
-    result = ws.run_agent(prompt=PROMPT, agent=AGENT_NAME, timeout=600)
-    if not result.usable:
-        pytest.skip(result.unavailable_reason())
-    assert result.ok, f"agent exited {result.returncode}; see {result.log_path}"
+# Produces a concrete migration plan
+> One-line summary shown in compact listings.
 
-    artifact = result.stdout
-    verdict = judge(
-        artifact=artifact,
-        criteria=(
-            "Score 1.0 only if the response includes ordered migration steps, "
-            "calls out compatibility risks, and names tests to run. Score 0.5 "
-            "for partial coverage. Score 0.0 if it is generic or off-topic."
-        ),
-        threshold=0.7,
-    )
+## Description                # optional but recommended
+Multi-paragraph, human-readable explanation of the scenario: the starting
+context, what the agent is asked to do, and what a correct result looks like.
+Lets a reader grasp the eval at a glance — and lets an author write the intent
+first and have an agent implement the sections below.
 
-    r = rubric(
-        ("produced non-empty output", bool(artifact.strip())),
-        ("mentions tests", "test" in artifact.lower()),
-        check_judge("plan is specific and complete", verdict),
-    )
-    r.assert_passed(log_path=result.log_path)
-
-    metric(
-        "judge_score", verdict.score,
-        direction="higher_is_better", unit="score",
-        baseline_strategy="rolling_mean", tolerance=0.1,
-    )
+## Setup                    # optional
+```yaml
+# stage: { agent: my-agent }          # inferred from target+kind
+# files: [{ copy: "fixtures/**", dest: "." }]
 ```
 
-## Worked Example: Skill Metric Gate
+## Act
+```prompt
+Create a concise migration plan for moving a Python CLI from argparse to Typer.
+```
+
+## Assert
+```yaml
+files:
+  exists: ["**/*.md"]
+contains:
+  - { text: "test", ignore_case: true }   # against stdout by default
+judge:
+  # artifact: path/to/output.md           # omit to judge stdout
+  threshold: 0.7
+  criteria: |
+    Score 1.0 only if the response includes ordered migration steps, calls out
+    compatibility risks, and names tests to run. 0.5 partial; 0.0 off-topic.
+metrics:
+  - { name: judge_score, value: $judge.score, direction: higher_is_better,
+      baseline: rolling_mean, tolerance: 0.1 }
+```
+```
+
+## The Python builder (equivalent)
 
 ```python
-from __future__ import annotations
+from evalpilot import Eval
 
-import pytest
-
-from evalpilot import rubric
-
-SKILL_NAME = "my-skill"
-PROMPT = "Summarize the repo's release checklist in five bullets."
-
-
-@pytest.mark.skill
-@pytest.mark.slow
-@pytest.mark.metric
-def test_skill_response_size(skill, metric):
-    ws = skill(SKILL_NAME)
-
-    result = ws.run_skill(skill=SKILL_NAME, prompt=PROMPT, timeout=300)
-    if not result.usable:
-        pytest.skip(result.unavailable_reason())
-    assert result.ok, f"skill exited {result.returncode}; see {result.log_path}"
-
-    words = len(result.stdout.split())
-    rubric(
-        ("produced output", bool(result.stdout.strip())),
-        ("kept response concise", words <= 160, f"words={words}"),
-    ).assert_passed(log_path=result.log_path)
-
-    m = metric(
-        "response_words", words,
-        direction="lower_is_better",
-        baseline_strategy="last",
-        tolerance_pct=0.25,
-    )
-    m.assert_no_regression(log_path=result.log_path)
+eval = (
+    Eval("my-agent-migration-plan", target="my-agent", kind="agent",
+         tags=["smoke", "judge"], timeout=600)
+    .describe("Produces a concrete migration plan.")
+    .prompt("Create a concise migration plan for argparse -> Typer.")
+    .expect_file("**/*.md")
+    .expect_stdout("test", ignore_case=True)
+    .judge("Ordered steps + risks + tests named earns 1.0.", threshold=0.7)
+    .metric("judge_score", "$judge.score",
+            direction="higher_is_better", baseline="rolling_mean", tolerance=0.1)
+    .build()
+)
 ```
+
+## Assertion vocabulary (`## Assert`)
+
+| Key | Meaning |
+|---|---|
+| `files.exists` / `files.absent` | glob paths that must / must not exist |
+| `glob_count` | a glob must match an expected count |
+| `contains` / `not_contains` | substring in stdout (or a file via `path:`) |
+| `prose_contains` | whitespace-normalised substring match |
+| `stdout_contains` | substring in stdout specifically |
+| `matches` | regex match |
+| `json_path` | value at a JSON path equals/exists |
+| `json_empty` | value at a JSON path is missing, null, or empty |
+| `section_contains` / `section_not_contains` | substring scoped to a `## Heading` body |
+| `judge` | one or a list of LLM-as-judge verdicts (`threshold`, `criteria`) |
+| `asserts` | generic escape hatch: `[{ kind, ...args }]` |
+
+New assertion kinds register via the `@assertion` decorator in
+`evalpilot.assertions`, so the DSL can express **any** eval; the Python
+builder's `.check(name, predicate)` is a per-eval escape hatch.
+
+## Metric value references
+
+Metric `value:` may be a literal number or a `$`-reference resolved at run time:
+`$judge.score`, `$judge.<name>.score`, `$duration`, `$stdout.words|chars|lines`,
+`$assertions.pass_rate`, `$checks.pass_rate`. `baseline:` accepts a strategy
+name (`rolling_mean`, `last`, `best`) or a number (pinned).
+
+## Authoring rules
+
+- Never put the expected answer in the prompt; make the agent solve the task.
+- Keep judge criteria strict and concrete: say what earns 1.0 and partial credit.
+- Prefer stable structural assertions before asking the judge.
+- Record metrics meaningful over time: judge score, latency, word/artifact count.
+- Run `evalpilot lint` before handing off — it catches spec errors with no SUT.
 
 ## References
 
-- [Fixtures, markers, and environment](references/fixtures-markers-env.md)
-- [Metric baselines and tolerances](references/metric-baselines.md)
+- [Assertion & metric reference](references/metric-baselines.md)
+- [Staging, runners, and environment](references/fixtures-markers-env.md)

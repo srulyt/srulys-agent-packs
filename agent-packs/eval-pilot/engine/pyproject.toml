@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evalpilot"
-version = "0.1.0"
-description = "Portable, repo-agnostic eval engine for GitHub Copilot agents and skills. Binary rubric + numeric metric results with JSONL trend tracking."
+version = "0.2.0"
+description = "Generic, easy-to-use eval framework for GitHub Copilot agents and skills: Markdown/Python DSL, modeled results, and terminal/HTML/JSON renderers with JSONL trend tracking."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "srulys-agent-packs" }]
 keywords = ["evals", "copilot", "agents", "skills", "pytest", "llm-as-judge", "metrics"]
 dependencies = [
+    "PyYAML>=6.0",
     "pytest>=8.0",
     "pytest-xdist>=3.0",
     "pytest-reportlog>=0.4",

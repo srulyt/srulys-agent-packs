@@ -1,69 +1,79 @@
 ---
 name: eval-metrics
-description: "Use evalpilot numeric metrics over time: JSONL history, baseline strategies, regression gates, evalpilot metrics reports, and CI checks. Trigger keywords: eval metrics, metric regression, history.jsonl, baseline, rolling mean, tolerance, trend, evalpilot metrics."
+description: "Use evalpilot numeric metrics over time: JSONL history, baseline strategies, regression gates, evalpilot metrics reports, HTML trend charts, and CI checks. Trigger keywords: eval metrics, metric regression, history.jsonl, baseline, rolling mean, tolerance, trend, evalpilot metrics."
 argument-hint: "[metric slug] [--check]"
 user-invocable: true
 ---
 
 # Eval Metrics
 
-Use this skill when the user wants numeric trend tracking, regression gates, or help interpreting `evalpilot metrics`.
+Use this skill when the user wants numeric trend tracking, regression gates, or
+help interpreting `evalpilot metrics`. Metrics are declared **inside the eval
+spec** and recorded automatically each run — no fixture wiring.
 
-## Recording Metrics in Tests
+## Declaring a metric
 
-Use the `metric` pytest fixture:
+In a `*.eval.md` `## Assert` block:
+
+```yaml
+metrics:
+  - { name: judge_score, value: $judge.score, direction: higher_is_better,
+      baseline: rolling_mean, tolerance: 0.1 }
+  - { name: response_words, value: $stdout.words, direction: lower_is_better,
+      baseline: last, tolerance_pct: 0.25 }
+```
+
+Or with the Python builder:
 
 ```python
-m = metric(
-    "judge_score", verdict.score,
-    direction="higher_is_better",
-    baseline_strategy="rolling_mean",
-    tolerance=0.1,
-)
-m.assert_no_regression(log_path=result.log_path)
+.metric("judge_score", "$judge.score",
+        direction="higher_is_better", baseline="rolling_mean", tolerance=0.1)
 ```
 
-`metric(name, value, ...)` records one JSON line to:
+Each run appends one JSON line to committed history:
 
 ```text
-evals/_metrics/<slug>/history.jsonl
+<eval-root>/_metrics/<slug>/history.jsonl
 ```
 
-The slug is derived from the pytest node id plus metric name. The returned `MetricResult` includes `value`, `baseline`, `delta`, `pct_delta`, `regressed`, and `history_path`.
+The slug is derived from the eval id plus the metric name.
 
-Call `MetricResult.assert_no_regression(log_path=result.log_path)` when the metric should gate the test. Omit it when the number is informational only.
+## Value references
 
-## Directions and Baselines
+`value:` is a literal number or a `$`-reference resolved at run time:
+
+- `$judge.score` / `$judge.<name>.score` — a judge verdict's score.
+- `$duration` — wall-clock seconds for the eval.
+- `$stdout.words` / `$stdout.chars` / `$stdout.lines`.
+- `$assertions.pass_rate` / `$checks.pass_rate`.
+
+## Directions and baselines
 
 Directions:
 
-- `higher_is_better` — lower than baseline beyond tolerance is a regression.
-- `lower_is_better` — higher than baseline beyond tolerance is a regression.
+- `higher_is_better` — dropping below baseline beyond tolerance is a regression.
+- `lower_is_better` — rising above baseline beyond tolerance is a regression.
 - `neutral` — records only; never regresses.
 
-Baseline strategies:
+Baseline (`baseline:` accepts a strategy name or a number):
 
-- `rolling_mean` for noisy or LLM-derived metrics such as judge scores.
-- `last` for deterministic metrics where the previous committed run is the right comparison.
-- `best` for deterministic quality/performance where you want to protect the best prior value.
-- `pinned` when passing an explicit `baseline=` value.
+- `rolling_mean` — noisy/LLM-derived metrics such as judge scores.
+- `last` — deterministic metrics compared to the previous committed run.
+- `best` — protect the best prior value.
+- a **number** — pinned baseline (equivalently `baseline_value:`).
 
-Tolerances:
+Tolerances: `tolerance` (absolute) and `tolerance_pct` (fractional, e.g. `0.20`).
+If both are supplied, the larger slack wins. Set `gate: true` to make a metric
+regression fail the eval; otherwise it is informational.
 
-- `tolerance` absolute slack.
-- `tolerance_pct` fractional slack, e.g. `0.20` for 20%.
-- If both are supplied, evalpilot uses the larger slack.
-
-## Metric History Record Schema
-
-Each JSONL row contains:
+## History record schema
 
 ```json
 {
   "ts": "2026-06-21T00:00:00+00:00",
   "run_id": "20260621T000000-abcdef12",
   "git_sha": "abc1234",
-  "eval_id": "skills.my-skill.test_smoke.test_happy_path",
+  "eval_id": "skills.my-skill.test_smoke",
   "name": "judge_score",
   "value": 0.86,
   "unit": "score",
@@ -78,26 +88,28 @@ Each JSONL row contains:
 }
 ```
 
-Commit these histories with the evals when you want portable, git-diffable trend baselines.
+Commit these histories with the evals for portable, git-diffable baselines.
 
-## Reporting Trends
-
-```bash
-evalpilot metrics
-evalpilot metrics judge_score
-evalpilot metrics judge_score -v
-evalpilot metrics --check
-```
-
-`evalpilot metrics [slug]` filters series by substring. It prints runs, latest value, baseline, min, max, and regression count. `-v` / `--verbose` prints the tail rows; `--tail N` changes how many verbose rows are shown. `--check` exits `1` if the latest row in any selected series has `regressed: true`; otherwise it exits `0`.
-
-## CI Pattern
-
-Run the eval target, then gate metric regressions:
+## Reporting trends
 
 ```bash
-evalpilot run evals -m metric
-evalpilot metrics --check
+evalpilot metrics                 # every series: runs, latest, baseline, min/max
+evalpilot metrics judge_score     # filter series by substring
+evalpilot metrics judge_score -v  # print tail rows (--tail N to change count)
+evalpilot metrics --check         # exit 1 if the latest run regressed
 ```
 
-Use sane tolerances before committing history. For LLM-derived metrics, prefer `rolling_mean` plus absolute slack (`tolerance=0.05` or `0.1`). For latency/cost/word-count style metrics, prefer `lower_is_better` with `last` or `best` and a percentage tolerance.
+The HTML report (`evalpilot run --format html` / `evalpilot show --format html`)
+renders inline sparkline trend charts per metric, so trends are visible without
+the CLI.
+
+## CI pattern
+
+```bash
+evalpilot run -t metric      # run the metric-bearing evals
+evalpilot metrics --check    # gate on regressions in the latest run
+```
+
+For LLM-derived metrics prefer `rolling_mean` plus absolute slack
+(`tolerance: 0.05`–`0.1`). For latency/cost/word-count, prefer `lower_is_better`
+with `last` or `best` and a percentage tolerance.

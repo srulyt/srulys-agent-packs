@@ -117,8 +117,9 @@ def get_runner(name: Optional[str] = None) -> SUTRunner:
 
     Resolution: explicit ``name`` > ``EVALPILOT_RUNNER`` env > ``"copilot"``.
     """
-    # Import side-effect registers the built-in copilot runner.
+    # Import side-effects register the built-in runners.
     from . import copilot as _copilot  # noqa: F401
+    from . import mock as _mock  # noqa: F401
 
     chosen = name or os.environ.get("EVALPILOT_RUNNER") or "copilot"
     try:

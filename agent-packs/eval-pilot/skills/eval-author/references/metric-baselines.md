@@ -1,6 +1,34 @@
-# Metric Baselines and Tolerances
+# Assertions, Metrics, Baselines, and Tolerances
 
-`metric(name, value, ...)` is the pytest fixture wrapper around `record_metric(...)`. It binds `eval_id` to the pytest node id, appends one JSON line, and returns a `MetricResult`.
+## Assertion kinds
+
+Declared in the `## Assert` YAML block. All are optional; combine as needed.
+
+| Key | Meaning |
+|---|---|
+| `files.exists` | glob paths that must exist (list). |
+| `files.absent` | glob paths that must **not** exist (list). |
+| `glob_count` | `[{ pattern, min?, max?, equals? }]` — match count in range. |
+| `contains` | `[{ text, ignore_case?, path? }]` — substring in stdout (or a file). |
+| `not_contains` | substring that must be absent. |
+| `prose_contains` | substring match with whitespace normalised. |
+| `stdout_contains` | substring in stdout specifically. |
+| `matches` | `[{ pattern, path?, flags? }]` — regex match. |
+| `json_path` | `[{ path, query, equals?, exists? }]` — value at a dotted JSON query. |
+| `json_empty` | `[{ path, query }]` — JSON value is missing, null, `[]`, `{}`, or `""`. |
+| `section_contains` | `[{ path?, section, text\|any\|all, ignore_case?, max_chars? }]` — match scoped to a `## Heading` body. |
+| `section_not_contains` | `[{ path?, section, text\|any, ignore_case?, max_chars? }]` — text must NOT leak into a section body. |
+| `judge` | one mapping or a list: `{ criteria, threshold?, artifact?, name? }`. |
+| `asserts` | generic escape hatch: `[{ kind, ...args }]` for any registered kind. |
+
+Register new kinds with the `@assertion` decorator in `evalpilot.assertions`;
+the Python builder's `.check(name, predicate)` is a per-eval escape hatch.
+
+## Metrics
+
+Declared under `metrics:` as `[{ name, value, ... }]`. `value` is a number or a
+`$`-reference (see the staging reference). Each run appends one JSON line to
+`<eval-root>/_metrics/<slug>/history.jsonl` and compares against a baseline.
 
 ## Directions
 
@@ -10,24 +38,28 @@
 | `lower_is_better` | Current value rises above baseline beyond tolerance. |
 | `neutral` | Never flags regression; records information only. |
 
-## Baseline Strategies
+## Baselines
+
+`baseline:` accepts a strategy name, or a number (pinned).
 
 | Strategy | Use when |
 |---|---|
-| `last` | Deterministic metrics where the previous committed value is the right comparison. This is the default. |
-| `rolling_mean` | Noisy or LLM-derived metrics. Uses `window` prior values; default `window=5`. |
-| `best` | You want to protect the best previous value for deterministic quality or performance. |
-| `pinned` | You pass an explicit `baseline=` value. |
+| `last` | Deterministic metrics compared to the previous committed value (default). |
+| `rolling_mean` | Noisy or LLM-derived metrics. Uses `window` prior values (default 5). |
+| `best` | Protect the best previous value for deterministic quality/performance. |
+| a number | Pinned baseline (equivalently `baseline_value:`). |
 
-## Tolerances
+## Tolerances and gating
 
-- `tolerance` is absolute slack.
-- `tolerance_pct` is fractional slack based on the baseline, e.g. `0.10` allows 10% movement.
+- `tolerance` — absolute slack.
+- `tolerance_pct` — fractional slack based on the baseline, e.g. `0.10` = 10%.
 - If both are set, evalpilot uses the larger allowed slack.
 - The first recorded value has no prior baseline and cannot regress.
+- `gate: true` makes a metric regression **fail** the eval; otherwise the metric
+  is informational and only surfaces in `evalpilot metrics --check`.
 
-## MetricResult
+## Metric record fields
 
-Useful fields: `value`, `baseline`, `baseline_strategy`, `delta`, `pct_delta`, `regressed`, `history_path`.
-
-Use `m.assert_no_regression(log_path=result.log_path)` to fail a pytest test when the latest value regressed.
+Each JSONL row includes `value`, `baseline`, `baseline_strategy`, `delta`,
+`pct_delta`, `regressed`, `tolerance`, `tolerance_pct`, plus run provenance
+(`ts`, `run_id`, `git_sha`, `eval_id`, `name`, `unit`, `direction`).
