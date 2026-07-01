@@ -1,0 +1,15 @@
+# Source (published artifacts live in dist/ and _data/)
+src/
+tests/
+*.tsbuildinfo
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+
+# Dev noise
+.vscode/
+.idea/
+*.log
+node_modules/
+coverage/
+.DS_Store

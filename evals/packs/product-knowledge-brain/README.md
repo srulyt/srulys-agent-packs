@@ -30,7 +30,7 @@ top-level / repo-wide index skill gets the bare `knowledge-index`,
 **explicit request + crowded area** (a past-threshold area with an explicit
 feature-a request produces a bare per-area skill `feature-a-knowledge-index`,
 and asserts the source dirs are NOT namespace-prefixed). Run them with
-`pytest evals/packs/product-knowledge-brain/`.
+`evalpilot run evals/packs/product-knowledge-brain/`.
 
 ## Bounding the live-SUT loop (budget controls)
 
@@ -43,7 +43,7 @@ opt-in, backward-compatible env controls (implemented in
 - **`EVALPILOT_SUT_TIMEOUT=<seconds>`** — clamps every SUT subprocess timeout to
   `min(requested, cap)`. A hung/slow SUT is force-killed at the cap
   (returncode 124, `result.timed_out`), and the behavioural tests then
-  `pytest.skip` instead of hanging or hard-failing. Set this to fit the
+  `SKIP` instead of hanging or hard-failing. Set this to fit the
   runner's per-loop budget (e.g. `EVALPILOT_SUT_TIMEOUT=180`).
 - **`EVALPILOT_SKIP_SUT=1`** — does not launch the SUT at all; behavioural tests
   skip cleanly (`result.skipped`, returncode 125) with zero tokens. Use when

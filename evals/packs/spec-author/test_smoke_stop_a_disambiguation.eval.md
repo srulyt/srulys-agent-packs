@@ -13,7 +13,7 @@ C4 Stop A binary-disambiguation + C5 partial-answer fallback. The detective init
 
 Ported from legacy `cases/smoke-stop-a-disambiguation/`.
 
-The legacy harness scripted multi-turn user replies via `scripted_user`. The pytest harness is single-turn; the prompt folds the simulated turn-state into the user instructions, matching the legacy fixture's "non-interactive run" framing.
+The legacy harness scripted multi-turn user replies via `scripted_user`. The engine runs single-turn; the prompt folds the simulated turn-state into the user instructions, matching the legacy fixture's "non-interactive run" framing.
 
 ## Setup
 ```yaml

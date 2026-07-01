@@ -1,201 +1,178 @@
-# `evals/` — pytest-based eval framework
+# `evals/` — evalpilot TypeScript eval harness
 
-> **Portable version:** the engine behind this harness is packaged as the
-> **`eval-pilot`** Copilot plugin (`agent-packs/eval-pilot/`) so any repo with
-> agents/skills can install it (`pip install` the bundled `evalpilot` engine)
-> and ask Copilot to *create and run evals* — both binary **rubric** pass/fail
-> checks and numeric **metric** results tracked over time in committed JSONL
-> history. This in-repo `evals/` **dogfoods** that package through
-> the evalpilot pytest plugin. See `agent-packs/eval-pilot/README.md`.
+This directory dogfoods **Eval Pilot**, the TypeScript `@evalpilot/cli` engine
+from `agent-packs/eval-pilot/engine-ts/`. Eval specs are single, readable files
+that produce binary rubric signal, LLM-as-judge results, and numeric metric
+history over time.
 
-An eval is a pytest test. To run all evals:
+To run evals from the repo root:
 
 ```powershell
-pip install -r evals/requirements.txt
-pytest evals/                                 # everything
-pytest evals/packs/copilot-factory/           # one pack
-pytest evals/skills/agent-builder/            # one skill
-pytest evals/ -k issue_triage                 # by name
-pytest evals/ -m "not slow"                   # fast ones only
-pytest evals/ -n auto                         # parallel
+npm run engine:build
+npm run eval
+npm run eval:all
+npm run eval:mock
+node scripts/run-evals.mjs --all
+node scripts/run-evals.mjs copilot-factory
+node scripts/run-evals.mjs eval-author --mock -- -t structural
+.\eval.cmd copilot-factory
+.\eval.cmd --all
+.\eval.cmd eval-author --list
 ```
 
-For a friendlier wrapper that takes a pack name + optional test
-selectors, persists each run under `evals/_runs/<timestamp>/`, and
-prints a focused failure summary (assertion + agent.log path +
-workspace path), use `eval.cmd` from the repo root:
+You can also invoke the engine directly. `target` is a file or directory path:
 
 ```powershell
-.\eval.cmd story-telling-agent                       # all evals in the pack
-.\eval.cmd story-telling-agent critical_gaps         # one named eval
-.\eval.cmd story-telling-agent buy_in_deck qa_loop   # multiple selectors
-.\eval.cmd agent-builder                             # works for skills too
-.\eval.cmd spec-author --list                        # show what would run
-.\eval.cmd copilot-factory --parallel 1              # serial (easier to read)
-.\eval.cmd --all                                     # the whole suite
+evalpilot run evals/
+evalpilot run evals/packs/copilot-factory/
+evalpilot run evals/skills/agent-builder/
+evalpilot run evals/ -t "smoke,-slow"
+evalpilot run evals/ --parallel 4
+evalpilot run evals/ --runner mock
 ```
 
-Failures show pytest's standard output: assertion message, captured
-stdout/stderr, and the path to the per-run log file.
+`EVALPILOT_RUNNER=mock` is equivalent to `--runner mock` for offline runs.
 
 ## Layout
 
 ```
 evals/
-├── pyproject.toml         # pytest config (testpaths, markers, norecursedirs)
-├── requirements.txt       # pytest, pytest-xdist, pytest-html, pytest-reportlog
-├── conftest.py            # shared report-log durability hook
-├── _templates/            # copy these to author a new eval
-├── packs/<pack>/test_*.py # one file per pack eval
-├── skills/<skill>/test_*.py # one file per skill-in-isolation eval
-└── static/                # static linters and evalpilot runner smoke tests
+├── _templates/              # pack.eval.md, skill.eval.md, structural.eval.ts
+├── _metrics/                # committed JSONL metric history
+├── _runs/                   # generated reports (gitignored)
+├── packs/<pack>/*.eval.*    # pack eval specs
+├── skills/<skill>/*.eval.*  # skill eval specs
+└── static/                  # structural repository checks
 ```
 
-## Anatomy of an eval
+## Anatomy of a Markdown eval
 
-```python
-# evals/packs/copilot-factory/test_smoke_issue_triage.py
-import pytest
+```markdown
+---
+name: copilot-factory-smoke
+target: copilot-factory
+kind: agent
+tags: [pack, smoke, judge]
+timeout: 900
+---
 
-@pytest.mark.pack
-@pytest.mark.slow
-@pytest.mark.judge
-def test_creates_two_agent_triage_pack(agent_pack, judge):
-    ws = agent_pack("copilot-factory")            # stages entry agent into tmpdir
+# Creates a useful triage pack
+> The factory creates the requested agent artifacts and explains how to use them.
 
-    result = ws.run_agent(                         # shells out to Copilot CLI
-        prompt="Design and build a 2-agent issue triage pack...",
-        agent="copilot-factory",
-        timeout=900,
-    )
-    if not result.usable:
-        pytest.skip(result.unavailable_reason())
-    assert result.ok, f"see {result.log_path}"     # log preserved on failure
-
-    arch = ws.find_one(".copilot-factory/sessions/*/artifacts/architecture.md")
-
-    verdict = judge(                               # LLM-as-judge
-        artifact=arch.read_text(),
-        criteria="Architecture must describe exactly 2 agents named...",
-        threshold=0.7,
-    )
-    assert verdict.passed, verdict.reasoning
+## Act
+```prompt
+Design and build a two-agent issue triage pack.
 ```
 
-A maintainer reads this top-to-bottom and understands the eval in
-~30 seconds.
+## Assert
+```yaml
+files:
+  exists: ["agent-packs/**/README.md"]
+contains:
+  - { text: "triage", ignore_case: true }
+judge:
+  threshold: 0.7
+  criteria: |
+    Score 1.0 only if the result includes clear agent roles, artifact paths,
+    and usage steps. 0.5 partial; 0.0 off-topic.
+metrics:
+  - { name: judge_score, value: $judge.score, direction: higher_is_better,
+      baseline: rolling_mean, tolerance: 0.1 }
+```
+```
+
+## TypeScript and structural evals
+
+Use `*.eval.ts` when a spec needs computed setup or direct repository checks:
+
+```ts
+import { Eval } from "@evalpilot/cli";
+
+export default new Eval("pack-readme-present", {
+  target: "my-pack",
+  kind: "none",
+  tags: ["structural", "tooling"],
+})
+  .check("README exists", (ctx) =>
+    ctx.read("agent-packs/my-pack/README.md") ? true : [false, "missing README"]
+  )
+  .check("has agents", (ctx) => ctx.glob("agent-packs/my-pack/.github/agents/*.agent.md").length > 0)
+  .build();
+```
+
+Structural evals use `kind: "none"` and no `.prompt(...)`; they run offline and
+never launch Copilot. In `.check()`, `ctx.root` is the repo root,
+`ctx.read(rel)` returns `text | null`, and `ctx.glob(pat)` returns sorted
+absolute paths.
 
 ## Authoring a new eval
 
-1. Copy a template into the right directory:
-   - Pack eval: `evals/_templates/test_pack_eval.py.template` →
-     `evals/packs/<pack>/test_<scenario>.py`
-   - Skill eval: `evals/_templates/test_skill_eval.py.template` →
-     `evals/skills/<skill>/test_<scenario>.py`
-2. Edit the placeholders (prompt, agent name, structural assertions,
-   judge criteria).
-3. Run it: `pytest evals/packs/<pack>/test_<scenario>.py -v`.
-4. Iterate: tighten the criteria, add structural assertions, mark
-   `@pytest.mark.slow` if the test takes > 60s.
-
-## Fixtures provided by evalpilot
-
-| Fixture | Returns | Use for |
-|---|---|---|
-| `workspace` | bare `Workspace` | custom staging |
-| `agent_pack(entry_agent)` | `Workspace` with the entry agent staged | pack evals |
-| `skill(name)` | `Workspace` with one skill staged | skill evals |
-| `judge` | `judge(artifact=, criteria=, threshold=)` callable | LLM-as-judge |
-
-The `judge` fixture stages the bundled `eval-judge` agent (shipped as
-`evalpilot` package data) and invokes it via Copilot CLI. Logs and the
-raw judge response are persisted under the test's pytest tmp_path for
-debugging.
+1. Copy a template from `evals/_templates/`:
+   - Pack behavior: `pack.eval.md` → `evals/packs/<pack>/<scenario>.eval.md`
+   - Skill behavior: `skill.eval.md` → `evals/skills/<skill>/<scenario>.eval.md`
+   - Repository conformance: `structural.eval.ts` → the relevant eval directory
+2. Edit the placeholders: prompt, target name, structural checks, judge criteria,
+   tags, and metrics.
+3. Validate: `evalpilot lint <file>` or `npm run lint:evals`.
+4. Run: `evalpilot run <file>` or `node scripts/run-evals.mjs <pack>`.
+5. Iterate: tighten criteria, add stable structural checks, and tag long-running
+   cases with `slow`.
 
 ## Logs and failure analysis
 
-- Each `run_agent` / `run_skill` call writes a combined stdout+stderr
-  log to `<workspace>/_logs/<name>.log` and returns its path on
-  `result.log_path`. Tests should include this path in assertion
-  messages.
-- pytest preserves the last few `tmp_path` directories per test under
-  `$TMPDIR/pytest-of-<user>/`, so failed workspaces stay inspectable.
-- The `eval.cmd` wrapper additionally writes the full pytest console
-  output to `evals/_runs/<timestamp>/console.log` and a structured
-  per-test JSONL to `evals/_runs/<timestamp>/report.jsonl` so a
-  follow-up agent or CI step can parse results without rerunning
-  anything.
-- For ad-hoc CI runs, `pytest --report-log=evals.jsonl` produces the
-  same structured output as the wrapper.
+- Each run writes a modeled result to `evals/_runs/<run-id>/report.json` and a
+  self-contained HTML report to `evals/_runs/<run-id>/report.html`.
+- `evals/_runs/latest.txt` points to the newest result. `_runs/` is gitignored.
+- Behavioral SUT logs are referenced from each eval result via `log_path` under
+  that run directory.
+- Open the HTML with `evalpilot show --format html --open` for drill-down.
 
 ## Static pack-contract linter
 
-`scripts/lint_pack.py` validates each agent pack's `.agent.md` and
-`SKILL.md` files (front-matter shape, required keys, soft size caps).
-It's wired into pytest as `evals/static/test_pack_contract.py` so it
-runs alongside the rest of the suite. Run standalone with:
+`node scripts/lint-pack.mjs --all` validates each agent pack's `.agent.md` and
+`SKILL.md` files (frontmatter shape, required keys, soft size caps). It is
+also represented by structural evals and CI.
 
 ```powershell
-python -m scripts.lint_pack --all
-python -m scripts.lint_pack copilot-factory
-python -m scripts.lint_pack copilot-factory --strict   # warnings = errors
+node scripts/lint-pack.mjs --all
+node scripts/lint-pack.mjs copilot-factory
+node scripts/lint-pack.mjs copilot-factory --strict   # warnings = errors
 ```
 
-## Markers
+## Tags
 
-| Marker | Meaning |
+Tags are labels in spec frontmatter or the TypeScript builder. Common tags:
+
+| Tag | Meaning |
 |---|---|
 | `pack` | exercises a full agent pack |
 | `skill` | exercises a single skill in isolation |
-| `judge` | invokes the LLM-as-judge (slower, costs LLM tokens) |
-| `slow` | takes > 60s; use `pytest -m "not slow"` to skip |
+| `smoke` | fast confidence scenario |
+| `slow` | long-running scenario |
+| `judge` | invokes the LLM-as-judge |
+| `structural` | offline repository/file conformance check |
+| `tooling` | engine or repository tooling check |
+
+Filter with `-t "structural"` or `-t "smoke,-slow"`.
 
 ## Environment
 
 | Variable | Effect |
 |---|---|
-| `COPILOT_BIN` | Override the path to the `copilot` binary |
-| `EVAL_JUDGE_THRESHOLD` | Default judge pass threshold (default `0.7`) |
-| `EVAL_GLOBAL_TIMEOUT_SEC` | Wall-clock safety backstop for `eval.cmd` runs (default `14400` = 4h; set `0` to disable). Per-test timeouts in `pyproject.toml` are the primary safety net. |
-| `TMPDIR` | Where pytest puts per-test workspaces |
+| `COPILOT_BIN` | Override the path to the `copilot` binary. |
+| `EVALPILOT_RUNNER` | Select the runner; use `mock` for offline runs. |
+| `EVALPILOT_SKIP_SUT` | Do not launch the SUT; live evals produce `SKIP` results. |
+| `EVALPILOT_SUT_TIMEOUT` | Clamp every SUT subprocess timeout. |
 
-If `copilot` is not on `PATH` (and `COPILOT_BIN` is unset), evals that
-need it are auto-skipped; static tests still run.
+If `copilot` is not on `PATH` (and `COPILOT_BIN` is unset), live evals that
+need it skip; structural evals and mock runs still work.
 
-## Timeouts and failure isolation
+## Metrics
 
-The harness uses three layers of timeout, in order of preference:
+Metric declarations append JSONL history under `evals/_metrics/<slug>/`.
+Inspect and gate them with:
 
-1. **Per-test pytest-timeout** (the primary safety net): configured in
-   `evals/pyproject.toml` (`timeout = 1500`, `timeout_method = "thread"`).
-   A single hung Copilot subprocess kills only that test, not the whole
-   run. Override per test with `@pytest.mark.timeout(seconds)`.
-2. **Per-subprocess `run_agent` / `run_skill` timeout**: each call passes
-   `timeout=<seconds>` to the Copilot CLI subprocess; the harness kills
-   the whole process tree on timeout via `psutil`.
-3. **Global wall-clock backstop in `eval.cmd`**: `--global-timeout`
-   (env: `EVAL_GLOBAL_TIMEOUT_SEC`, default 4h). Only fires if a test
-   escapes pytest-timeout — set to `0` to disable.
-
-### Windows runtime crashes
-
-Known fatal Windows exit codes (`STATUS_ACCESS_VIOLATION`,
-`STATUS_STACK_OVERFLOW`, `STATUS_STACK_BUFFER_OVERRUN`) are surfaced
-via `result.extra["crash"]`. When a test fails on `assert result.ok`,
-check that value first — a non-None value means the CLI itself crashed
-and the agent prompt is NOT at fault.
-
-### Missing fixture diagnostics
-
-`Workspace.find_one` raises `FixtureMissingError` (an `AssertionError`
-subclass) when zero matches are found, with a list of the closest
-existing paths in the workspace to help spot a typo or a missing
-fixture file.
-
-### Whitespace-tolerant prose assertions
-
-`evalpilot` provides `assert_prose_contains` /
-`assert_prose_not_contains` which normalise whitespace before
-comparing. Use them for free-form prose (bait sentences, persona
-descriptions); keep plain `assert ... in text` for structural
-literals (headings, `Status:` fields, `FR-NN`, `[Deprecated]`).
+```powershell
+evalpilot metrics
+evalpilot metrics --check
+```

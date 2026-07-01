@@ -11,7 +11,7 @@ timeout: 900
 ## Description
 Template-aware deck generation: when the user supplies a `.pptx` template, the deck-builder must invoke `generate_deck.py` with `--template` so the output deck inherits master slides and theme. Verifies path round-trip (not theme correctness).
 
-Ported from legacy `cases/smoke-template-mode/`. The original case expected the user to drop a real corporate template under `inputs/templates/`; the pytest version generated a minimal placeholder via `python-pptx` so the test was hermetic.
+Ported from legacy `cases/smoke-template-mode/`. The original case expected the user to drop a real corporate template under `inputs/templates/`; the hermetic eval generates a minimal placeholder via `python-pptx`.
 
 ## Act
 ```prompt

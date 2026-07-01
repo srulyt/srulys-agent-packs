@@ -86,12 +86,13 @@ Decision needed: whether to fund and prioritize in the next planning cycle.
 
 ## Evals
 
-This pack ships pytest-based evals under `evals/packs/product-brief/`. Cases cover happy paths (late-stage decision ask, early-stage summary, scope-brief), and negatives (orchestrator paraphrase, evidence STM source leak).
+This pack ships `.eval.md` / `.eval.ts` evals under `evals/packs/product-brief/`. Cases cover happy paths (late-stage decision ask, early-stage summary, scope-brief), and negatives (orchestrator paraphrase, evidence STM source leak).
 
 To run the suite from the monorepo:
 
 ```bash
-pytest evals/packs/product-brief/ -v
+npm run eval -- product-brief
+# or: node scripts/run-evals.mjs product-brief
 ```
 
 See [`evals/README.md`](../../evals/README.md) for framework details.

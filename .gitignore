@@ -67,12 +67,11 @@ node_modules/
 
 # ===========================================
 # Eval framework working directories
-# Tests live under evals/packs/<pack>/test_*.py and evals/skills/<skill>/test_*.py.
-# Per-test scratch (pytest tmpdirs, judge logs, wrapper run artifacts) is ignored:
+# Specs live under evals/packs/<pack>/ and evals/skills/<skill>/.
+# TypeScript engine scratch, judge logs, and wrapper run artifacts are ignored:
 # ===========================================
 __pycache__/
 *.pyc
-.pytest_cache/
 evals/_judge_cache/
 evals/.report.jsonl
 evals/_runs/

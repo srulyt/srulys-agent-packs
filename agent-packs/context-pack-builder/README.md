@@ -129,7 +129,7 @@ Interactive equivalent inside a session:
 With this repository open as your workspace, stage the agents/skills under the
 workspace `.github/` tree (`.github/agents/` + `.github/skills/`) so the CLI
 auto-loads them by bare id from cwd — this is exactly what the eval harness does
-(`evals/packs/context-pack-builder/conftest.py`). Then invoke
+under `evals/packs/context-pack-builder/`. Then invoke
 `@cpb-orchestrator` as above.
 
 > **Preview status.** The VS Code agent-plugin feature is **preview**; the
@@ -189,7 +189,7 @@ See `evals/packs/context-pack-builder/`:
 - `test_update_over_rewrite.py` — idempotent UPDATE (no duplicate, change log,
   human-edit preservation, no-op re-run).
 
-Run: `pytest evals/packs/context-pack-builder/`.
+Run: `npm run eval -- context-pack-builder` (or `node scripts/run-evals.mjs context-pack-builder`, or `.\eval.cmd context-pack-builder`).
 
 ## State (STM)
 

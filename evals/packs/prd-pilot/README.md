@@ -18,5 +18,5 @@ plugin-root `skills/<skill>` layout automatically.
 Run them with:
 
 ```
-pytest evals/packs/prd-pilot/
+evalpilot run evals/packs/prd-pilot/
 ```

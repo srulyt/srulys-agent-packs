@@ -15,5 +15,5 @@ and absence of writer-scaffolding meta-commentary.
 Run the suite from the monorepo root:
 
 ```bash
-pytest evals/packs/product-brief/ -v
+evalpilot run evals/packs/product-brief/
 ```

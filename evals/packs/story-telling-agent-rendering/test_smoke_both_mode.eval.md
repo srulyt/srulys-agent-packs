@@ -13,7 +13,7 @@ B2 smoke: `output_mode=both` produces a full-fidelity python-pptx deck AND a Mar
 
 The contract for `both` (per the architecture and marp-engine/SKILL.md): the deliverable pptx is built INDEPENDENTLY via python-pptx (not via `marp --pptx`, which is image-based), and the Marp `deck.md` is the source-of-record artifact. This test asserts BOTH artifacts are produced. The Marp render itself may render-or-block depending on toolchain availability (covered by `test_smoke_marp_mode.py`); here we require the pptx to exist regardless, because the python-pptx path does not depend on marp-cli.
 
-Hang-safety note: `render_marp.py` is self-bounding and non-interactive (stdin closed, per-stage timeouts, process-tree kill on timeout), so the Marp render can never wedge the SUT; the python-pptx deliverable and the Marp `deck.md` source-of-record are produced regardless of toolchain availability. The `@pytest.mark.timeout` below is only a secondary backstop.
+Hang-safety note: `render_marp.py` is self-bounding and non-interactive (stdin closed, per-stage timeouts, process-tree kill on timeout), so the Marp render can never wedge the SUT; the python-pptx deliverable and the Marp `deck.md` source-of-record are produced regardless of toolchain availability. The engine SUT budget (`EVALPILOT_SUT_TIMEOUT`) remains a secondary backstop.
 
 ## Setup
 ```yaml

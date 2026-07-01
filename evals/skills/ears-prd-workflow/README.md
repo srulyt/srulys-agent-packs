@@ -10,4 +10,4 @@ outline loops back to steps 1–2, re-grills only the touched slice, and
 re-presents a revised outline with `revisions_used` incremented without
 drafting — the workflow skill owns this loop (carry-concern C2).
 
-Run: `pytest evals/skills/ears-prd-workflow/`
+Run: `evalpilot run evals/skills/ears-prd-workflow/`

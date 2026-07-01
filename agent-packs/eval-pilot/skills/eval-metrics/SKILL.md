@@ -23,11 +23,14 @@ metrics:
       baseline: last, tolerance_pct: 0.25 }
 ```
 
-Or with the Python builder:
+Or with the TypeScript builder:
 
-```python
-.metric("judge_score", "$judge.score",
-        direction="higher_is_better", baseline="rolling_mean", tolerance=0.1)
+```ts
+.metric("judge_score", "$judge.score", {
+  direction: "higher_is_better",
+  baseline: "rolling_mean",
+  tolerance: 0.1,
+})
 ```
 
 Each run appends one JSON line to committed history:

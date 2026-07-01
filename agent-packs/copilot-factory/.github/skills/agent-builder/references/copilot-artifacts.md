@@ -51,7 +51,7 @@ Only `description` is required. Must include:
 
 Example:
 ```yaml
-description: "Creates unit tests for Python code. Use when asked to write tests, generate test cases, or add test coverage. Triggers on: test, pytest, unittest, coverage."
+description: "Creates unit tests for code. Use when asked to write tests, generate test cases, or add test coverage. Triggers on: test, unittest, coverage."
 ```
 
 ### Tool Aliases

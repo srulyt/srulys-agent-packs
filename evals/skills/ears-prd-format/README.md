@@ -7,4 +7,4 @@ matches one of the 6 EARS patterns, contains exactly one `shall`, names a
 system (never "we"/"the user"), expresses what-not-how, and carries at
 least one nested, testable Given/When/Then acceptance criterion.
 
-Run: `pytest evals/skills/ears-prd-format/`
+Run: `evalpilot run evals/skills/ears-prd-format/`

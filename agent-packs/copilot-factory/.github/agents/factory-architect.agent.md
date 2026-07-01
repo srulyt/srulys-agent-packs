@@ -98,10 +98,11 @@ instructs you to run multiple workflow phases yourself.
   declare named fenced sections in its final response (see the
   `agent-builder` skill's eval-authoring reference for examples).
 - **Eval artifacts**: the architecture must list at least one planned
-  pytest test under `evals/packs/<pack>/test_smoke_<scenario>.py` per
-  pack-level scenario, including the prompt summary, expected
-  artifacts the SUT will produce, and the judge criteria (if any).
-  Skill-only deliverables get `evals/skills/<skill>/test_<scenario>.py`.
+  evalpilot spec under `evals/packs/<pack>/<scenario>.eval.md` or
+  `<scenario>.eval.ts` per pack-level scenario, including the prompt summary,
+  expected artifacts the SUT will produce, tags, and judge criteria (if any).
+  Use structural `*.eval.ts` (`kind: "none"`) for packaging conformance.
+  Skill-only deliverables get specs under `evals/skills/<skill>/`.
 - **Failure modes**: a `## Failure Modes` section enumerating **at
   least three** concrete failure modes the pack can encounter
   (sub-agent stalls, contract violations, malformed inputs, rate
@@ -204,7 +205,7 @@ section of that reference for the orthogonal-flag explanation.
 ```eval-plan-json
 {
   "tests": [
-    {"path": "evals/packs/<pack>/test_smoke_<scenario>.py",
+    {"path": "evals/packs/<pack>/<scenario>.eval.md",
      "scenario": "smoke-<happy-path>",
      "scope": "pack",
      "prompt_summary": "<one sentence>",

@@ -1,6 +1,6 @@
-# Per-repo eval working scratch — pytest tmpdirs, judge caches, report logs.
+# Per-repo eval working scratch — run reports, judge caches, generated files.
 __pycache__/
 *.pyc
-.pytest_cache/
-_judge_cache/
+_judge_cache_/
 .report.jsonl
+_runs/

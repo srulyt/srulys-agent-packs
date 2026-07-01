@@ -288,4 +288,4 @@ fenced block (`kb_root`, `kb_namespace`, `session_id`, `cycle_status`,
   `test_top_level_index_skill_and_install.py` (top-level index skill on
   explicit repo-wide request + install artifacts).
 
-Run with `pytest evals/packs/product-knowledge-brain/`.
+Run with `npm run eval -- product-knowledge-brain`.

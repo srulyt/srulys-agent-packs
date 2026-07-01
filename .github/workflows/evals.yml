@@ -7,42 +7,50 @@ on:
       - '.github/skills/**'
       - '.github/instructions/**'
       - 'evals/**'
-      - 'scripts/lint_pack.py'
+      - 'scripts/lint-pack.mjs'
+      - 'scripts/run-evals.mjs'
+      - 'package.json'
       - '.github/workflows/evals.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  ENGINE_DIR: agent-packs/eval-pilot/engine-ts
+  ENGINE_CLI: agent-packs/eval-pilot/engine-ts/dist/cli.js
+
 jobs:
   # Fast, deterministic: runs on every PR. No copilot binary required.
   static:
-    name: Static (lint + helper smoke tests)
+    name: Static (engine tests + lint + structural evals)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: evals/requirements.txt
-      - name: Install
-        run: pip install -r evals/requirements.txt
+          node-version: '20'
+      - name: Install engine deps
+        run: npm --prefix "$ENGINE_DIR" install
+      - name: Build engine (@evalpilot/cli)
+        run: npm --prefix "$ENGINE_DIR" run build
+      - name: Engine unit tests (vitest)
+        run: npm --prefix "$ENGINE_DIR" test
       - name: Lint all packs
-        run: python -m scripts.lint_pack --all
-      - name: Static pytest suite
-        working-directory: evals
-        run: pytest static/ -v --report-log=../static-report.jsonl
+        run: node scripts/lint-pack.mjs --all
+      - name: Lint all eval specs
+        run: node "$ENGINE_CLI" lint evals
+      - name: Run structural evals (offline, no SUT)
+        run: node "$ENGINE_CLI" run evals --tags structural
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: static-report
-          path: static-report.jsonl
+          path: evals/_runs/**
 
   # Slow + costs LLM tokens: matrix per pack so failures isolate cleanly.
-  # Only runs if `copilot` is installed (the install step is a no-op
-  # placeholder until a CI-friendly install method exists; until then
-  # this job will skip).
+  # Only runs if `copilot` is installed (the check is a no-op placeholder
+  # until a CI-friendly install method exists; until then this job skips).
   packs:
     name: Pack evals (${{ matrix.pack }})
     runs-on: ubuntu-latest
@@ -55,15 +63,16 @@ jobs:
           - product-brief
           - spec-author
           - story-telling-agent
-          # add more packs as their pytest evals land
+          # add more packs as their evals land
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: evals/requirements.txt
-      - run: pip install -r evals/requirements.txt
+          node-version: '20'
+      - name: Build engine (@evalpilot/cli)
+        run: |
+          npm --prefix "$ENGINE_DIR" install
+          npm --prefix "$ENGINE_DIR" run build
       - name: Check for copilot CLI
         id: copilot
         run: |
@@ -75,18 +84,12 @@ jobs:
           fi
       - name: Run pack evals
         if: steps.copilot.outputs.available == 'true'
-        working-directory: evals
-        run: |
-          pytest packs/${{ matrix.pack }}/ -v -n auto \
-                 --report-log=../pack-${{ matrix.pack }}-report.jsonl \
-                 --html=../pack-${{ matrix.pack }}-report.html --self-contained-html
+        run: node scripts/run-evals.mjs ${{ matrix.pack }} -- --parallel 4
       - uses: actions/upload-artifact@v4
         if: always() && steps.copilot.outputs.available == 'true'
         with:
           name: pack-${{ matrix.pack }}-report
-          path: |
-            pack-${{ matrix.pack }}-report.jsonl
-            pack-${{ matrix.pack }}-report.html
+          path: evals/_runs/**
 
   skills:
     name: Skill evals
@@ -94,12 +97,13 @@ jobs:
     needs: static
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: evals/requirements.txt
-      - run: pip install -r evals/requirements.txt
+          node-version: '20'
+      - name: Build engine (@evalpilot/cli)
+        run: |
+          npm --prefix "$ENGINE_DIR" install
+          npm --prefix "$ENGINE_DIR" run build
       - name: Check for copilot CLI
         id: copilot
         run: |
@@ -111,15 +115,9 @@ jobs:
           fi
       - name: Run skill evals
         if: steps.copilot.outputs.available == 'true'
-        working-directory: evals
-        run: |
-          pytest skills/ -v -n auto \
-                 --report-log=../skills-report.jsonl \
-                 --html=../skills-report.html --self-contained-html
+        run: node "$ENGINE_CLI" run evals/skills --parallel 4
       - uses: actions/upload-artifact@v4
         if: always() && steps.copilot.outputs.available == 'true'
         with:
           name: skills-report
-          path: |
-            skills-report.jsonl
-            skills-report.html
+          path: evals/_runs/**

@@ -13,7 +13,7 @@ B1/B2 smoke: `output_mode=marp` routes to the marp-engine path and honours the v
 
 The Marp toolchain (Node + @marp-team/marp-cli) may or may not be present on the CI host, so this test asserts the INVARIANT rather than a fixed outcome: the run must produce `marp-renders/manifest.json`, and that manifest must EITHER show rendered slides OR be an explicit graceful block (`status: "blocked"` with `user_decision_required: true`). What it must NEVER do is silently report success with no rendered slides and no block — that would be unverified output.
 
-Hang-safety note: `render_marp.py` is self-bounding and non-interactive (stdin closed, per-stage timeouts, process-tree kill on timeout), so a missing/interactive/slow toolchain produces a fast graceful BLOCK manifest rather than an unbounded hang. The `@pytest.mark.timeout` below is only a secondary backstop.
+Hang-safety note: `render_marp.py` is self-bounding and non-interactive (stdin closed, per-stage timeouts, process-tree kill on timeout), so a missing/interactive/slow toolchain produces a fast graceful BLOCK manifest rather than an unbounded hang. The engine SUT budget (`EVALPILOT_SUT_TIMEOUT`) remains a secondary backstop.
 
 ## Setup
 ```yaml

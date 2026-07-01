@@ -195,5 +195,4 @@ and optionally also written to your named output path.
     answers.
 
 The eval harness stages plugin skills from the plugin-root `skills/`
-layout automatically. Run with `pytest evals/packs/prd-pilot/` or
-`pytest evals/skills/<skill>/`.
+layout automatically. Run pack evals with `npm run eval -- prd-pilot`; run a skill eval with `node scripts/run-evals.mjs <skill>`.

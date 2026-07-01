@@ -11,7 +11,7 @@ timeout: 900
 ## Description
 Smoke evals for the `copilot-factory` agent pack.
 
-Each test is a pytest function that:
+This `.eval.md` spec runs an action prompt and then evaluates the result with rubric and structural checks:
 
 1. Stages the pack (and shared skills/instructions) into a tmpdir workspace via the `agent_pack` fixture.
 2. Runs `copilot -p ... --agent copilot-factory` non-interactively.

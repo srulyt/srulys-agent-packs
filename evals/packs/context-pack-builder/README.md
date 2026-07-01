@@ -13,5 +13,5 @@ automatically when the `copilot` CLI is unavailable.
 Run them with:
 
 ```
-pytest evals/packs/context-pack-builder/
+evalpilot run evals/packs/context-pack-builder/
 ```

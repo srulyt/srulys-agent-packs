@@ -1,0 +1,62 @@
+{
+  "name": "@evalpilot/cli",
+  "version": "0.2.0",
+  "description": "Generic, easy-to-use eval framework for GitHub Copilot agents and skills: Markdown/TypeScript DSL, modeled results, and terminal/HTML/JSON renderers with JSONL trend tracking.",
+  "keywords": [
+    "evals",
+    "copilot",
+    "agents",
+    "skills",
+    "llm-as-judge",
+    "metrics"
+  ],
+  "license": "MIT",
+  "author": "srulys-agent-packs",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "evalpilot": "dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "_data",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fast-glob": "^3.3.2",
+    "gray-matter": "^4.0.3",
+    "jiti": "^2.4.2",
+    "js-yaml": "^4.1.0",
+    "picocolors": "^1.1.1",
+    "tree-kill": "^1.2.2"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

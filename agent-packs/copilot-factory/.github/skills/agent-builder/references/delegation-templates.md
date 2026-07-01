@@ -132,7 +132,7 @@ PASS verdict from `review-prompts`, and again after each
 task(
   agent_type: "Factory Eval Runner",
   name: "run-evals",
-  description: "Execute the pack's pytest eval suite",
+  description: "Execute the pack's evalpilot suite",
   mode: "sync",
   prompt: "You are being invoked as @factory-eval-runner.\n" +
           "Session: {session-id}\nPack: {pack-name}\n" +
@@ -142,8 +142,8 @@ task(
           "Tests path: evals/packs/{pack-name}/\n" +
           "Guardrails:\n" +
           "  max_wall_clock_seconds_per_loop: {S}\n" +
-          "  tests_subset: {all|<space-list-of-pytest-nodeids>}\n\n" +
-          "Run pytest non-interactively, parse the report-log JSONL " +
+          "  tests_subset: {all|<file-or-dir-path>}\n\n" +
+          "Run evalpilot non-interactively, parse the modeled report JSON " +
           "yourself (the orchestrator does not have read access to " +
           "`evals/`). Emit `eval-summary`, `eval-verdict`, " +
           "`failing-tests-json`, `resolved-budgets-json`, " +

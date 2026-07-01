@@ -10,4 +10,4 @@ enumerable gap, freeform for the open-ended gap, and no invented answers.
 The judge explicitly does **not** assert any maximum question count — the
 skill removes the legacy cap deliberately.
 
-Run: `pytest evals/skills/grill-me-interrogation/`
+Run: `evalpilot run evals/skills/grill-me-interrogation/`

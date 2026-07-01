@@ -35,10 +35,10 @@ Coverage:
 Run them:
 
 ```bash
-pytest evals/packs/story-telling-agent-rendering/
+evalpilot run evals/packs/story-telling-agent-rendering/
 ```
 
-The `@pytest.mark.pack` + `@pytest.mark.slow` cases invoke the real
+The `pack` + `slow` tagged cases invoke the real
 `copilot` CLI and need it on PATH (or `COPILOT_BIN` set). The three new
 tooling smoke tests (pypdfium2 / new-system-archetype / aesthetic-craft)
 are hang-safe and need no CLI — they drive the pack scripts directly via

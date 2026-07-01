@@ -15,8 +15,8 @@ Copilot CLI agent packs.
 Run from the repo root:
 
 ```powershell
-pytest evals/packs/copilot-factory/ -v
-pytest evals/packs/copilot-factory/test_smoke_issue_triage.py -v
+evalpilot run evals/packs/copilot-factory/
+evalpilot run evals/packs/copilot-factory/test_smoke_issue_triage.eval.md
 ```
 
 See [`evals/README.md`](../../README.md) for framework-wide conventions
