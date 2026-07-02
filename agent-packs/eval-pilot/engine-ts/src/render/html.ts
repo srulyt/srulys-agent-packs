@@ -124,8 +124,8 @@ function evalCard(r: EvalResult): string {
 function checksTable(r: EvalResult): string {
   const rows: string[] = [];
   for (const a of r.assertions) {
-    const mark = a.passed ? "✓" : "✗";
-    const cls = a.passed ? "ok" : "bad";
+    const mark = a.skipped ? "–" : a.passed ? "✓" : "✗";
+    const cls = a.skipped ? "skip" : a.passed ? "ok" : "bad";
     rows.push(
       `<tr class="${cls}"><td>${mark}</td>` +
         `<td>${esc(a.name)}</td>` +

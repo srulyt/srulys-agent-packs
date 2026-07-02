@@ -20,6 +20,12 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
 import treeKill from "tree-kill";
 import {
+  captureFromFile,
+  telemetryEnabled,
+  telemetryEnv,
+} from "../telemetry/capture.js";
+import { emptyTelemetry } from "../telemetry/model.js";
+import {
   makeRunResult,
   registerRunner,
   SUTUnavailable,
@@ -102,6 +108,10 @@ interface RunOpts {
   logPath: string;
   timeout: number;
   stdinText?: string | null;
+  /** Extra environment variables merged into the child process. */
+  env?: Record<string, string> | null;
+  /** OTel file-exporter path to parse into telemetry after the run. */
+  otelPath?: string | null;
 }
 
 async function runProcess(cmd: string[], opts: RunOpts): Promise<RunResult> {
@@ -115,6 +125,7 @@ async function runProcess(cmd: string[], opts: RunOpts): Promise<RunResult> {
     // Own process group so tree-kill can reap the whole tree.
     detached: process.platform !== "win32",
     windowsHide: true,
+    env: opts.env ? { ...process.env, ...opts.env } : process.env,
     stdio: [stdinText !== null ? "pipe" : "ignore", "pipe", "pipe"],
   });
 
@@ -185,6 +196,9 @@ async function runProcess(cmd: string[], opts: RunOpts): Promise<RunResult> {
     log_path: opts.logPath,
     timed_out: timedOut,
     extra: crash ? { crash } : {},
+    telemetry: opts.otelPath
+      ? captureFromFile(opts.otelPath)
+      : emptyTelemetry("telemetry capture disabled"),
   });
 }
 
@@ -241,11 +255,14 @@ class CopilotRunner implements SUTRunner {
     const cmd: string[] = [binPath];
     if (args.agent) cmd.push("--agent", args.agent);
     cmd.push("--allow-all", "--no-ask-user", ...extraArgs);
+    const otelPath = telemetryEnabled() ? `${args.log_path}.otel.jsonl` : null;
     return runProcess(cmd, {
       cwd: args.workspace,
       logPath: args.log_path,
       timeout: resolveSutTimeout(args.timeout),
       stdinText: args.prompt,
+      env: otelPath ? telemetryEnv(otelPath) : null,
+      otelPath,
     });
   }
 

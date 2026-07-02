@@ -70,6 +70,15 @@ files:
   exists: ["**/*.md"]
 contains:
   - { text: "migration", ignore_case: true }
+tools:
+  called:     ["view"]
+  not_called: ["str_replace_editor"]
+files_accessed:
+  not_read:    ["**/secrets.*"]
+  not_written: ["agent-packs/**/*.agent.md"]
+tokens:
+  max_total: 2000000
+  models:    ["claude-*"]
 judge:
   threshold: 0.7
   criteria: |
@@ -79,6 +88,15 @@ metrics:
       baseline: rolling_mean, tolerance: 0.1 }
 ```
 ```
+
+The `tools`, `files_accessed`, and `tokens` families assert over run telemetry
+(tool calls, file-access-by-tool, token/model usage) captured from Copilot's
+OpenTelemetry file exporter. They **skip** (never fail) when telemetry is
+unavailable — e.g. the `mock` runner or `EVALPILOT_TELEMETRY=off`. Builder
+equivalents: `.expectToolCalled`, `.expectToolNotCalled`, `.expectFileRead`,
+`.expectFileNotRead`, `.expectFileWritten`, `.expectFileNotWritten`,
+`.expectTokenBudget`. Metric refs `$tokens.total|input|output` and
+`$tools.count(<name>)` feed these signals into the trend history.
 
 ## Authoring an eval — TypeScript builder
 

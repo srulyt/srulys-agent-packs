@@ -46,6 +46,14 @@ export default new Eval("copilot-factory-negative-scope-architect", {
   .expectFile(ARCH)
   // Negative scope: zero pack files may be written in design-only mode.
   .expectGlobCount(PACK_WRITES, { equals: 0, name: "no *.agent.md written" })
+  // Telemetry-based negative scope: no *write tool* ever targeted a pack file.
+  // Stronger than the final-tree glob above — this also catches a
+  // write-then-delete (the file would be gone from disk but the write call is
+  // still recorded in the run telemetry). Skips automatically when telemetry
+  // is unavailable (e.g. the offline mock runner).
+  .expectFileNotWritten(PACK_WRITES, {
+    name: "no write tool targeted a pack file",
+  })
   .check("architect wrote no pack files", (ctx) => {
     const leaked = ctx
       .glob(PACK_WRITES)
@@ -69,5 +77,12 @@ export default new Eval("copilot-factory-negative-scope-architect", {
     direction: "higher_is_better",
     baseline: "rolling_mean",
     tolerance: 0.1,
+  })
+  // Token-usage trend (non-gated): tracks input tokens over time via the
+  // committed JSONL history so cost creep is visible. Never fails the eval.
+  .metric("input_tokens", "$tokens.input", {
+    direction: "lower_is_better",
+    baseline: "rolling_mean",
+    tolerance: 0.5,
   })
   .build();

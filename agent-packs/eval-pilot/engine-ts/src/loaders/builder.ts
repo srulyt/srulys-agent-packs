@@ -231,6 +231,91 @@ export class Eval {
     return this;
   }
 
+  // ---- telemetry assertions (tool calls, file access, tokens) -----------
+
+  /** Assert a tool was invoked (default: at least once). */
+  expectToolCalled(
+    name: string,
+    opts: {
+      min?: number;
+      max?: number;
+      equals?: number;
+      argsContain?: string;
+      ignoreCase?: boolean;
+      name?: string;
+    } = {},
+  ): this {
+    const args: Record<string, any> = { name };
+    if (opts.min !== undefined) args.min = opts.min;
+    if (opts.max !== undefined) args.max = opts.max;
+    if (opts.equals !== undefined) args.equals = opts.equals;
+    if (opts.argsContain !== undefined) args.args_contain = opts.argsContain;
+    if (opts.ignoreCase) args.ignore_case = true;
+    this._assertions.push(
+      makeAssertionSpec({ kind: "tool_called", args, name: opts.name ?? null }),
+    );
+    return this;
+  }
+
+  /** Assert a tool was never invoked (optionally only with matching args). */
+  expectToolNotCalled(
+    name: string,
+    opts: { argsContain?: string; ignoreCase?: boolean; name?: string } = {},
+  ): this {
+    const args: Record<string, any> = { name };
+    if (opts.argsContain !== undefined) args.args_contain = opts.argsContain;
+    if (opts.ignoreCase) args.ignore_case = true;
+    this._assertions.push(
+      makeAssertionSpec({
+        kind: "tool_not_called",
+        args,
+        name: opts.name ?? null,
+      }),
+    );
+    return this;
+  }
+
+  /** Assert at least one file matching each pattern was read. */
+  expectFileRead(paths: TextArg, opts: { name?: string } = {}): this {
+    return this.fileAccess("file_read", paths, opts.name);
+  }
+
+  /** Assert no read touched any matching file. */
+  expectFileNotRead(paths: TextArg, opts: { name?: string } = {}): this {
+    return this.fileAccess("file_not_read", paths, opts.name);
+  }
+
+  /** Assert at least one file matching each pattern was written/created. */
+  expectFileWritten(paths: TextArg, opts: { name?: string } = {}): this {
+    return this.fileAccess("file_written", paths, opts.name);
+  }
+
+  /** Assert no write/create touched any matching file (catches write-then-delete). */
+  expectFileNotWritten(paths: TextArg, opts: { name?: string } = {}): this {
+    return this.fileAccess("file_not_written", paths, opts.name);
+  }
+
+  /** Assert the run stayed within a token budget / allowed model set. */
+  expectTokenBudget(
+    opts: {
+      maxTotal?: number;
+      maxInput?: number;
+      maxOutput?: number;
+      models?: string[];
+      name?: string;
+    } = {},
+  ): this {
+    const args: Record<string, any> = {};
+    if (opts.maxTotal !== undefined) args.max_total = opts.maxTotal;
+    if (opts.maxInput !== undefined) args.max_input = opts.maxInput;
+    if (opts.maxOutput !== undefined) args.max_output = opts.maxOutput;
+    if (opts.models !== undefined) args.models = [...opts.models];
+    this._assertions.push(
+      makeAssertionSpec({ kind: "token_budget", args, name: opts.name ?? null }),
+    );
+    return this;
+  }
+
   /** Register a custom predicate `predicate(ctx) -> boolean | [boolean, string]`. */
   check(name: string, predicate: (ctx: any) => boolean | [boolean, string]): this {
     this._assertions.push(
@@ -318,6 +403,14 @@ export class Eval {
     if (path) args.path = path;
     if (ignoreCase) args.ignore_case = true;
     this._assertions.push(makeAssertionSpec({ kind, args, name: name ?? null }));
+    return this;
+  }
+
+  private fileAccess(kind: string, paths: TextArg, name?: string): this {
+    const list = Array.isArray(paths) ? [...paths] : [paths];
+    this._assertions.push(
+      makeAssertionSpec({ kind, args: { paths: list }, name: name ?? null }),
+    );
     return this;
   }
 

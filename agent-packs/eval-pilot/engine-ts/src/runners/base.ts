@@ -7,6 +7,8 @@
  * environment variable.
  */
 
+import type { RunTelemetry } from "../telemetry/model.js";
+
 /** Normalised outcome of a single SUT invocation. */
 export interface RunResult {
   returncode: number;
@@ -17,6 +19,11 @@ export interface RunResult {
   timed_out: boolean;
   skipped: boolean;
   extra: Record<string, unknown>;
+  /**
+   * Captured run telemetry (tool calls, token usage, …), when available. When
+   * absent, assertions treat telemetry as unavailable and skip (neutral).
+   */
+  telemetry?: RunTelemetry;
 }
 
 export function makeRunResult(

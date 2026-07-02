@@ -33,6 +33,12 @@ export interface AssertionResult {
   passed: boolean;
   detail: string;
   data: Record<string, unknown>;
+  /**
+   * True when the assertion could not be evaluated for an environmental reason
+   * (e.g. telemetry unavailable) and was neutralised rather than failed.
+   * Skipped assertions never fail an eval and are excluded from pass-rate.
+   */
+  skipped?: boolean;
 }
 
 export function makeAssertionResult(
@@ -53,6 +59,7 @@ export function assertionResultFromDict(d: Record<string, any>): AssertionResult
     passed: Boolean(d.passed),
     detail: d.detail ?? "",
     data: { ...(d.data ?? {}) },
+    ...(d.skipped ? { skipped: true } : {}),
   };
 }
 
@@ -251,19 +258,21 @@ export function resultOk(r: EvalResult): boolean {
 }
 
 export function checkTotal(r: EvalResult): number {
-  return r.assertions.length + r.judges.length;
+  return (
+    r.assertions.filter((a) => !a.skipped).length + r.judges.length
+  );
 }
 
 export function checkPassed(r: EvalResult): number {
   return (
-    r.assertions.filter((a) => a.passed).length +
+    r.assertions.filter((a) => a.passed && !a.skipped).length +
     r.judges.filter((j) => j.passed).length
   );
 }
 
 export function failedLabels(r: EvalResult): string[] {
   const out: string[] = [];
-  for (const a of r.assertions) if (!a.passed) out.push(a.name);
+  for (const a of r.assertions) if (!a.passed && !a.skipped) out.push(a.name);
   for (const j of r.judges) if (!j.passed) out.push(j.name);
   for (const m of r.metrics)
     if (m.gated && m.regressed) out.push(`metric:${m.name}`);

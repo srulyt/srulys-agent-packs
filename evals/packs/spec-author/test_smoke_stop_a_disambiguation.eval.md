@@ -64,4 +64,12 @@ matches:
   - { path: "docs/specs/digest.md",
       pattern: '\[TBD\s*[-—]\s*interview question\s+\S+\s+unanswered\]' }
   - { path: "docs/specs/digest.md", pattern: 'open questions', flags: "i" }
+# Telemetry-based checks (skip automatically when telemetry is unavailable,
+# e.g. under the offline mock runner). Prove the spec was produced by a real
+# write tool call — not merely present on disk — and keep a sanity ceiling on
+# token usage so a runaway interview loop is caught.
+files_accessed:
+  written: ["**/digest.md"]
+tokens:
+  max_total: 2000000
 ```

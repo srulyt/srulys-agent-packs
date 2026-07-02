@@ -72,6 +72,29 @@ export {
 } from "./metrics.js";
 export { assertProseContains, assertProseNotContains } from "./asserts.js";
 export {
+  AssertContext,
+  assertion,
+  registerAssertion,
+  availableKinds,
+  runAssertion,
+} from "./assertions.js";
+export {
+  emptyTelemetry,
+  filesRead,
+  filesWritten,
+  modelsUsed,
+  toolCallsNamed,
+  parseOtelFile,
+  parseOtelTelemetry,
+  captureFromFile,
+  telemetryEnabled,
+  telemetryEnv,
+  type RunTelemetry,
+  type TelemetryTotals,
+  type TokenUsage,
+  type ToolCall,
+} from "./telemetry/index.js";
+export {
   registerRunner,
   runOk,
   runUsable,

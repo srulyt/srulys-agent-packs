@@ -75,6 +75,20 @@ files:
   exists: ["**/*.md"]
 contains:
   - { text: "test", ignore_case: true }
+tools:
+  called:     ["view"]                       # each tool must be used >= 1
+  not_called: ["str_replace_editor"]         # tool must never be used
+  count:      { name: "view", max: 5 }        # min/max/equals per tool
+  args_contain: { name: "view", text: "README", ignore_case: true }
+files_accessed:
+  read:        ["**/*.md"]                    # a matching file must be read
+  not_read:    ["**/secrets.*"]               # no matching file may be read
+  written:     ["**/architecture.md"]         # a matching file must be written
+  not_written: ["agent-packs/**/*.agent.md"]  # no matching file may be written
+tokens:
+  max_total: 2000000                          # run must stay under budget
+  max_input: 1500000
+  models:    ["claude-*"]                     # only these models may be used
 judge:
   threshold: 0.7
   criteria: |
@@ -143,17 +157,39 @@ For structural checks, `ctx.root` is the repo root, `ctx.read(rel)` returns
 | `json_path` | value at a JSON path equals/exists |
 | `json_empty` | value at a JSON path is missing, null, or empty |
 | `section_contains` / `section_not_contains` | substring scoped to a `## Heading` body |
+| `tools.called` / `tools.not_called` | a tool must / must never appear in the run |
+| `tools.count` | per-tool call count (`min`/`max`/`equals`) |
+| `tools.args_contain` | a tool call's arguments must contain text |
+| `files_accessed.read` / `files_accessed.not_read` | a file matching the glob must / must never be read |
+| `files_accessed.written` / `files_accessed.not_written` | a file matching the glob must / must never be written |
+| `tokens.max_total` / `max_input` / `max_output` | run must stay under a token budget |
+| `tokens.models` | only the listed model globs may be used |
 | `judge` | one or a list of LLM-as-judge verdicts (`threshold`, `criteria`) |
 | `asserts` | generic escape hatch: `[{ kind, ...args }]` |
 
 For code-only assertions, use the TypeScript builder's `.check(name, ctx => true
 | [false, "msg"])`.
 
+Telemetry-based assertions (`tools`, `files_accessed`, `tokens`) rely on the
+Copilot OpenTelemetry file exporter, which the copilot runner enables
+automatically. When telemetry is unavailable (e.g. `--runner mock`, offline CI,
+or `EVALPILOT_TELEMETRY=off`), these assertions **skip** — they never fail an
+eval or count against its pass-rate. Builder equivalents:
+`.expectToolCalled(name, { min, max, argsContain })`,
+`.expectToolNotCalled(name)`, `.expectFileRead(glob)`,
+`.expectFileNotRead(glob)`, `.expectFileWritten(glob)`,
+`.expectFileNotWritten(glob)`, and
+`.expectTokenBudget({ maxTotal, maxInput, maxOutput, models })`. Inside
+`.check()`, use `ctx.telemetryAvailable`, `ctx.toolCalls(name)`,
+`ctx.filesRead()`, `ctx.filesWritten()`, `ctx.modelsUsed()`, `ctx.tools`, and
+`ctx.tokens`.
+
 ## Metric value references
 
 Metric `value:` may be a literal number or a `$`-reference resolved at run time:
 `$judge.score`, `$judge.<name>.score`, `$duration`, `$stdout.words|chars|lines`,
-`$assertions.pass_rate`, `$checks.pass_rate`. `baseline:` accepts a strategy
+`$assertions.pass_rate`, `$checks.pass_rate`, `$tokens.total|input|output`, and
+`$tools.count` / `$tools.count(<name>)`. `baseline:` accepts a strategy
 name (`rolling_mean`, `last`, `best`) or a number (pinned).
 
 ## Authoring rules

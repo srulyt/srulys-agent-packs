@@ -18,8 +18,17 @@ Declared in the `## Assert` YAML block. All are optional; combine as needed.
 | `json_empty` | `[{ path, query }]` — JSON value is missing, null, `[]`, `{}`, or `""`. |
 | `section_contains` | `[{ path?, section, text\|any\|all, ignore_case?, max_chars? }]` — match scoped to a `## Heading` body. |
 | `section_not_contains` | `[{ path?, section, text\|any, ignore_case?, max_chars? }]` — text must NOT leak into a section body. |
+| `tools` | `{ called?, not_called?, count?, args_contain? }` — assert over tool calls from run telemetry. |
+| `files_accessed` | `{ read?, not_read?, written?, not_written? }` — glob lists over files accessed by tool. |
+| `tokens` | `{ max_total?, max_input?, max_output?, models? }` — token budget + allowed model globs. |
 | `judge` | one mapping or a list: `{ criteria, threshold?, artifact?, name? }`. |
 | `asserts` | generic escape hatch: `[{ kind, ...args }]` for any registered kind. |
+
+The `tools`, `files_accessed`, and `tokens` families read run telemetry captured
+from Copilot's OpenTelemetry file exporter (enabled automatically by the
+`copilot` runner). When telemetry is unavailable (`mock` runner,
+`EVALPILOT_TELEMETRY=off`, or an exporter-less build) they **skip** — neutral,
+never failing and excluded from the pass-rate.
 
 Register new kinds with the `@assertion` decorator in `evalpilot.assertions`;
 the Python builder's `.check(name, predicate)` is a per-eval escape hatch.

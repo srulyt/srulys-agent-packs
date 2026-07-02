@@ -290,6 +290,61 @@ function parseAssert(section: Section | undefined): {
     );
   }
 
+  // tools: {called: [...], not_called: [...], count: {...}, args_contain: {...}}
+  const tools = d.tools ?? {};
+  if (tools && typeof tools === "object") {
+    for (const name of asList(tools.called)) {
+      assertions.push(
+        makeAssertionSpec({ kind: "tool_called", args: { name, min: 1 } }),
+      );
+    }
+    for (const name of asList(tools.not_called)) {
+      assertions.push(
+        makeAssertionSpec({ kind: "tool_not_called", args: { name } }),
+      );
+    }
+    for (const entry of toMappingList(tools.count)) {
+      assertions.push(makeAssertionSpec({ kind: "tool_called", args: entry }));
+    }
+    for (const entry of toMappingList(tools.args_contain)) {
+      const args: Record<string, any> = { min: 1, ...entry };
+      if (entry.text !== undefined && entry.args_contain === undefined) {
+        args.args_contain = entry.text;
+        delete args.text;
+      }
+      assertions.push(makeAssertionSpec({ kind: "tool_called", args }));
+    }
+  }
+
+  // files_accessed: {read, not_read, written, not_written}
+  const fa = d.files_accessed ?? {};
+  if (fa && typeof fa === "object") {
+    const map: Record<string, string> = {
+      read: "file_read",
+      not_read: "file_not_read",
+      written: "file_written",
+      not_written: "file_not_written",
+    };
+    for (const [key, kind] of Object.entries(map)) {
+      const paths = asList(fa[key]);
+      if (paths.length) {
+        assertions.push(makeAssertionSpec({ kind, args: { paths } }));
+      }
+    }
+  }
+
+  // tokens: {max_total, max_input, max_output, models}
+  const tokens = d.tokens ?? {};
+  if (
+    tokens &&
+    typeof tokens === "object" &&
+    Object.keys(tokens).length > 0
+  ) {
+    assertions.push(
+      makeAssertionSpec({ kind: "token_budget", args: { ...tokens } }),
+    );
+  }
+
   // direct list kinds
   for (const kind of LIST_KINDS) {
     for (const entry of asList(d[kind])) {
@@ -389,6 +444,16 @@ function asList(value: unknown): any[] {
   if (value === null || value === undefined) return [];
   if (Array.isArray(value)) return [...value];
   return [value];
+}
+
+/** Coerce a mapping, a list of mappings, or nothing into a list of mappings. */
+function toMappingList(value: unknown): Record<string, any>[] {
+  if (value === null || value === undefined) return [];
+  const items = Array.isArray(value) ? value : [value];
+  return items.filter(
+    (e): e is Record<string, any> =>
+      Boolean(e) && typeof e === "object" && !Array.isArray(e),
+  );
 }
 
 function slug(text: string): string {

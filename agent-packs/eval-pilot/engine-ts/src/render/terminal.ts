@@ -130,7 +130,10 @@ function renderEval(
     out.push(c(`       error: ${r.error.split(/\r?\n/)[0]}`, COLOR[ERROR]!));
 
   for (const a of r.assertions) {
-    if (!a.passed) {
+    if (a.skipped) {
+      const det = a.detail ? ` - ${a.detail}` : "";
+      out.push(c(`       ${g.dot} ${a.name} (skipped)${det}`, COLOR[SKIPPED]!));
+    } else if (!a.passed) {
       const det = a.detail ? ` - ${a.detail}` : "";
       out.push(c(`       ${g.bad} ${a.name}${det}`, COLOR[FAILED]!));
     }

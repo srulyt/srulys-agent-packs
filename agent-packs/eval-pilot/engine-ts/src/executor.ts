@@ -142,6 +142,7 @@ export async function runEval(
       root: ws.root,
       stdout: result.stdout,
       stderr: result.stderr,
+      telemetry: result.telemetry,
     });
     base.assertions = spec.assertions.map((a) => runAssertion(a, ctx));
     base.judges = await runJudges(spec, ctx, logsDir);
@@ -437,6 +438,27 @@ function resolveRef(ref: string, base: EvalResult, result: RunResult): number {
         : base.assertions.filter((a) => a.passed).length;
     return total ? passed / total : 1.0;
   }
+  if (head === "tokens") {
+    const t = result.telemetry?.totals;
+    const metric = parts.length > 1 ? parts[1] : "total";
+    const lookup: Record<string, number> = {
+      total: t?.totalTokens ?? 0,
+      input: t?.inputTokens ?? 0,
+      output: t?.outputTokens ?? 0,
+    };
+    const v = lookup[metric!];
+    if (v === undefined) throw new Error(`unknown metric ref ${JSON.stringify(ref)}`);
+    return v;
+  }
+  if (head === "tools") {
+    // $tools.count -> total tool calls; $tools.count(name) -> named count.
+    const rest = ref.slice("$tools.".length);
+    const m = /^count(?:\(([^)]*)\))?$/.exec(rest);
+    if (!m) throw new Error(`unknown metric ref ${JSON.stringify(ref)}`);
+    const tools = result.telemetry?.tools ?? [];
+    const name = m[1];
+    return name ? tools.filter((c) => c.name === name).length : tools.length;
+  }
   throw new Error(`unknown metric ref ${JSON.stringify(ref)}`);
 }
 
@@ -452,7 +474,7 @@ function namedJudgeScore(base: EvalResult, name: string): number {
 
 function finalStatus(base: EvalResult, result: RunResult): EvalResult["status"] {
   if (!runOk(result)) return FAILED;
-  if (base.assertions.some((a) => !a.passed)) return FAILED;
+  if (base.assertions.some((a) => !a.passed && !a.skipped)) return FAILED;
   if (base.judges.some((j) => !j.passed)) return FAILED;
   if (base.metrics.some((m) => m.gated && m.regressed)) return FAILED;
   return PASSED;
@@ -460,7 +482,7 @@ function finalStatus(base: EvalResult, result: RunResult): EvalResult["status"] 
 
 /** Status for a structural (no-SUT) eval — no run to check. */
 function finalStatusStructural(base: EvalResult): EvalResult["status"] {
-  if (base.assertions.some((a) => !a.passed)) return FAILED;
+  if (base.assertions.some((a) => !a.passed && !a.skipped)) return FAILED;
   if (base.judges.some((j) => !j.passed)) return FAILED;
   if (base.metrics.some((m) => m.gated && m.regressed)) return FAILED;
   return PASSED;

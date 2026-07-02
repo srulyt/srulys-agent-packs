@@ -13,20 +13,38 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import * as path from "node:path";
 import fg from "fast-glob";
+import picomatch from "picomatch";
 import { normalise } from "./asserts.js";
 import { makeAssertionResult, type AssertionResult } from "./model.js";
 import type { AssertionSpec } from "./spec.js";
+import {
+  emptyTelemetry,
+  filesRead as telFilesRead,
+  filesWritten as telFilesWritten,
+  modelsUsed as telModelsUsed,
+  toolCallsNamed,
+  type RunTelemetry,
+  type TokenUsage,
+  type ToolCall,
+} from "./telemetry/model.js";
 
 /** Everything an assertion needs to inspect an eval's outcome. */
 export class AssertContext {
   root: string;
   stdout: string;
   stderr: string;
+  telemetry: RunTelemetry;
 
-  constructor(opts: { root: string; stdout?: string; stderr?: string }) {
+  constructor(opts: {
+    root: string;
+    stdout?: string;
+    stderr?: string;
+    telemetry?: RunTelemetry;
+  }) {
     this.root = opts.root;
     this.stdout = opts.stdout ?? "";
     this.stderr = opts.stderr ?? "";
+    this.telemetry = opts.telemetry ?? emptyTelemetry();
   }
 
   glob(pattern: string): string[] {
@@ -47,6 +65,43 @@ export class AssertContext {
     );
     if (matches.length) return readFileSync(matches[0]!, "utf-8");
     return null;
+  }
+
+  // ---- telemetry accessors ------------------------------------------------
+
+  /** True when run telemetry (tool calls / tokens) was captured. */
+  get telemetryAvailable(): boolean {
+    return this.telemetry.available;
+  }
+
+  /** All tool calls observed during the run. */
+  get tools(): ToolCall[] {
+    return this.telemetry.tools;
+  }
+
+  /** Per-call token usage records observed during the run. */
+  get tokens(): TokenUsage[] {
+    return this.telemetry.tokens;
+  }
+
+  /** Tool calls with the given name. */
+  toolCalls(name: string): ToolCall[] {
+    return toolCallsNamed(this.telemetry, name);
+  }
+
+  /** Absolute paths of files read during the run. */
+  filesRead(): string[] {
+    return telFilesRead(this.telemetry);
+  }
+
+  /** Absolute paths of files written/created during the run. */
+  filesWritten(): string[] {
+    return telFilesWritten(this.telemetry);
+  }
+
+  /** Distinct model names used during the run. */
+  modelsUsed(): string[] {
+    return telModelsUsed(this.telemetry);
   }
 }
 
@@ -557,6 +612,259 @@ registerAssertion(
   "section_not_contains",
   (ctx, args) => sectionImpl(ctx, args, true),
   "[path], section, text, [ignore_case, max_chars]",
+);
+
+// ---- telemetry assertions (tool calls, file access, tokens) -------------
+
+/** Neutral (skipped) result used when run telemetry is unavailable. */
+function telemetrySkip(kind: string, name: string): AssertionResult {
+  return makeAssertionResult({
+    kind,
+    name,
+    passed: true,
+    skipped: true,
+    detail:
+      "run telemetry unavailable — assertion skipped (needs the copilot " +
+      "runner with EVALPILOT_TELEMETRY on)",
+  });
+}
+
+/** Range check shared by count-style assertions. */
+function inRange(
+  n: number,
+  args: Record<string, any>,
+  defaultMin = 1,
+): { ok: boolean; bounds: string } {
+  const lo = args.min;
+  const hi = args.max;
+  const eq = args.equals;
+  let ok = true;
+  const parts: string[] = [];
+  if (eq !== undefined && eq !== null) {
+    ok = n === Number(eq);
+    parts.push(`==${eq}`);
+  } else {
+    if (lo !== undefined && lo !== null) {
+      ok = ok && n >= Number(lo);
+      parts.push(`>=${lo}`);
+    }
+    if (hi !== undefined && hi !== null) {
+      ok = ok && n <= Number(hi);
+      parts.push(`<=${hi}`);
+    }
+    if (parts.length === 0) {
+      ok = n >= defaultMin;
+      parts.push(`>=${defaultMin}`);
+    }
+  }
+  return { ok, bounds: parts.join(" ") };
+}
+
+function argsText(call: ToolCall): string {
+  if (call.argsRaw !== undefined) return call.argsRaw;
+  if (call.args !== undefined) {
+    try {
+      return JSON.stringify(call.args);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+/** Filter tool calls by an optional `args_contain` substring. */
+function filterByArgs(
+  calls: ToolCall[],
+  args: Record<string, any>,
+): ToolCall[] {
+  const needle = args.args_contain ?? args.argsContain;
+  if (needle === undefined || needle === null) return calls;
+  const ic = Boolean(args.ignore_case);
+  const text = ic ? String(needle).toLowerCase() : String(needle);
+  return calls.filter((c) => {
+    const hay = ic ? argsText(c).toLowerCase() : argsText(c);
+    return hay.includes(text);
+  });
+}
+
+function toolName(args: Record<string, any>): string {
+  return String(args.name ?? args.tool ?? "");
+}
+
+registerAssertion(
+  "tool_called",
+  (ctx, args) => {
+    const name = toolName(args);
+    if (!ctx.telemetryAvailable)
+      return telemetrySkip("tool_called", `tool called: ${name}`);
+    const calls = filterByArgs(ctx.toolCalls(name), args);
+    const { ok, bounds } = inRange(calls.length, args, 1);
+    const argNote =
+      args.args_contain ?? args.argsContain
+        ? ` args~${JSON.stringify(args.args_contain ?? args.argsContain)}`
+        : "";
+    return makeAssertionResult({
+      kind: "tool_called",
+      name: `tool called: ${name} ${bounds}`.trim(),
+      passed: ok,
+      detail: ok ? "" : `${name} called ${calls.length}×${argNote}`,
+      data: { name, count: calls.length },
+    });
+  },
+  "name, [min|max|equals, args_contain, ignore_case]: tool invoked N times",
+);
+
+registerAssertion(
+  "tool_not_called",
+  (ctx, args) => {
+    const name = toolName(args);
+    if (!ctx.telemetryAvailable)
+      return telemetrySkip("tool_not_called", `tool not called: ${name}`);
+    const calls = filterByArgs(ctx.toolCalls(name), args);
+    const ok = calls.length === 0;
+    const argNote =
+      args.args_contain ?? args.argsContain
+        ? ` matching args~${JSON.stringify(args.args_contain ?? args.argsContain)}`
+        : "";
+    return makeAssertionResult({
+      kind: "tool_not_called",
+      name: `tool not called: ${name}`,
+      passed: ok,
+      detail: ok ? "" : `${name} was called ${calls.length}×${argNote}`,
+      data: { name, count: calls.length },
+    });
+  },
+  "name, [args_contain, ignore_case]: tool never invoked",
+);
+
+/** Match an absolute file path against a glob (rel, posix-abs, or basename). */
+function fileMatches(root: string, abs: string, pattern: string): boolean {
+  const isMatch = picomatch(pattern, { dot: true });
+  const rel = path.relative(root, abs).replace(/\\/g, "/");
+  const posixAbs = abs.replace(/\\/g, "/");
+  const base = path.basename(abs);
+  return isMatch(rel) || isMatch(posixAbs) || isMatch(base);
+}
+
+function fileAccessImpl(
+  ctx: AssertContext,
+  args: Record<string, any>,
+  opts: { kind: string; negate: boolean; written: boolean },
+): AssertionResult {
+  const label = opts.written ? "written" : "read";
+  if (!ctx.telemetryAvailable)
+    return telemetrySkip(opts.kind, `file ${opts.negate ? "not " : ""}${label}`);
+  const patterns = [
+    ...asList(args.path),
+    ...asList(args.paths),
+    ...asList(args.glob),
+  ];
+  const touched = opts.written ? ctx.filesWritten() : ctx.filesRead();
+
+  if (opts.negate) {
+    const offenders: string[] = [];
+    for (const f of touched) {
+      if (patterns.some((p) => fileMatches(ctx.root, f, p))) offenders.push(f);
+    }
+    const uniq = [...new Set(offenders)].map((f) =>
+      path.relative(ctx.root, f).replace(/\\/g, "/"),
+    );
+    const ok = uniq.length === 0;
+    return makeAssertionResult({
+      kind: opts.kind,
+      name: `file not ${label}: ${patterns.join(", ")}`,
+      passed: ok,
+      detail: ok ? "" : `${label} unexpectedly: ${JSON.stringify(uniq)}`,
+      data: { patterns, offenders: uniq },
+    });
+  }
+
+  const missing = patterns.filter(
+    (p) => !touched.some((f) => fileMatches(ctx.root, f, p)),
+  );
+  const ok = patterns.length > 0 && missing.length === 0;
+  return makeAssertionResult({
+    kind: opts.kind,
+    name: `file ${label}: ${patterns.join(", ")}`,
+    passed: ok,
+    detail: ok
+      ? ""
+      : patterns.length === 0
+        ? "no path/paths/glob given"
+        : `no matching ${label} for: ${JSON.stringify(missing)}`,
+    data: { patterns, missing },
+  });
+}
+
+registerAssertion(
+  "file_read",
+  (ctx, args) =>
+    fileAccessImpl(ctx, args, { kind: "file_read", negate: false, written: false }),
+  "path|paths|glob: at least one read matches each pattern",
+);
+registerAssertion(
+  "file_not_read",
+  (ctx, args) =>
+    fileAccessImpl(ctx, args, { kind: "file_not_read", negate: true, written: false }),
+  "path|paths|glob: no read matches any pattern",
+);
+registerAssertion(
+  "file_written",
+  (ctx, args) =>
+    fileAccessImpl(ctx, args, { kind: "file_written", negate: false, written: true }),
+  "path|paths|glob: at least one write matches each pattern",
+);
+registerAssertion(
+  "file_not_written",
+  (ctx, args) =>
+    fileAccessImpl(ctx, args, { kind: "file_not_written", negate: true, written: true }),
+  "path|paths|glob: no write matches any pattern (catches write-then-delete)",
+);
+
+registerAssertion(
+  "token_budget",
+  (ctx, args) => {
+    if (!ctx.telemetryAvailable)
+      return telemetrySkip("token_budget", "token budget");
+    const t = ctx.telemetry.totals;
+    const failures: string[] = [];
+    const maxTotal = args.max_total ?? args.maxTotal;
+    const maxInput = args.max_input ?? args.maxInput;
+    const maxOutput = args.max_output ?? args.maxOutput;
+    if (maxTotal !== undefined && maxTotal !== null) {
+      const v = t.totalTokens ?? 0;
+      if (v > Number(maxTotal)) failures.push(`total ${v} > ${maxTotal}`);
+    }
+    if (maxInput !== undefined && maxInput !== null) {
+      const v = t.inputTokens ?? 0;
+      if (v > Number(maxInput)) failures.push(`input ${v} > ${maxInput}`);
+    }
+    if (maxOutput !== undefined && maxOutput !== null) {
+      const v = t.outputTokens ?? 0;
+      if (v > Number(maxOutput)) failures.push(`output ${v} > ${maxOutput}`);
+    }
+    const allowed = [...asList(args.models)];
+    if (allowed.length) {
+      const matchers = allowed.map((p) => picomatch(p));
+      for (const m of ctx.modelsUsed()) {
+        if (!matchers.some((fn) => fn(m))) failures.push(`model '${m}' not allowed`);
+      }
+    }
+    const ok = failures.length === 0;
+    return makeAssertionResult({
+      kind: "token_budget",
+      name: "token budget",
+      passed: ok,
+      detail: ok
+        ? `total=${t.totalTokens ?? 0} input=${t.inputTokens ?? 0} output=${t.outputTokens ?? 0}`
+        : failures.join("; "),
+      data: {
+        totals: t,
+        models: ctx.modelsUsed(),
+      },
+    });
+  },
+  "[max_total, max_input, max_output, models]: run stays within token budget",
 );
 
 function runCustom(spec: AssertionSpec, ctx: AssertContext): AssertionResult {
