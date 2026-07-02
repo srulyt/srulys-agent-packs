@@ -5,7 +5,7 @@
  * need loops, computed prompts, shared fixtures, or arbitrary predicate
  * assertions never hit a DSL wall.
  *
- *     import { Eval } from "@evalpilot/cli";
+ *     import { Eval } from "evalpilot";
  *
  *     export const spec = new Eval("migration-plan", {
  *         target: "my-agent", kind: "agent", tags: ["smoke", "judge"], timeout: 600,

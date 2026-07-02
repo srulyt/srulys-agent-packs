@@ -4,7 +4,7 @@
  * Structural eval (no Copilot CLI / LLM judge). Guards the packaging of the
  * portable eval plugin. Ported from the legacy pytest
  * `test_smoke_plugin_conformance.py`; the engine-packaging check was rewritten
- * to reflect the single TypeScript engine (`engine-ts`, npm `@evalpilot/cli`)
+ * to reflect the single TypeScript engine (`engine-ts`, npm `evalpilot`)
  * after the Python engine was removed.
  *
  * Checks:
@@ -14,7 +14,7 @@
  *    whose `name` == dir name, a description, and `user-invocable: true`.
  *  - the bundled `eval-judge` agent ships under agents/ AND byte-identically as
  *    engine package data (engine-ts/_data/agents/) so it runs in arbitrary repos.
- *  - engine-ts/package.json declares the `@evalpilot/cli` package, the
+ *  - engine-ts/package.json declares the `evalpilot` package, the
  *    `evalpilot` bin, ships `_data` as package files, and the key TS modules
  *    exist.
  *  - README documents the Copilot CLI, VS Code, and `gh skill` install flows.
@@ -23,7 +23,7 @@
 
 import { readFileSync, statSync } from "node:fs";
 import * as path from "node:path";
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PLUGIN_ROOT = "agent-packs/eval-pilot";
 const MARKETPLACE = ".github/plugin/marketplace.json";
@@ -74,7 +74,7 @@ export default new Eval("eval-pilot-conformance", {
   .describe(
     "Structural conformance (no SUT): plugin.json manifest, three invocable " +
       "skills, the eval-judge agent synced to engine package data, the " +
-      "TypeScript engine packaging (@evalpilot/cli), README install flows, and " +
+      "TypeScript engine packaging (evalpilot), README install flows, and " +
       "marketplace registration.",
   )
   .check("plugin.json is conformant", (ctx: Ctx): Result => {
@@ -153,8 +153,8 @@ export default new Eval("eval-pilot-conformance", {
     const pkgText = ctx.read(`${PLUGIN_ROOT}/engine-ts/package.json`);
     if (pkgText === null) return [false, "missing engine-ts/package.json"];
     const pkg = JSON.parse(pkgText);
-    if (pkg.name !== "@evalpilot/cli") {
-      return [false, `engine must declare the @evalpilot/cli package, got ${JSON.stringify(pkg.name)}`];
+    if (pkg.name !== "evalpilot") {
+      return [false, `engine must declare the evalpilot package, got ${JSON.stringify(pkg.name)}`];
     }
     if (!pkg.bin || !pkg.bin.evalpilot) {
       return [false, "engine package.json must declare the 'evalpilot' bin"];

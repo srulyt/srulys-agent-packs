@@ -1,6 +1,6 @@
 {
-  "name": "@evalpilot/cli",
-  "version": "0.2.0",
+  "name": "evalpilot",
+  "version": "0.1.0",
   "description": "Generic, easy-to-use eval framework for GitHub Copilot agents and skills: Markdown/TypeScript DSL, modeled results, and terminal/HTML/JSON renderers with JSONL trend tracking.",
   "keywords": [
     "evals",

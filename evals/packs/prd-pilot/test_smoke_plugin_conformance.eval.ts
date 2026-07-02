@@ -10,7 +10,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PACK = "agent-packs/prd-pilot";
 const EXPECTED_SKILLS = new Set([

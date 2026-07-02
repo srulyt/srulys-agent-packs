@@ -10,7 +10,7 @@
  * sorted absolute paths.
  */
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 type Ctx = { root: string; read(rel: string): string | null; glob(p: string): string[] };
 type Result = boolean | [boolean, string];

@@ -9,7 +9,7 @@
  */
 
 import * as path from "node:path";
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 import { discoverPacks, lintPack } from "../../scripts/lint-pack.mjs";
 
 const builder = new Eval("pack-contract", {

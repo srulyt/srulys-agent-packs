@@ -8,7 +8,7 @@
 //
 // Delete this file once you have real evals.
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("hello-skill", {
   target: "REPLACE-WITH-YOUR-SKILL",

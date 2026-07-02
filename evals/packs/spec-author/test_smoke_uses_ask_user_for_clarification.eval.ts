@@ -9,7 +9,7 @@
  * `test_smoke_uses_ask_user_for_clarification.py`.
  */
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const ORCHESTRATOR =
   "agent-packs/spec-author/.github/agents/spec-author.agent.md";

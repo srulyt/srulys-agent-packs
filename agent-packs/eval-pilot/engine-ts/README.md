@@ -1,4 +1,4 @@
-# @evalpilot/cli
+# evalpilot
 
 A generic, easy-to-use eval framework for GitHub Copilot agents and skills —
 the TypeScript/npm `evalpilot` engine.
@@ -17,9 +17,9 @@ The JSON report schema is the canonical evalpilot report format used by the CLI.
 ## Install
 
 ```bash
-npm install --save-dev @evalpilot/cli
+npm install --save-dev evalpilot
 # or run without installing:
-npx @evalpilot/cli --help
+npx evalpilot --help
 ```
 
 Requires Node.js >= 18.
@@ -105,7 +105,7 @@ or share setup. Export the built spec as the module default (or any export):
 
 ```ts
 // my-agent.eval.ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("my-agent-migration-plan", {
   target: "my-agent",
@@ -134,7 +134,7 @@ export default new Eval("my-agent-migration-plan", {
 ## Programmatic API
 
 ```ts
-import { runSpecs, collectSpecs, renderTerminal, writeJson } from "@evalpilot/cli";
+import { runSpecs, collectSpecs, renderTerminal, writeJson } from "evalpilot";
 
 const specs = await collectSpecs("evals");
 const report = await runSpecs(specs, { parallel: 4 });
@@ -148,7 +148,7 @@ A structural eval is a `*.eval.ts` spec with `kind: "none"` and no `.prompt(...)
 It runs offline and checks repository files directly:
 
 ```ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("readme-present", { kind: "none", tags: ["structural"] })
   .check("README exists", (ctx) =>

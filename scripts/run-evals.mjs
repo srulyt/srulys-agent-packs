@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Friendly driver around the TypeScript eval engine (`@evalpilot/cli`).
+ * Friendly driver around the TypeScript eval engine (`evalpilot`).
  *
  * Replaces the legacy `scripts/run_evals.py`. Resolves a pack/skill NAME to its
  * eval directory (the TS engine's `run` takes a PATH, not a name) and forwards
@@ -39,7 +39,7 @@ function isDir(p) {
 
 function ensureEngineBuilt() {
   if (existsSync(ENGINE_CLI)) return;
-  console.error("[run-evals] engine build not found; building @evalpilot/cli ...");
+  console.error("[run-evals] engine build not found; building evalpilot ...");
   const r = spawnSync("npm", ["run", "build"], {
     cwd: ENGINE_DIR,
     stdio: "inherit",

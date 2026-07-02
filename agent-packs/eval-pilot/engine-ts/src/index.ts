@@ -13,7 +13,7 @@
  *   assertProseContains, assertProseNotContains,
  *   getRunner, type RunResult,     // pluggable SUT runner
  *   runEval, runSpecs,             // standalone executor
- * } from "@evalpilot/cli";
+ * } from "evalpilot";
  * ```
  */
 

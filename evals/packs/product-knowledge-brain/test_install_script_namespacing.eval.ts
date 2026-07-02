@@ -8,7 +8,7 @@
  * Ported from the legacy pytest `test_install_script_namespacing.py`.
  */
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const INDEXING_REFS =
   "agent-packs/product-knowledge-brain/skills/knowledge-indexing/references";

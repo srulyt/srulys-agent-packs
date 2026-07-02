@@ -10,7 +10,7 @@
  *     evalpilot run evals/skills/grill-me-interrogation/question_discipline.eval.ts
  */
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PROMPT = `Here is an under-specified feature brief: "We want to add a 'share
 report' feature so users can share a generated report with people

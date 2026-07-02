@@ -10,7 +10,7 @@
  *     evalpilot run evals/packs/product-brief/smoke_scope_brief.eval.ts
  */
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PROMPT = `@brief-orchestrator
 

@@ -2,7 +2,7 @@
   "name": "srulys-agent-packs",
   "version": "0.0.0",
   "private": true,
-  "description": "Agent packs for GitHub Copilot CLI, with a single TypeScript eval engine (@evalpilot/cli).",
+  "description": "Agent packs for GitHub Copilot CLI, with a single TypeScript eval engine (evalpilot).",
   "type": "module",
   "scripts": {
     "eval": "node scripts/run-evals.mjs",
@@ -14,6 +14,6 @@
     "engine:test": "npm --prefix agent-packs/eval-pilot/engine-ts test"
   },
   "devDependencies": {
-    "@evalpilot/cli": "file:agent-packs/eval-pilot/engine-ts"
+    "evalpilot": "file:agent-packs/eval-pilot/engine-ts"
   }
 }

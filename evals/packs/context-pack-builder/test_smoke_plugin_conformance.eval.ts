@@ -9,7 +9,7 @@
  */
 
 import * as path from "node:path";
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PACK = "agent-packs/context-pack-builder";
 const MARKETPLACE = ".github/plugin/marketplace.json";

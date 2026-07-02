@@ -131,7 +131,7 @@ ${v.description}
 
 function tsTemplate(v: { name: string; target: string; kind: string }): string {
   return `// Builder-style eval for ${v.name}. Run with: evalpilot run this_file.eval.ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("${v.name}", {
   target: "${v.target}",

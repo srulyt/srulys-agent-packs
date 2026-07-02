@@ -1,7 +1,7 @@
 # Eval Authoring (evalpilot TypeScript engine)
 
 This is the cross-cutting reference for authoring evals against **Eval Pilot**,
-the TypeScript `@evalpilot/cli` engine. Read it once; then copy templates from
+the TypeScript `evalpilot` engine. Read it once; then copy templates from
 `evals/_templates/` and fill in the blanks.
 
 ## Mental model
@@ -15,7 +15,7 @@ An eval is a single self-contained spec file. It:
 5. Optionally calls the bundled LLM judge and records metrics.
 
 Eval-pilot lives at `agent-packs/eval-pilot/`. The engine is
-`@evalpilot/cli` from `agent-packs/eval-pilot/engine-ts/`.
+`evalpilot` from `agent-packs/eval-pilot/engine-ts/`.
 
 ## Required directory shape per generated pack
 
@@ -103,7 +103,7 @@ Use structural evals for packaging conformance and repository checks. They use
 `kind: "none"` and no `.prompt(...)`, so they run offline.
 
 ```ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("<pack>-plugin-shape", {
   target: "<pack>",

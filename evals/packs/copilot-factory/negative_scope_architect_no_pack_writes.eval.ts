@@ -11,7 +11,7 @@
  */
 
 import * as path from "node:path";
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PROMPT = `Please design (architecture only -- do NOT build) a tiny single-agent
 Copilot CLI pack that prints "hello, hello-world". One agent, no

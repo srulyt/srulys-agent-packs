@@ -13,7 +13,7 @@
  * file — the judge scores the run output directly.
  */
 
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PROMPT = `Format the following raw requirements for an "Orders" service as EARS
 Functional Requirements with nested Given/When/Then acceptance criteria.

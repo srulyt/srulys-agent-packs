@@ -16,7 +16,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 const PACK = "agent-packs/story-telling-agent/.github/skills";
 const GEN = `${PACK}/pptx-engine/scripts/generate_deck.py`;

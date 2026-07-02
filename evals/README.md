@@ -1,6 +1,6 @@
 # `evals/` — evalpilot TypeScript eval harness
 
-This directory dogfoods **Eval Pilot**, the TypeScript `@evalpilot/cli` engine
+This directory dogfoods **Eval Pilot**, the TypeScript `evalpilot` engine
 from `agent-packs/eval-pilot/engine-ts/`. Eval specs are single, readable files
 that produce binary rubric signal, LLM-as-judge results, and numeric metric
 history over time.
@@ -86,7 +86,7 @@ metrics:
 Use `*.eval.ts` when a spec needs computed setup or direct repository checks:
 
 ```ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("pack-readme-present", {
   target: "my-pack",

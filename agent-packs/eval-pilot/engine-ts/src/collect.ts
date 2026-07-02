@@ -99,7 +99,7 @@ async function loadFile(file: string): Promise<EvalSpec[]> {
 
 /**
  * Resolve the running engine's own entry so `.eval.ts` specs that
- * `import { Eval } from "@evalpilot/cli"` load against this exact build —
+ * `import { Eval } from "evalpilot"` load against this exact build —
  * whether the package is npm-installed in the consumer repo or run in-repo
  * during development. Returns `null` if it cannot be located.
  */
@@ -107,7 +107,7 @@ function ownEntry(): string | null {
   // 1. Prefer normal resolution (installed consumer case).
   try {
     const require = createRequire(import.meta.url);
-    return require.resolve("@evalpilot/cli");
+    return require.resolve("evalpilot");
   } catch {
     /* not installed — fall through */
   }
@@ -128,7 +128,7 @@ function ownEntry(): string | null {
 function jitiAlias(): Record<string, string> {
   const entry = ownEntry();
   if (!entry) return {};
-  return { "@evalpilot/cli": entry, evalpilot: entry };
+  return { evalpilot: entry };
 }
 
 async function loadModule(file: string): Promise<EvalSpec[]> {

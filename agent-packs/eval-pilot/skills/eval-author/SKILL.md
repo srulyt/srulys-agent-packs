@@ -9,7 +9,7 @@ user-invocable: true
 
 Use this skill when the user asks to create evals for a Copilot agent, agent
 pack, or skill. Modern evalpilot evals are **single self-contained files** that
-read top-to-bottom. There is exactly one engine: the TypeScript `@evalpilot/cli`
+read top-to-bottom. There is exactly one engine: the TypeScript `evalpilot`
 engine in `agent-packs/eval-pilot/engine-ts/`.
 
 ## The authoring surfaces
@@ -103,7 +103,7 @@ metrics:
 ## The `*.eval.ts` builder
 
 ```ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("my-agent-migration-plan", {
   target: "my-agent",
@@ -127,7 +127,7 @@ export default new Eval("my-agent-migration-plan", {
 ## Structural `*.eval.ts` checks
 
 ```ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("plugin-shape", {
   target: "my-agent",

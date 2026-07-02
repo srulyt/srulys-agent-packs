@@ -3,7 +3,7 @@
 **Eval Pilot** is a portable Copilot plugin that adds an easy-to-use eval
 framework to any repository containing Copilot agents and/or skills. It ships a
 user-facing skill workflow, an `eval-judge` agent, and exactly one eval engine:
-the TypeScript **`@evalpilot/cli`** package, with source in `engine-ts/` and CLI
+the TypeScript **`evalpilot`** package, with source in `engine-ts/` and CLI
 binary `evalpilot`.
 
 An eval is a **single self-contained file** that reads top-to-bottom, so anyone
@@ -89,7 +89,7 @@ agent-packs/eval-pilot/
 │   ├── eval-author/   (SKILL.md + references/)
 │   ├── eval-runner/SKILL.md
 │   └── eval-metrics/SKILL.md
-└── engine-ts/         (TypeScript @evalpilot/cli source)
+└── engine-ts/         (TypeScript evalpilot source)
 ```
 
 ## Engine installation
@@ -97,9 +97,9 @@ agent-packs/eval-pilot/
 Install the engine in a repository that will author or run evals:
 
 ```bash
-npm install --save-dev @evalpilot/cli
+npm install --save-dev evalpilot
 # or run without installing:
-npx @evalpilot/cli --help
+npx evalpilot --help
 ```
 
 From this monorepo you can also use the built engine directly:
@@ -180,7 +180,7 @@ Use structural evals for packaging conformance and repository checks that do not
 need a live agent run:
 
 ```ts
-import { Eval } from "@evalpilot/cli";
+import { Eval } from "evalpilot";
 
 export default new Eval("plugin-has-readme", {
   target: "eval-pilot",
