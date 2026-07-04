@@ -30,8 +30,9 @@ from Copilot's OpenTelemetry file exporter (enabled automatically by the
 `EVALPILOT_TELEMETRY=off`, or an exporter-less build) they **skip** — neutral,
 never failing and excluded from the pass-rate.
 
-Register new kinds with the `@assertion` decorator in `evalpilot.assertions`;
-the Python builder's `.check(name, predicate)` is a per-eval escape hatch.
+Register new kinds with `registerAssertion(kind, fn, help)` imported from the
+`evalpilot` package; the TypeScript builder's `.check(name, predicate)` is a
+per-eval escape hatch.
 
 ## Metrics
 

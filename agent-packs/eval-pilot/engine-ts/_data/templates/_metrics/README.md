@@ -5,17 +5,22 @@ file — one JSON line per recorded run. These files are **committed on
 purpose**: they are how evalpilot tracks numeric results over time and
 detects regressions.
 
-Record a metric from a test with the `metric` fixture:
+Declare a metric **inside the eval spec** — it is recorded automatically each
+run, with no fixture wiring. In a `*.eval.md` `## Assert` block:
 
-```python
-def test_summary_is_concise(skill, metric):
-    ws = skill("my-skill")
-    result = ws.run_skill(skill="my-skill", prompt="...", timeout=300)
+```yaml
+metrics:
+  - { name: summary_words, value: $stdout.words, direction: lower_is_better,
+      tolerance_pct: 0.25 }
+```
 
-    word_count = len(result.stdout.split())
-    m = metric("summary_words", word_count,
-               direction="lower_is_better", tolerance_pct=0.25)
-    m.assert_no_regression(log_path=result.log_path)   # optional gate
+Or with the TypeScript builder:
+
+```ts
+.metric("summary_words", "$stdout.words", {
+  direction: "lower_is_better",
+  tolerance_pct: 0.25,
+})
 ```
 
 Inspect trends:
