@@ -11,6 +11,15 @@ Use this skill when the user wants numeric trend tracking, regression gates, or
 help interpreting `evalpilot metrics`. Metrics are declared **inside the eval
 spec** and recorded automatically each run — no fixture wiring.
 
+## Prerequisite: make the `evalpilot` CLI available
+
+Don't ask the user to install evalpilot — ensure it yourself first. Detect with
+`npx --no-install evalpilot --version`; if that fails, add it as a project dev
+dependency (`npm init -y` if there's no `package.json`, then `npm install
+--save-dev evalpilot`). Invoke every command below via `npx evalpilot <cmd>`
+(the local pinned install is preferred). A global `npm i -g evalpilot` also
+works. For brevity examples are written as `evalpilot ...`.
+
 ## Declaring a metric
 
 In a `*.eval.md` `## Assert` block:

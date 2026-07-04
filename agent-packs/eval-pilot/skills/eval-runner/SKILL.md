@@ -12,6 +12,15 @@ evalpilot evals. The TypeScript engine discovers `*.eval.md` and `*.eval.ts`
 specs, executes them, and writes a **modeled result** that every view renders
 from.
 
+## Prerequisite: make the `evalpilot` CLI available
+
+Don't ask the user to install evalpilot — ensure it yourself first. Detect with
+`npx --no-install evalpilot --version`; if that fails, add it as a project dev
+dependency (`npm init -y` if there's no `package.json`, then `npm install
+--save-dev evalpilot`). Invoke every command below via `npx evalpilot <cmd>`
+(the local pinned install is preferred). A global `npm i -g evalpilot` also
+works. For brevity examples are written as `evalpilot ...`.
+
 ## Commands
 
 ```bash

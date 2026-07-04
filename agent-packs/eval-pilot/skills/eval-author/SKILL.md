@@ -10,7 +10,32 @@ user-invocable: true
 Use this skill when the user asks to create evals for a Copilot agent, agent
 pack, or skill. Modern evalpilot evals are **single self-contained files** that
 read top-to-bottom. There is exactly one engine: the TypeScript `evalpilot`
-engine in `agent-packs/eval-pilot/engine-ts/`.
+CLI, published on npm as the [`evalpilot`](https://www.npmjs.com/package/evalpilot)
+package.
+
+## Prerequisite: make the `evalpilot` CLI available
+
+The user should **not** need to install evalpilot manually — do it for them
+before running any command below.
+
+1. **Detect** first (fast, no network if already present):
+   `npx --no-install evalpilot --version`.
+2. **If that fails, install it** as a project dev dependency — the best
+   practice for a project tool, because it pins the version in the consumer's
+   `package.json` + lockfile for reproducible/CI runs:
+   - If there is no `package.json` in the project, create one: `npm init -y`.
+   - Install: `npm install --save-dev evalpilot`.
+3. **Invoke** every `evalpilot <cmd>` via the package runner: `npx evalpilot
+   <cmd>`. `npx` runs the project-local install when present, so the pinned
+   version is used. (A global install, `npm i -g evalpilot`, also works if the
+   user prefers a bare `evalpilot`.)
+
+For brevity the examples below are written as `evalpilot ...`; run them as
+`npx evalpilot ...` unless evalpilot is installed globally.
+
+> Note: if `npm install` reports `ENOVERSIONS` / "No versions available" right
+> after a fresh publish, the machine has a `min-release-age` npm policy blocking
+> just-published versions; add `--min-release-age=0` or wait out the window.
 
 ## The authoring surfaces
 
