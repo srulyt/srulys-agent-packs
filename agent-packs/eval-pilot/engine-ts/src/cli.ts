@@ -578,11 +578,31 @@ function openPath(target: string): void {
 
 // ---- argument parsing ---------------------------------------------------
 
+/**
+ * Read the CLI's own version from the package manifest. Resolves relative to
+ * the running module so it works both from the published package (dist/ sits
+ * beside package.json) and from the in-repo build. Falls back to "0.0.0" if
+ * the manifest cannot be read for any reason.
+ */
+function readPackageVersion(): string {
+  for (const rel of ["../package.json", "./package.json"]) {
+    try {
+      const raw = readFileSync(new URL(rel, import.meta.url), "utf8");
+      const v = JSON.parse(raw).version;
+      if (typeof v === "string" && v.length > 0) return v;
+    } catch {
+      /* try next candidate */
+    }
+  }
+  return "0.0.0";
+}
+
 export function buildProgram(): Command {
   const program = new Command();
   program
     .name("evalpilot")
-    .description("Author, run, and inspect evals for Copilot agents/skills.");
+    .description("Author, run, and inspect evals for Copilot agents/skills.")
+    .version(readPackageVersion(), "-V, --version", "output the version number");
 
   program
     .command("new")
