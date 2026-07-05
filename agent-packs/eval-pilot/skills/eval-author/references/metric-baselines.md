@@ -1,5 +1,8 @@
 # Assertions, Metrics, Baselines, and Tolerances
 
+> For how these are evaluated at run time, see the
+> [mechanics guide](../../../docs/how-it-works.md).
+
 ## Assertion kinds
 
 Declared in the `## Assert` YAML block. All are optional; combine as needed.

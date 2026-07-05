@@ -1,5 +1,8 @@
 # Staging, Tags, Runners, and Environment
 
+> For the end-to-end mechanics behind these knobs, see the
+> [mechanics guide](../../../docs/how-it-works.md).
+
 ## Staging (`## Setup` in `.eval.md`)
 
 Each behavioral eval runs in an isolated workspace. Staging controls what is

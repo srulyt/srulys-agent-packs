@@ -14,6 +14,11 @@ report, and canonical JSON. It gives you two kinds of signal:
 
 The JSON report schema is the canonical evalpilot report format used by the CLI.
 
+> For a full explanation of the engine's mechanics — discovery, spec
+> compilation, staging, the arrange/act/assert pipeline, runners, telemetry,
+> the judge, metrics/baselines, and status decisions — see
+> [`../docs/how-it-works.md`](../docs/how-it-works.md).
+
 ## Install
 
 ```bash

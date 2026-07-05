@@ -9,6 +9,11 @@ binary `evalpilot`.
 An eval is a **single self-contained file** that reads top-to-bottom, so anyone
 can understand what it does at a glance and author one in a few steps.
 
+> **New to the internals?** Read [`docs/how-it-works.md`](docs/how-it-works.md)
+> for a full mechanics guide — discovery, staging, execution, runners,
+> assertions, telemetry, the judge, metrics/baselines, statuses, environment,
+> and the CLI, all cross-referenced to the source.
+
 - **Markdown DSL (`*.eval.md`)** — YAML frontmatter + `## Setup` / `## Act` /
   `## Assert` sections. Prompts and judge criteria read as prose.
 - **TypeScript builder (`*.eval.ts`)** — a fluent `Eval(...)` API for computed
@@ -83,6 +88,8 @@ gh skill install --from-local ./agent-packs/eval-pilot/skills/eval-author
 agent-packs/eval-pilot/
 ├── plugin.json
 ├── README.md
+├── docs/
+│   └── how-it-works.md   (full mechanics guide)
 ├── agents/
 │   └── eval-judge.agent.md
 ├── skills/
