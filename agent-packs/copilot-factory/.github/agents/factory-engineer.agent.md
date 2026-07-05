@@ -1162,21 +1162,21 @@ for the canonical template, rules, and worked-example shapes.
 
 
 
-Using the architect's `eval-plan-json` block and the
-
+Eval mechanics (the Markdown DSL, the TypeScript builder, `kind` values,
+tags, judge criteria, metrics, and CLI) are owned by the **Eval Pilot**
+plugin — do not reinvent them. Scaffold with Eval Pilot's `eval-author`
+skill (or `evalpilot new <name> --target <target> --kind agent|skill`) and
+follow `agent-packs/eval-pilot/skills/eval-author/SKILL.md`. The
 [`agent-builder/references/eval-authoring.md`](../skills/agent-builder/references/eval-authoring.md)
-
-reference:
-
+integration contract lists the Factory-specific outputs:
 
 
-1. For each behavioral scenario in the eval plan, create
 
-   `evals/packs/<pack>/<scenario>.eval.md` using the Eval Pilot Markdown DSL.
+1. For each behavioral scenario in the eval plan, scaffold and fill
 
-   The orchestrator prompt goes in `## Act` verbatim — do **not** include the
+   `evals/packs/<pack>/<scenario>.eval.md`. The orchestrator prompt goes in
 
-   expected answer in the prompt.
+   `## Act` verbatim — do **not** include the expected answer in the prompt.
 
 2. For packaging or repository conformance, create a structural
 
@@ -1208,9 +1208,9 @@ reference:
 
 5. Verify the specs parse with `evalpilot lint evals/packs/<pack>/`. Do NOT run
 
-   live behavioral evals during build unless explicitly instructed; CI/factory
+   live behavioral evals during build — the `@factory-eval-runner` executes them
 
-   eval-runner runs them through `evalpilot run`.
+   via Eval Pilot's `eval-runner` skill in Phase 7.5/7.6.
 
 6. If `improvement_strategy: "incremental"`, skip this step UNLESS the
 

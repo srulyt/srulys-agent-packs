@@ -138,7 +138,6 @@ task(
           "Session: {session-id}\nPack: {pack-name}\n" +
           "Eval run index: {n}\n" +
           "Output path: .copilot-factory/sessions/{session-id}/artifacts/eval-run-{n}.json\n" +
-          "Report-log path: .copilot-factory/sessions/{session-id}/artifacts/eval-run-{n}.report.jsonl\n" +
           "Tests path: evals/packs/{pack-name}/\n" +
           "Guardrails:\n" +
           "  max_wall_clock_seconds_per_loop: {S}\n" +

@@ -36,6 +36,22 @@ The Copilot Factory guides you through creating complete agent packs:
 - `@factory-architect`: Design specialist - creates architecture artifacts
 - `@factory-engineer`: Implementation specialist - creates files from approved architecture
 - `@factory-critic`: Quality gate - reviews architecture and implementation with PASS/BLOCKING verdicts
+- `@factory-eval-runner`: Eval-execution specialist - runs the generated pack's evals via the Eval Pilot plugin and returns a pass/fail verdict
+
+## Evals (Eval Pilot dependency)
+
+The Factory does **not** ship its own eval framework. Eval creation,
+execution, and metrics are delegated to the separate **Eval Pilot** plugin
+(`agent-packs/eval-pilot/`) and its `evalpilot` engine. Generated packs get
+an `evals/packs/<pack>/` suite authored via Eval Pilot's `eval-author` skill
+and executed by `@factory-eval-runner` via Eval Pilot's `eval-runner` skill.
+
+To run Factory-generated evals, install Eval Pilot and its engine:
+
+```bash
+copilot plugin install eval-pilot@srulys-agent-packs
+npm install --save-dev evalpilot   # or use: npx evalpilot
+```
 
 ## Orchestration Pattern
 

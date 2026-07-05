@@ -1,0 +1,1 @@
+{"ts":"2026-07-05T05:22:28+00:00","run_id":"20260705T052227-7dad6142","git_sha":"e3d545b","eval_id":"copilot-factory-negative-scope-architect","name":"input_tokens","value":0,"unit":"","direction":"lower_is_better","baseline":null,"baseline_strategy":"rolling_mean","delta":null,"pct_delta":null,"regressed":false,"tolerance":0.5,"tolerance_pct":0}

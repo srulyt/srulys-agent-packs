@@ -834,7 +834,7 @@ Phase 8 with `eval_status: "skipped-incremental"`.
 
    run — the runner resolves `max_wall_clock_seconds_per_loop` from
 
-   its own default (1800) and reports it back. Pytest exit codes
+   its own default (1800) and reports it back. Evalpilot exit codes
 
    determine the verdict (`0`/`1`/other → `pass`/`fail`/
 
@@ -1026,7 +1026,7 @@ Key fields for orchestrator decisions:
 
   populated from the runner's `eval-summary` block
 
-  (`run_index`, `results_path`, `report_log_path`, `status`,
+  (`run_index`, `results_path`, `report_path`, `status`,
 
   `tests_collected`, `tests_passed`, `tests_failed`, `tests_errored`,
 

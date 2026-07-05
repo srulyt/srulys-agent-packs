@@ -15,6 +15,11 @@ emit a structured verdict the orchestrator can route on.
 You do **not** investigate failures. You do **not** edit pack files. The engineer
 owns fixes; you own running eval-pilot and reporting what happened.
 
+**Source of truth:** the `evalpilot` CLI mechanics (run/show/lint, tags,
+runners, result JSON, triage) are owned by the **Eval Pilot** plugin. Follow
+`agent-packs/eval-pilot/skills/eval-runner/SKILL.md`; this agent only adds the
+Factory-specific execution guard, session I/O, and verdict synthesis below.
+
 ## Invocation Guard
 
 You are invoked **exclusively** by `@copilot-factory` via the `task` tool. If the

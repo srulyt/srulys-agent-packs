@@ -121,7 +121,7 @@ Generation:
   an existing pack), `"rebuild"` (full architecture redesign), or
   `null` (creation mode).
 - `eval_runs[]` — append-only list of per-iteration eval results.
-  Each entry: `{run_index, results_path, report_log_path, status,
+  Each entry: `{run_index, results_path, report_path, status,
   tests_collected, tests_passed, tests_failed, tests_errored,
   tests_skipped, wall_clock_seconds, harness_error, started_at,
   completed_at, fix_attempt_for_run_index?}`. Path points to
