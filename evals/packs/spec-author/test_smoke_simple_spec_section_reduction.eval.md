@@ -50,6 +50,7 @@ files:
   exists:
     - docs/specs/tweak.md
 not_contains:
+  - { path: "docs/specs/tweak.md", text: "## User Experience: Personas, Journeys & Roles" }
   - { path: "docs/specs/tweak.md", text: "## Non-Functional Requirements" }
   - { path: "docs/specs/tweak.md", text: "## Security & Compliance" }
   - { path: "docs/specs/tweak.md", text: "## Data Model" }

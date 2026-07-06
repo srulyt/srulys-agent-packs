@@ -15,7 +15,7 @@
  *    write/shell perms in non-interactive mode.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, type SpawnOptions } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
 import treeKill from "tree-kill";
@@ -114,20 +114,61 @@ interface RunOpts {
   otelPath?: string | null;
 }
 
+function isWindowsBatchWrapper(bin: string): boolean {
+  return process.platform === "win32" && /\.(?:cmd|bat)$/i.test(bin);
+}
+
+function isWindowsPowerShellScript(bin: string): boolean {
+  return process.platform === "win32" && /\.ps1$/i.test(bin);
+}
+
+function quoteWindowsShellArg(arg: string): string {
+  const escaped = arg
+    .replace(/(\\*)"/g, '$1$1\\"')
+    .replace(/(\\+)$/g, '$1$1');
+  return `"${escaped}"`;
+}
+
+function prepareSpawn(
+  bin: string,
+  args: string[],
+  baseOptions: SpawnOptions,
+): { bin: string; args: string[]; options: SpawnOptions } {
+  if (isWindowsBatchWrapper(bin)) {
+    // Node cannot spawn .cmd/.bat directly on Windows; run through cmd.exe
+    // and pre-quote each argument so spaces/metacharacters stay in argv.
+    return {
+      bin,
+      args: args.map(quoteWindowsShellArg),
+      options: { ...baseOptions, shell: true, detached: false },
+    };
+  }
+  if (isWindowsPowerShellScript(bin)) {
+    return {
+      bin: "powershell.exe",
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", bin, ...args],
+      options: { ...baseOptions, detached: false },
+    };
+  }
+  return { bin, args, options: baseOptions };
+}
+
 async function runProcess(cmd: string[], opts: RunOpts): Promise<RunResult> {
   mkdirSync(path.dirname(opts.logPath), { recursive: true });
   const started = process.hrtime.bigint();
   const stdinText = opts.stdinText ?? null;
 
   const [bin, ...args] = cmd;
-  const proc = spawn(bin!, args, {
+  const baseOptions: SpawnOptions = {
     cwd: opts.cwd,
     // Own process group so tree-kill can reap the whole tree.
     detached: process.platform !== "win32",
     windowsHide: true,
     env: opts.env ? { ...process.env, ...opts.env } : process.env,
     stdio: [stdinText !== null ? "pipe" : "ignore", "pipe", "pipe"],
-  });
+  };
+  const prepared = prepareSpawn(bin!, args, baseOptions);
+  const proc = spawn(prepared.bin, prepared.args, prepared.options);
 
   let stdout = "";
   let stderr = "";
@@ -286,4 +327,4 @@ registerRunner("copilot", () => new CopilotRunner());
 export { CopilotRunner };
 
 // Exported for unit tests (budget-control regression guards).
-export { truthyEnv, skipSut, resolveSutTimeout, runProcess };
+export { truthyEnv, skipSut, resolveSutTimeout, runProcess, prepareSpawn };

@@ -45,7 +45,7 @@ user-approved overrides at Stop A; otherwise it stays neutral.
 | Goals & Success Metrics | Business / user / technical outcomes; measurable | — |
 | Users & Personas | Primary users, their needs, expected outcome | — |
 | Solution Summary | Proposed approach at a high level | — |
-| Functional Requirements | What the system does, written as **EARS shall-statements** (one `shall` per FR) — see [`spec-driven-prd-best-practices` §4a](../spec-driven-prd-best-practices/SKILL.md#4a-ears--easy-approach-to-requirements-syntax) for the pattern catalogue. ACs are nested under each FR as Given/When/Then scenarios. | `FR-NN`; ACs `AC-<FR>.<n>` |
+| Functional Requirements | What the system does, written as **EARS shall-statements** (one `shall` per FR) — see [`spec-driven-prd-best-practices` §4a](../spec-driven-prd-best-practices/SKILL.md#4a-ears--easy-approach-to-requirements-syntax) for the pattern catalogue. ACs are nested under each FR as Given/When/Then scenarios. User-journey steps decompose into event-driven FRs/ACs and role-conditioned behaviour is expressed here via the EARS optional-feature/`Where <role/feature is included>` pattern — see [`spec-driven-prd-best-practices` §11](../spec-driven-prd-best-practices/SKILL.md#11-user-context-weaving-personas-jtbd-journeys-roles). | `FR-NN`; ACs `AC-<FR>.<n>` |
 | Risks & Mitigations | Identified risks + mitigation per risk | `R-NN` |
 | Open Questions | Unresolved decisions; nothing silent | `OQ-NN` |
 | Out of Scope | Explicit non-goals that pass the adjacency-by-language test in [`spec-driven-prd-best-practices` §7](../spec-driven-prd-best-practices/SKILL.md#7-out-of-scope-is-a-section-but-not-a-fishing-expedition). The section header is mandatory; the bullet list MAY be empty when no non-goal is load-bearing. Empty is preferred to fabricated negations. | — |
@@ -73,9 +73,9 @@ defect on revision turn 2+ and dilutes every section's signal.
 | Section | MUST contain | MUST NOT contain |
 |---|---|---|
 | Document Information | Status, version, owners, reviewers, last-updated, `Updates:` / `Obsoletes:` header (update mode), `## Changes since vN` preamble (re-draft only). | Problem narrative, goals, solution mechanics, ownership rationale, rollout plan. |
-| Problem Statement | What is broken today, who feels it, evidence (numbers / quotes / telemetry). | Solution direction ("we will…"), goals ("the goal is to…"), ownership ("the X team owns…"), rollout, FR-level detail. |
+| Problem Statement | What is broken today, who feels it, evidence (numbers / quotes / telemetry). MAY cite current-usage / customer-usage evidence (adoption, funnel, support-volume signals) and name the primary job the customer is hiring the product for — see [`spec-driven-prd-best-practices` §11](../spec-driven-prd-best-practices/SKILL.md#11-user-context-weaving-personas-jtbd-journeys-roles). | Solution direction ("we will…"), goals ("the goal is to…"), ownership ("the X team owns…"), rollout, FR-level detail. |
 | Goals & Success Metrics | Outcomes (baseline + target + window) the work is judged against. | Problem restatement, solution mechanics, FRs in disguise, ownership, rollout. |
-| Users & Personas | Primary users, their context, their expected outcome. | Solution mechanics ("they will use feature X"), ownership, success metrics. |
+| Users & Personas | Primary users, their context, their expected outcome. MAY carry JTBD job statements ("When <situation>, I want to <motivation>, so I can <outcome>") as a per-persona line/column — see §11. | Solution mechanics ("they will use feature X"), ownership, success metrics. |
 | Stakeholders & Reviewers (gated) | Named accountable parties and their decision rights. | Problem restatement, goals, FRs, rollout plan. |
 | Solution Summary | The chosen approach at the highest level — what we are building, in one short paragraph. | Problem restatement, goals restatement, ownership, FR enumeration, AC detail, trade-off / alternatives reasoning (→ Risks & Mitigations / Alternatives), per-FR rationale (→ FR `*Rationale*` line), rollout / migration detail (→ Rollout Plan). |
 | Out of Scope | Explicit, load-bearing non-goals that pass the §7 adjacency test. | Boilerplate negations; restatements of "we will" claims from Solution Summary. |
@@ -99,6 +99,7 @@ Both apply on every authoring and review pass.
 
 | Section | Triggering axis | Requires `spec_kind` | ID convention |
 |---------|-----------------|----------------------|---------------|
+| User Experience: Personas, Journeys & Roles | experience-surface | any                | — |
 | Stakeholders & Reviewers        | cross-team-scope            | any                | — |
 | Dependencies & Assumptions      | cross-team-scope            | any                | — |
 | Non-Functional Requirements     | infra-platform-change       | any (NFRs are product-visible) | `NFR-NN` |
@@ -132,6 +133,7 @@ For each axis, score the spec request:
 | Axis | "High" signal — include the gated section(s) |
 |------|----------------------------------------------|
 | **cross-team-scope** | More than one engineering team owns delivery; named partner orgs; cross-org dependencies. |
+| **experience-surface** | The spec introduces or materially changes a user-facing UI surface — new screens/views/pages/panels/dashboards, navigation or information-architecture changes, new interactive affordances, multi-step user flows (wizard, onboarding, checkout, review/approval flow), or behaviour that differs by user role in the UI. **Non-fire guardrail:** a single isolated affordance tweak on an existing surface (one button, one toggle) with a single actor and no role variation does **NOT** fire this axis on its own — the persona/JTBD/journey/role concepts stay woven into existing sections per [`spec-driven-prd-best-practices` §11](../spec-driven-prd-best-practices/SKILL.md#11-user-context-weaving-personas-jtbd-journeys-roles). |
 | **security-surface** | Auth flow change, new data egress, PII handling, supply-chain change, new trust boundary. |
 | **infra-platform-change** | New service, new region, new datastore, breaking API, capacity-shaping change. |
 | **regulatory-load** | Any regulatory or compliance review is in scope (the user names the regime — e.g. GDPR, HIPAA, SOC2, accessibility). Defer specifics to user-supplied instructions; do not encode any specific regime's conventions. |
@@ -151,6 +153,9 @@ Recommended top-level ordering when included:
 2. Problem Statement
 3. Goals & Success Metrics
 4. Users & Personas
+4a. User Experience: Personas, Journeys & Roles (gated,
+    experience-surface) — sits directly after Users & Personas so
+    the deeper journey/role treatment is adjacent to personas.
 5. Stakeholders & Reviewers (gated)
 6. Solution Summary
 7. Functional Requirements (each FR carries its nested
@@ -190,6 +195,7 @@ requests it; otherwise stick to the canonical order.
 | Renumbering existing requirement IDs in update mode | Breaks external references | Keep IDs stable; mark deprecations in place. |
 | Including a "Data Model" or "API Contract" section in a `product`-mode spec because inputs mention a datastore | Implementation leakage; the PRD becomes a design doc | Restrict implementation-shaped sections to `spec_kind: technical` or `mixed`; in `mixed`, place them under the Technical Considerations appendix, not inside FRs. |
 | Auto-listing "Implementation details are out of scope" in Out of Scope | Redundant with product-mode posture; reads as defensive | Omit. List only domain-meaningful non-goals. |
+| Emitting the "User Experience: Personas, Journeys & Roles" section when `experience-surface` did **not** fire (e.g. a single-affordance UI tweak) | Bloat; contradicts the conditional-section contract; trips the simple-spec omission expectation | Keep the concepts **woven** per [`spec-driven-prd-best-practices` §11](../spec-driven-prd-best-practices/SKILL.md#11-user-context-weaving-personas-jtbd-journeys-roles); include the dedicated section only when the axis fires. |
 | FRs that name an internal component, library, or storage technology | Locks engineering choice from the PRD | Re-cast the FR as a behaviour the system must exhibit; move technology references to Technical Considerations in `mixed` mode, or drop entirely in `product` mode. |
 
 ## References

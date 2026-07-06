@@ -45,6 +45,10 @@ files:
     - .spec-author/sessions/*/artifacts/spec-review.md
   absent:
     - "**/CHANGELOG.md"
+not_contains:
+  # Quick Toggle is a single top-bar affordance → the experience-surface
+  # non-fire guardrail keeps the dedicated UX section omitted.
+  - { path: "docs/specs/quick-toggle.md", text: "## User Experience: Personas, Journeys & Roles" }
 judge:
   artifact: docs/specs/quick-toggle.md
   threshold: 0.7

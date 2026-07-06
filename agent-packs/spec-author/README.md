@@ -80,13 +80,19 @@ verbatim-prose prompts; see `## How to Ask the User` in
   orchestrator only advances when the user replies `APPROVE` or
   `EDIT: <changes>`. Ambiguous replies are re-prompted with a
   binary template until matched.
-- **Stop B — Interview.** When **Context Detective** reports
-  unfilled P0 gaps, the orchestrator delegates a structured
-  interview to **PRD Interviewer**, presents the questions to the
-  user, and parks state at `awaiting-interview-answers` until the
-  user answers. If any P0 remains unanswered after one targeted
-  retry, the drafter proceeds with `[TBD]` placeholders and
-  surfaces the gaps in the spec's "Open Questions" section.
+- **Stop B — Interview (grill-me).** When **Context Detective**
+  reports unfilled P0 gaps, the orchestrator delegates a **grill-me
+  interrogation** to **PRD Interviewer**: a relentless, gap-driven,
+  one-gap-per-question set sized by gap closure (no artificial cap),
+  with multiple-choice for enumerable answers (always including a
+  "Not sure / decide later" deferral, never an "Other" bucket) and
+  freeform for open-ended answers. The orchestrator renders each
+  question via `ask_user`, runs a bounded gap-closure loop over
+  remaining/newly-revealed P0 gaps, and parks at
+  `awaiting-interview-answers` until the user answers. Residual
+  unanswered P0s become `[TBD]` + verbatim `OQ-NN` Open Questions
+  (never invented answers). On UI-forward specs the grill escalates
+  persona / JTBD / journey / roles-and-permissions gaps to P0.
 
 ## Versioning discipline (draft vs. published)
 
@@ -252,6 +258,17 @@ The complexity heuristic and section catalogue live entirely in the
 `prd-template` skill so the drafter and critic apply identical
 logic.
 
+**User-context awareness.** Customer-usage, personas, jobs-to-be-done,
+user journeys, and roles & permissions are **woven into existing
+sections for every spec** (per `spec-driven-prd-best-practices` §11 and
+its `user-context-patterns.md` templates) — no new blanket-mandatory
+section. For **UI-forward** specs the `experience-surface` complexity
+axis fires and adds ONE conditional gated section,
+**"User Experience: Personas, Journeys & Roles"** (expanded personas +
+JTBD + journey table + Roles × Permissions matrix). A single trivial
+affordance tweak (one button/toggle) does **not** fire the axis — the
+concepts stay woven.
+
 ### MCP / CLI discovery
 
 `context-detective` opportunistically detects MCPs and CLIs from
@@ -390,6 +407,30 @@ draft-no-change-tracking, interpretation-(a) FR removal, and
     A / Stop B) are surfaced via `ask_user` rather than
     verbatim prose. (Harness-dependent — skipped if the
     eval-engine does not expose tool-call traces.)
+
+**Added in the 2026-07-06 user-context + grill-me build** (the
+numbered list above predates several later cases; the pack now ships
+28 specs total — run `evalpilot lint evals/packs/spec-author/` for the
+authoritative list):
+
+- `test_smoke_ui_forward_ux_section` — a UI-forward multi-screen
+  approval workflow fires `experience-surface`; the drafter authors
+  the dedicated "User Experience: Personas, Journeys & Roles" section
+  with concrete persona / journey / role content.
+- `test_smoke_non_ui_no_ux_section` — a backend/API change does NOT
+  fire the axis; the dedicated UX section is absent (conditional
+  omission).
+- `test_smoke_grillme_no_cap_mc_freeform` — the grill-me interview is
+  gap-sized (no 12-cap); MC questions include "Not sure / decide
+  later" and no "Other"; open-ended gaps are freeform.
+- `test_smoke_grillme_ui_context_gaps` — a UI-forward spec with
+  missing context raises persona / JTBD / journey / RBAC questions
+  (P0). Bridges the user-context and grill-me requirements.
+
+The `simple-spec-section-reduction`, `initial-draft`, and
+`greenfield-context-complete` cases were also updated in this build to
+lock the single-affordance non-fire guardrail and the woven (non-
+dedicated) persona/JTBD context on non-UI specs.
 
 Together the cases cover all three `spec_kind` values (`product`,
 `technical`, `mixed`) and the full draft → publish → re-draft

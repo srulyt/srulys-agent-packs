@@ -17,7 +17,7 @@
  * ```
  */
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.1.3";
 
 // authoring surfaces
 export { Eval } from "./loaders/builder.js";

@@ -101,9 +101,80 @@ Backstop: ~200 words.]
 
 ## Users & Personas
 
-| Persona | Primary needs | Expected outcome |
-|---------|---------------|------------------|
-| ...     | ...           | ...              |
+| Persona | Primary job(s) (JTBD) | Primary needs | Expected outcome |
+|---------|-----------------------|---------------|------------------|
+| ...     | When <situation>, I want to <motivation>, so I can <outcome> | ... | ... |
+
+<!--
+  The "Primary job(s) (JTBD)" column is woven context (applies to
+  ALL specs, optional to populate). It states the job the persona
+  is hiring the product for, in the "When … I want to … so I can …"
+  form. See spec-driven-prd-best-practices §11 and
+  references/user-context-patterns.md. Leave a cell blank rather
+  than fabricate a job.
+-->
+
+---
+
+## User Experience: Personas, Journeys & Roles  <!-- gated: experience-surface -->
+
+<!--
+  Included ONLY when the `experience-surface` axis fired (UI-forward
+  spec: new screens/flows/nav, or role-varying UI behaviour). For
+  non-UI-forward specs this section is OMITTED and the concepts stay
+  woven into Problem Statement / Users & Personas / Functional
+  Requirements per spec-driven-prd-best-practices §11. Do NOT emit
+  this section for a single-affordance tweak.
+
+  Templates for each block below live in
+  spec-driven-prd-best-practices/references/user-context-patterns.md.
+-->
+
+### Personas (expanded)
+
+| Persona | Role / context | Primary job(s) (JTBD) | Top pains | Expected outcome | Validated by |
+|---------|----------------|-----------------------|-----------|------------------|--------------|
+| ...     | ...            | When … I want to … so I can … | ... | ... | interviews / telemetry / proto-assumption |
+
+### Jobs To Be Done
+
+| # | Job statement | Persona | Importance | Satisfaction | Opportunity |
+|---|---------------|---------|------------|--------------|-------------|
+| J1 | When <situation>, I want to <motivation>, so I can <outcome> | ... | 9/10 | 3/10 | HIGH |
+
+<!-- Opportunity (Ulwick) = Importance + max(Importance − Satisfaction, 0). -->
+
+### User journey(s)
+
+**Actor:** <persona> — **Scenario:** <triggering context> — **Goal:** <end state>
+
+| Step / Phase | Actor / Role | Trigger | System response | Success signal | Pain / Opportunity |
+|--------------|--------------|---------|-----------------|----------------|--------------------|
+| ...          | ...          | ...     | ...             | ...            | ← this spec addresses here |
+
+<!-- Each journey step decomposes into an event-driven FR/AC below. -->
+
+### Roles & permissions
+
+**Access-control model:** RBAC (add ABAC/ReBAC only if object/attribute/relationship rules are needed). **Posture:** deny-by-default, least-privilege, server-side enforcement.
+
+| Role | Can | Cannot | Notes |
+|------|-----|--------|-------|
+| Owner  | ... | ... | ... |
+| Editor | ... | ... | ... |
+| Viewer | ... | ... | ... |
+
+**Access-control rules (ABAC/ReBAC exceptions):**
+
+- **ACR-01** — <e.g. an Editor may edit only records they created or that were shared with them>.
+
+<!--
+  Role-conditioned behaviour is ALSO expressed as EARS optional-feature
+  FRs ("Where <role> is included, the <system> shall …") in Functional
+  Requirements, and acceptance criteria pin the deny path ("Given a
+  Viewer, when they attempt X, then the system returns 403 and no data").
+  See spec-driven-prd-best-practices §4a and §11.
+-->
 
 ---
 

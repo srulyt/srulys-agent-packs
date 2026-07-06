@@ -452,11 +452,64 @@ written specs; hitting a cap is a smell — re-apply the heuristics.
 > ✅ "Goal: 80% reduction in 90 days." Parenthetical moves
 > verbatim to Open Questions.
 
+### 11. User-context weaving (personas, JTBD, journeys, roles)
+
+User-context concepts — customer-usage awareness, personas, jobs to
+be done, user journeys, roles & permissions — are **woven into
+existing sections for every spec**. They become a *dedicated*
+section only when the `experience-surface` axis fires (a UI-forward
+spec — see [`prd-template`](../prd-template/SKILL.md)). This is the
+core rule:
+
+> **Weave always; dedicate only when UI-forward.** No user-context
+> concept becomes a new blanket-mandatory section. For non-UI-forward
+> specs the concepts live inside the mandatory sections below. For
+> UI-forward specs the deeper treatment consolidates into the gated
+> "User Experience: Personas, Journeys & Roles" section.
+
+**Where each concept is woven (all specs):**
+
+| Concept | Woven home (existing section) | How it manifests |
+|---------|-------------------------------|------------------|
+| Customer/product-usage awareness | Problem Statement + Goals & Success Metrics | Ground the pain in observed usage/telemetry ("only 18% of activated accounts use export today"[^usage-svpg]); the baseline metric this spec moves lives in Goals. A requirement that traces to no usage signal, research finding, or strategic goal is a removal candidate. |
+| Personas | Users & Personas (mandatory) | Persona = role/context + primary need + expected outcome, grounded in research (label proto-personas as assumptions)[^persona-nng]. Keep the ≤150-word narrative cap (§10). |
+| Jobs To Be Done (JTBD) | Users & Personas (job statements) + Problem Statement (the job hired for) + Goals (outcome = job done) | Use the job-statement form "When [situation], I want to [motivation], so I can [outcome]"[^jtbd-strategyn]. A JTBD is the *goal regardless of solution* — keep it distinct from a user story (the solution hypothesis). |
+| User journeys | Functional Requirements (each step → an FR/AC) + Solution Summary (the end-to-end path at high level) | Ordered journey steps become event-driven EARS statements and Given/When/Then ACs[^journey-nng]. Non-UI specs express journeys inline in FRs; no dedicated section. |
+| Roles & permissions | Functional Requirements (role-conditioned EARS `Where <role/feature is included>, the <system> shall …` — see §4a) + Security & Compliance (gated) when an auth/trust boundary exists | Roles are explicit actors in shall-statements and AC preconditions ("Given a Viewer, when they attempt PII export, then the system returns 403"). Design to **deny-by-default, least-privilege, server-side enforcement**[^rbac-owasp]. |
+
+**When `experience-surface` fires (UI-forward specs)** the dedicated
+"User Experience: Personas, Journeys & Roles" section additionally
+consolidates: an expanded persona table (with a JTBD column), a JTBD
+table with opportunity scores, one or more journey summary tables,
+and a Roles × Permissions matrix + access-control rules. Embeddable
+templates for each block live in
+[references/user-context-patterns.md](references/user-context-patterns.md).
+
+**Do-not-fabricate.** If a persona, job, journey step, or role is
+genuinely unknown, it is an interview question (or an `OQ-NN` +
+`[TBD]`), never an invented placeholder.
+
+[^usage-svpg]: Cagan / SVPG — Product Discovery.
+    https://www.svpg.com/product-discovery/
+[^persona-nng]: Nielsen Norman Group — Personas: Study Guide, and
+    Persona Types (proto / qualitative / statistical).
+    https://www.nngroup.com/articles/persona/
+[^jtbd-strategyn]: Strategyn — Jobs-to-be-Done Theory (Ulwick, ODI).
+    https://strategyn.com/jobs-to-be-done/jobs-to-be-done-theory/
+[^journey-nng]: Nielsen Norman Group — Journey Mapping 101.
+    https://www.nngroup.com/articles/journey-mapping-101/
+[^rbac-owasp]: OWASP — Authorization Cheat Sheet (RBAC/ABAC/ReBAC,
+    least privilege, deny by default).
+    https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html
+
 ## Anti-patterns
 
 | Anti-pattern | Problem | Fix |
 |--------------|---------|-----|
 | Vague goals like "improve UX" | Cannot tell when done | Outcome metric with baseline + target. |
+| Emitting the dedicated UX section for a non-UI-forward spec | Bloat; breaks the conditional-section contract | Keep user-context woven per §11; dedicate only when `experience-surface` fired. |
+| Fabricating a persona / job / journey step / role to fill a template cell | Erodes trust; not testable | Leave blank, or raise an interview question / `OQ-NN`. |
+| Treating a JTBD as a user story | Locks the solution prematurely | Keep the job solution-agnostic; the story is the hypothesis for satisfying it. |
 | Acceptance criteria that paraphrase the requirement | Not testable | Given / When / Then with concrete inputs and observable result. |
 | Fabricated quotes / data to make the problem statement vivid | Erodes trust; fails D4 | Use real evidence or mark `[TBD]`. |
 | Locking on a solution before context is clear | Wastes drafting; misses the real problem | Stop A discipline + complexity heuristic. |

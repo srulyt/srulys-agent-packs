@@ -21,6 +21,7 @@ mandatory:
 # (AC-<FR>.<n>) — this eliminates FR↔AC traceability mismatches.
 
 gated:
+  - { name: "User Experience: Personas, Journeys & Roles", axis: "experience-surface",       requires_spec_kind: "any" }
   - { name: "Stakeholders & Reviewers",        axis: "cross-team-scope",                     requires_spec_kind: "any" }
   - { name: "Dependencies & Assumptions",      axis: "cross-team-scope",                     requires_spec_kind: "any" }
   - { name: "Non-Functional Requirements",     axis: "infra-platform-change",                requires_spec_kind: "any", id_convention: "NFR-NN" }
@@ -43,6 +44,9 @@ gated:
 heuristic:
   cross-team-scope:
     high_when: "more than one engineering team owns delivery; named partner orgs; cross-org dependencies"
+  experience-surface:
+    high_when: "spec introduces or materially changes a user-facing UI surface — new screens/views/pages/panels/dashboards; navigation or information-architecture change; new interactive affordances; multi-step user flow (wizard, onboarding, checkout, review/approval flow); or behaviour that differs by user role in the UI"
+    non_fire_guardrail: "a single isolated affordance tweak on an existing surface (one button, one toggle) with a single actor and no role variation does NOT fire the axis on its own; keep persona/JTBD/journey/role concepts woven per spec-driven-prd-best-practices §11"
   security-surface:
     high_when: "auth flow change; new data egress; PII handling; supply-chain change; new trust boundary"
   infra-platform-change:

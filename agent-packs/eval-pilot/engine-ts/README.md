@@ -16,8 +16,8 @@ The JSON report schema is the canonical evalpilot report format used by the CLI.
 
 > For a full explanation of the engine's mechanics — discovery, spec
 > compilation, staging, the arrange/act/assert pipeline, runners, telemetry,
-> the judge, metrics/baselines, and status decisions — see
-> [`../docs/how-it-works.md`](../docs/how-it-works.md).
+> the judge, metrics/baselines, and status decisions — see the
+> [engine docs](https://github.com/srulyt/srulys-agent-packs/blob/main/agent-packs/eval-pilot/docs/how-it-works.md).
 
 ## Install
 
@@ -44,6 +44,16 @@ npx evalpilot metrics --check                           # regression gate (CI)
 
 `EVALPILOT_RUNNER=mock` runs the entire pipeline offline (no `copilot`, no
 tokens) — the engine's own tests and the `new`→`run` demo use it.
+
+## CLI commands
+
+- `evalpilot init` — scaffold an `evals/` workspace.
+- `evalpilot new <name>` — create a Markdown or TypeScript eval spec.
+- `evalpilot discover [target]` — list discovered specs.
+- `evalpilot lint [target]` — validate specs without launching the SUT.
+- `evalpilot run [target]` — execute specs and write terminal/HTML/JSON reports.
+- `evalpilot show [run]` — render or open a previous report.
+- `evalpilot metrics [target]` — inspect or gate JSONL metric history.
 
 ## Authoring an eval — Markdown DSL
 

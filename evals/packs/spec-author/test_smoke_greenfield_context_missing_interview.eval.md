@@ -9,7 +9,7 @@ timeout: 1200
 # Missing greenfield context produces interview artifacts and answered sections
 
 ## Description
-Greenfield creation where the detective finds P0 gaps. Stop B fires (interviewer generates <=12 questions); user provides answers; detective re-runs; Stop A; APPROVE; drafter; critic. Asserts the interview artifacts are produced and the drafter does not leave `[TBD]` placeholders for sections the user actually answered.
+Greenfield creation where the detective finds P0 gaps. Stop B fires (interviewer generates a gap-closure-sized question set — no tight cap); user provides answers; detective re-runs; Stop A; APPROVE; drafter; critic. Asserts the interview artifacts are produced and the drafter does not leave `[TBD]` placeholders for sections the user actually answered.
 
 Ported from legacy `cases/smoke-greenfield-context-missing-interview/`.
 

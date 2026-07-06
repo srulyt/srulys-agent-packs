@@ -343,6 +343,28 @@ Log each migration in `edit-audit-json` as `{"locator": "Document Information.<f
        exception to "do not touch lines outside the planned
        edit set" — it is a one-time format migration, not a
        semantic edit.
+6a. **User-context weaving / dedicated UX section.** Apply
+    [`spec-driven-prd-best-practices` §11](../../skills/spec-driven-prd-best-practices/SKILL.md#11-user-context-weaving-personas-jtbd-journeys-roles).
+    For **every** spec, weave user-context into existing sections:
+    ground the Problem Statement / Goals in customer-usage evidence
+    where available; carry JTBD job statements
+    ("When … I want to … so I can …") in the Users & Personas table;
+    decompose user-journey steps into event-driven FRs/ACs; express
+    role-conditioned behaviour with the EARS optional-feature
+    `Where <role/feature is included>, the <system> shall …` pattern
+    (item 7 / §4a) and pin the deny path in an AC. When the approved
+    structure includes **"User Experience: Personas, Journeys &
+    Roles"** (the `experience-surface` axis fired), additionally
+    author that dedicated section per the worked block in
+    [`prd-template`'s specification template](../../skills/prd-template/references/specification-template.md)
+    using the embeddable templates in
+    [`user-context-patterns.md`](../../skills/spec-driven-prd-best-practices/references/user-context-patterns.md):
+    expanded persona cards, a JTBD table with opportunity scores, a
+    journey summary table, and a Roles × Permissions matrix +
+    access-control rules (deny-by-default, server-side enforcement).
+    When the approved structure does **not** include that section,
+    do NOT emit it — keep the concepts woven only. Never fabricate a
+    persona/job/journey step/role; unknowns are `[TBD]` + `OQ-NN`.
 7. **Functional Requirements use EARS shall-statements.** Each FR
    is exactly one shall-statement using one of the patterns:
    ubiquitous (`The <system> shall <response>.`), event-driven

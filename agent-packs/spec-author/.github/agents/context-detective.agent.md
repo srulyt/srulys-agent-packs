@@ -169,6 +169,25 @@ spec_kind=technical|mixed". This makes the spec-kind dependency
 visible to the orchestrator at Stop A so the user can opt in
 explicitly.
 
+**Score the `experience-surface` axis** (the UI-forward axis) like
+the other seven. It fires when the request introduces or materially
+changes a user-facing UI surface — new screens/views/pages/panels/
+dashboards, navigation/IA changes, new interactive affordances,
+multi-step user flows (wizard, onboarding, checkout, review/approval
+flow), or behaviour that differs by user role in the UI. Record the
+firing signal as justification, exactly like the other axes. **Apply
+the non-fire guardrail:** a single isolated affordance tweak on an
+existing surface (one button, one toggle) with a single actor and no
+role variation does NOT fire the axis — annotate the
+"User Experience: Personas, Journeys & Roles" section as
+`gated-omitted` and let persona/JTBD/journey/role concepts stay woven
+per `spec-driven-prd-best-practices` §11. When the axis fires, list
+"User Experience: Personas, Journeys & Roles —
+gated-included(experience-surface), requires spec_kind=any" in
+`proposed-structure`. If UI-forwardness is genuinely ambiguous,
+default to **omit** and add the ambiguity to `open-questions-json`
+so Stop A resolves it.
+
 ### Step 5: Identify gaps
 
 Build `gaps-json` with shape:
@@ -205,6 +224,25 @@ demote it to P1. Concretely:
   datastore", "no public API", "single team", "no security
   surface") → the corresponding gated sections are **not** P0
   gaps; they are gated-omitted entries in `proposed-structure`.
+- **User-context gaps (personas / JTBD / journeys / roles / usage
+  awareness).** Flag missing user-context as gaps, but priority is
+  gated on the `experience-surface` axis (the bridge to the
+  UI-forward work):
+  - **When `experience-surface` fired** (UI-forward spec) and the
+    persona / user-journey / role-and-permission detail needed to
+    author the "User Experience: Personas, Journeys & Roles" section
+    is genuinely absent from every input → mark those as **P0**
+    (they block the gated UX section). Examples: "Who are the
+    distinct user roles and what can each do?", "What is the primary
+    end-to-end journey and its steps?".
+  - **When `experience-surface` did NOT fire** → the same gaps are
+    at most **P1/P2**; they feed the *woven* context (a JTBD line in
+    Users & Personas, a usage signal in Problem Statement) and never
+    block drafting. Never promote them to P0 on a non-UI-forward
+    spec.
+  - As always, a supplied input demotes the gap: if `docs/personas.md`
+    (or equivalent) covers personas/roles, "Users & Personas" is not
+    a P0 gap even on a UI-forward spec.
 
 The `must_fill` array is the orchestrator's signal to fire Stop B
 (invoke `@prd-interviewer` and produce

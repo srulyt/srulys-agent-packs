@@ -57,6 +57,18 @@ include/omit decision justified by the §heuristic given the inputs
   implementation-shaped sections (Data Model, API Contract,
   Capacity & Performance Targets, Threat Model Summary, Versioning
   & Deprecation Policy, NFR↔FR Traceability) regardless of axis.
+- **`experience-surface` axis (the UX section).** The gated
+  "User Experience: Personas, Journeys & Roles" section is scored
+  like any other gated section: reward correct **omission** when
+  the axis did not fire (non-UI-forward spec, or a single-affordance
+  tweak caught by the non-fire guardrail); penalise **bloat** when
+  the section is present without a UI-forward signal; penalise
+  **underspecification** when the axis clearly fired (new
+  screens/flows/nav, or role-varying UI behaviour) but the section
+  is missing. Do NOT penalise a non-UI-forward spec for lacking the
+  section — the concepts belong woven per
+  `spec-driven-prd-best-practices` §11 instead (scored under D4/D11,
+  not D1/D2).
 
 ### D3 — naming-consistency  (both modes)
 
@@ -121,6 +133,25 @@ discipline upheld; is format hygiene upheld?
     upper section → **major**.
   - Repeat offence across three or more upper sections → escalate
     one finding to **blocker**.
+
+**User-context weaving (non-blocking quality guidance).** When
+user-context concepts are present, reward good craft but do NOT
+treat their absence as a mandatory-coverage (D1) miss — these are
+woven-context quality signals, not required sections:
+
+- Personas that carry a JTBD job statement in the
+  "When … I want to … so I can …" form (minor credit; a persona
+  with a vague need is a `minor` deduction, not a blocker).
+- Journey steps that decompose into event-driven FRs/ACs rather
+  than sitting as narrative only.
+- Role-conditioned behaviour expressed as EARS optional-feature
+  FRs (`Where <role> is included, the <system> shall …`) with an
+  AC pinning the deny path.
+
+Absence of a JTBD column, journey mapping, or role matrix on a
+**non-UI-forward** spec is NOT a deduction (constraint: no new
+blanket-mandatory section). Strict scoring of these on UI-forward
+specs lives in D11.
 
 ### D9 — scope-discipline  (both modes when `spec_kind` is `product` or `mixed`; `null` otherwise)
 
@@ -303,6 +334,41 @@ table layouts; "normalising" capitalisation across the document.
 (e.g. "add an FR for X") — those are the legitimate change. D10 polices
 edits to the *prior* content, not new content.
 
+### D11 — user-context-grounding  (scored ONLY when `experience-surface` fired; `null` otherwise)
+
+**Question:** For a UI-forward spec (the `experience-surface` axis
+fired and the "User Experience: Personas, Journeys & Roles" section
+is present), is the user-context treatment concrete and grounded?
+
+**Applicability:** D11 is scored **only** when `experience-surface`
+fired for this spec. On every other spec (non-UI-forward, or the
+non-fire guardrail applied) D11 is reported as `null`, **not 0** —
+same null-not-zero convention as D5–D8/D10. This localises the
+strictness to UI-forward specs and keeps it out of every other
+spec's score, honouring the "no new blanket-mandatory section"
+constraint.
+
+**Scoring (start at 1.0; deduct):**
+
+- Personas in the dedicated section lack a concrete JTBD job
+  statement (the "When … I want to … so I can …" form): deduct 0.2
+  per persona, `minor`.
+- At least one user journey for the primary affected flow is missing
+  or is narrative-only (no phase/step table, no mapping to FRs):
+  deduct 0.3, `major`.
+- Role-varying behaviour is described but no Roles × Permissions
+  matrix (or equivalent role→capability mapping) is present: deduct
+  0.3, `major`. If the matrix omits the deny-by-default posture or
+  no AC pins a deny path, deduct a further 0.2, `minor`.
+- User-context content is fabricated (invented persona/job/journey/
+  role with no basis in the context pack, interview answers, or a
+  cited source, and not marked `[TBD]`/`OQ-NN`): this is a
+  fabrication finding — `blocker` (verdict `block`), consistent
+  with D4's fabrication rule.
+
+**Reward:** concrete, source-grounded personas + JTBD + at least one
+FR-decomposed journey + a deny-by-default role matrix → 1.0.
+
 ## Weighted aggregation
 
 Equal-weight mean of applicable dimensions only. Dimensions not
@@ -311,7 +377,7 @@ in `scores-json`. D10 follows the same null-not-zero rule as D5–D8:
 it is included in the weighted mean only when `mode == update`.
 
 ```
-weighted = mean(dim for dim in [D1..D10] if dim is not null)
+weighted = mean(dim for dim in [D1..D11] if dim is not null)
 ```
 
 ## Verdict rules

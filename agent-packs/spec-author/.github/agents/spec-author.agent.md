@@ -471,7 +471,10 @@ gaps-json from detective:
 {paste gaps-json verbatim}
 
 Output named-fenced sections: interview-md, coverage-json,
-ready-for-review. Max 12 questions, P0/P1/P2 tagged.
+ready-for-review. Grill-me discipline: one gap per question, P0/P1/P2
+tagged, each question typed (multiple_choice|freeform); MC questions
+carry 2-6 choices ending with "Not sure / decide later" and no
+"Other". No tight cap — size by gap closure.
 """
 )
 ```
@@ -563,6 +566,13 @@ The Stop A message MUST contain, in this order:
    - `gated-included(<axis>) — <one-line justification>`, or
    - `gated-included(<axis>) — requires spec_kind=<technical|mixed>`, or
    - `gated-omitted — <one-line reason>`.
+   For a UI-forward request the set may include the
+   `gated-included(experience-surface)` "User Experience: Personas,
+   Journeys & Roles" section; note in one line that the user may opt
+   out of it in their reply if the spec is not UI-forward (the
+   persona/journey/role concepts then stay woven into existing
+   sections). Do not editorialise beyond surfacing the detective's
+   decision verbatim.
 5. **Open Questions surfaced (C6).** Concatenate the detective's
    `open-questions-json` plus any ambiguity you detected
    (e.g. existing-spec path supplied but verbs ambiguous → confirm
@@ -698,13 +708,22 @@ When the detective's `gaps-json.must_fill` is non-empty:
 2. Delegate to `@prd-interviewer`. Pass the `gaps-json` block
    verbatim.
 3. For each question in the interviewer's `interview-md`, call
-   `ask_user(question=<text>, allow_freeform=true)` one question
-   at a time per the conventions in `## How to Ask the User`
-   below. Prefix the first call with a one-line context line
-   ("I need a few clarifications before I can draft a useful
-   spec."). Collect each answer and append it to
-   `context/interview-answers.md` in the same order as the
-   interview produced the questions.
+   `ask_user` one question at a time per the conventions in
+   `## How to Ask the User` below, honouring its `kind` from
+   `coverage-json`:
+   - **`multiple_choice`** → `ask_user(question=<text>,
+     choices=<choices from coverage-json>, allow_freeform=true)`.
+     The `choices` array already ends with "Not sure / decide
+     later" and contains no "Other"; `allow_freeform: true` lets
+     the user type a value outside the set.
+   - **`freeform`** → `ask_user(question=<text>,
+     allow_freeform=true)` with no `choices`.
+   Prefix the first call with a one-line context line ("I need a
+   few clarifications before I can draft a useful spec."). Collect
+   each answer and append it to `context/interview-answers.md` in
+   the same order as the interview produced the questions. A "Not
+   sure / decide later" reply is recorded as **deferred**, not
+   answered.
 4. Park. **Do not call any further sub-agent until the user
    replies.**
 5. When the user replies, write their answers to
@@ -713,24 +732,35 @@ When the detective's `gaps-json.must_fill` is non-empty:
    `@context-detective` invocation (its `discovery_iterations` is
    capped at 2 — this is the second).
 
-### Partial-answer fallback (C5)
+### Bounded gap-closure loop (C5)
 
-After the user replies, check whether every P0 question
-(per the interviewer's `coverage-json`) is answered:
+After each round of answers, drive the grill-me gap-closure loop
+(per the `prd-interview` skill). Treat a "Not sure / decide later"
+reply as **deferred** (equivalent to unanswered for P0 gating):
 
-1. If any P0 is unanswered AND `state.json:interview_retries == 0`:
-   issue **one** targeted re-prompt listing only the unanswered P0
-   questions ("Could you also answer Q3 and Q5? These block the
-   spec being useful."). Increment `interview_retries`. Wait.
-2. After that single retry, if any P0 is still unanswered: proceed
-   anyway. Tell `@prd-drafter` to fill those sections with
-   `[TBD — interview question N unanswered]` placeholders, and
-   add a verbatim entry to the spec's "Open Questions" section
-   referencing the unanswered P0(s).
-3. P1/P2 unanswered → add to "Open Questions" without retry. They
-   never block progress.
-4. Retry is capped at **1**. `prd-interviewer` runs at most once per
-   session; do not invoke it a second time.
+1. Check whether every P0 question (per the interviewer's
+   `coverage-json`) is answered (not deferred).
+2. **Re-grill remaining or newly-revealed P0 gaps.** If any P0 gap
+   is still unanswered/deferred, OR an answer reveals a new P0 gap,
+   issue a focused follow-up round via `ask_user` asking **only**
+   those P0 gaps (prefixed "A couple more before I can draft —
+   these block the spec being useful."). Render each with the right
+   `kind` (choices for enumerable, freeform otherwise). Append the
+   replies to `context/interview-answers.md`. Repeat until every P0
+   gap is answered or explicitly deferred.
+3. **Structural safety bound (termination guarantee, NOT a quality
+   cap).** Cap the loop at a large structural bound — a handful of
+   re-grill rounds (`interview_regrill_rounds`, bounded per Retry
+   Bounds). A well-scoped spec closes P0 gaps in one or two rounds;
+   the bound only prevents non-termination. Do not use it to
+   truncate a genuinely open interrogation.
+4. **Residue → do-not-invent fallback.** When the loop ends with a
+   P0 still unanswered/deferred: tell `@prd-drafter` to fill that
+   section with `[TBD — interview question N unanswered]` and add a
+   verbatim `OQ-NN` entry to the spec's "Open Questions" section.
+   Never fabricate.
+5. P1/P2 unanswered → add to "Open Questions" without retry; never
+   re-grilled.
 
 ## Phase Machine
 
@@ -790,7 +820,16 @@ Local conventions:
 ## Retry Bounds
 
 - `context-detective`: max 2 invocations per session.
-- `prd-interviewer`: max 1 invocation per session.
+- `prd-interviewer`: max 1 invocation per session. It emits the
+  **complete, gap-closure-sized** question set once; the orchestrator
+  then drives the interactive gap-closure loop itself via `ask_user`
+  (it does not re-invoke the interviewer for follow-up rounds).
+- `interview_regrill_rounds` (orchestrator-driven `ask_user`
+  follow-up rounds in the bounded gap-closure loop, C5): capped at a
+  small structural bound (e.g. **5 rounds**). This is the
+  termination guarantee, not a quality cap — most specs close P0
+  gaps in 1–2 rounds. On hitting the bound with P0s still open,
+  apply the do-not-invent residue fallback (`[TBD]` + `OQ-NN`).
 - `prd-drafter`: max 3 invocations (initial + 2 revise rounds).
 - `prd-critic`: max 3 invocations (one per draft).
 - After bounds exhaust, surface the latest artefact + critic
