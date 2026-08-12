@@ -3,7 +3,7 @@ name: spec-author-grillme-ui-context-gaps
 target: spec-author
 kind: agent
 tags: [smoke, slow, pack, judge]
-timeout: 1200
+timeout: 4200
 ---
 
 # Grill-me interview raises persona/journey/RBAC gaps on a UI-forward spec

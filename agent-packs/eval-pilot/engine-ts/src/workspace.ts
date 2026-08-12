@@ -29,6 +29,8 @@ export interface WorkspaceOptions {
   logsDir: string;
   runner?: SUTRunner;
   repoRoot?: string;
+  /** Explicit per-run SUT timeout override (seconds) from `--sut-timeout`. */
+  sutTimeout?: number | null;
 }
 
 /** Raised by {@link Workspace.findOne} when zero matches are found. */
@@ -66,6 +68,7 @@ export class Workspace {
   logsDir: string;
   runner: SUTRunner;
   repoRoot: string;
+  sutTimeout: number | null;
 
   constructor(opts: WorkspaceOptions) {
     this.root = opts.root;
@@ -74,6 +77,7 @@ export class Workspace {
     mkdirSync(this.logsDir, { recursive: true });
     this.runner = opts.runner ?? getRunner();
     this.repoRoot = opts.repoRoot ?? findRepoRoot();
+    this.sutTimeout = opts.sutTimeout ?? null;
     if (!existsSync(path.join(this.root, ".git"))) {
       try {
         spawnSync("git", ["init", "-q"], { cwd: this.root });
@@ -162,6 +166,7 @@ export class Workspace {
       agent: opts.agent ?? null,
       log_path: path.join(this.logsDir, `${opts.logName ?? "agent"}.log`),
       timeout: opts.timeout ?? 600.0,
+      sut_timeout_override: this.sutTimeout,
     });
   }
 
@@ -176,6 +181,7 @@ export class Workspace {
       workspace: this.root,
       log_path: path.join(this.logsDir, `${opts.logName ?? "skill"}.log`),
       timeout: opts.timeout ?? 300.0,
+      sut_timeout_override: this.sutTimeout,
     });
   }
 

@@ -62,6 +62,37 @@ describe("resolveSutTimeout", () => {
     process.env.EVALPILOT_SUT_TIMEOUT = "0";
     expect(resolveSutTimeout(900)).toBe(900);
   });
+
+  it("explicit override takes precedence and can RAISE above the frontmatter value", () => {
+    delete process.env.EVALPILOT_SUT_TIMEOUT;
+    // No env, frontmatter 900 -> override 4200 raises it.
+    expect(resolveSutTimeout(900, 4200)).toBe(4200);
+  });
+
+  it("explicit override can also LOWER below the frontmatter value", () => {
+    delete process.env.EVALPILOT_SUT_TIMEOUT;
+    expect(resolveSutTimeout(900, 120)).toBe(120);
+  });
+
+  it("no override falls back to the frontmatter value", () => {
+    delete process.env.EVALPILOT_SUT_TIMEOUT;
+    expect(resolveSutTimeout(900)).toBe(900);
+    expect(resolveSutTimeout(900, null)).toBe(900);
+  });
+
+  it("explicit override wins over the EVALPILOT_SUT_TIMEOUT cap (raises past it)", () => {
+    process.env.EVALPILOT_SUT_TIMEOUT = "30";
+    // Env alone would clamp to 30; the authoritative override raises to 4200.
+    expect(resolveSutTimeout(900, 4200)).toBe(4200);
+  });
+
+  it("ignores a non-positive or NaN override and falls back to cap/frontmatter", () => {
+    process.env.EVALPILOT_SUT_TIMEOUT = "30";
+    expect(resolveSutTimeout(900, 0)).toBe(30);
+    expect(resolveSutTimeout(900, Number.NaN)).toBe(30);
+    delete process.env.EVALPILOT_SUT_TIMEOUT;
+    expect(resolveSutTimeout(900, -5)).toBe(900);
+  });
 });
 
 describe("truthyEnv", () => {

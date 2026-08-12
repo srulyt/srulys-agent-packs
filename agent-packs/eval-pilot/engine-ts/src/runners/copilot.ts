@@ -53,8 +53,25 @@ function skipSut(): boolean {
   return truthyEnv("EVALPILOT_SKIP_SUT") || truthyEnv("EVALS_SKIP_SUT");
 }
 
-/** Clamp `requested` to `EVALPILOT_SUT_TIMEOUT` when that env is set. */
-function resolveSutTimeout(requested: number): number {
+/**
+ * Resolve the effective SUT wall-clock timeout (seconds).
+ *
+ * Precedence:
+ *   1. Explicit `--sut-timeout` override (`override`, when > 0) — authoritative;
+ *      RAISES or lowers the timeout regardless of the frontmatter value.
+ *   2. `EVALPILOT_SUT_TIMEOUT` / `EVALS_SUT_TIMEOUT` env — a MAX **cap**; it can
+ *      only LOWER `requested`, never raise it (back-compat behaviour retained).
+ *   3. `requested` — the spec's frontmatter `timeout:` (or the caller default).
+ *
+ * When neither override nor env is set, behaviour is unchanged (returns
+ * `requested`).
+ */
+function resolveSutTimeout(requested: number, override?: number | null): number {
+  // 1. Explicit CLI override wins and may raise above the frontmatter value.
+  if (override != null && !Number.isNaN(override) && override > 0) {
+    return override;
+  }
+  // 2. Env var is a cap only (Math.min): it can lower but never raise.
   const raw = (
     process.env.EVALPILOT_SUT_TIMEOUT ??
     process.env.EVALS_SUT_TIMEOUT ??
@@ -300,7 +317,7 @@ class CopilotRunner implements SUTRunner {
     return runProcess(cmd, {
       cwd: args.workspace,
       logPath: args.log_path,
-      timeout: resolveSutTimeout(args.timeout),
+      timeout: resolveSutTimeout(args.timeout, args.sut_timeout_override),
       stdinText: args.prompt,
       env: otelPath ? telemetryEnv(otelPath) : null,
       otelPath,
@@ -318,6 +335,7 @@ class CopilotRunner implements SUTRunner {
       log_path: args.log_path,
       timeout: args.timeout,
       extra_args: args.extra_args,
+      sut_timeout_override: args.sut_timeout_override,
     });
   }
 }

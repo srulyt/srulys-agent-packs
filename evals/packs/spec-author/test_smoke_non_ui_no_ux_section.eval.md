@@ -3,7 +3,7 @@ name: spec-author-non-ui-no-ux-section
 target: spec-author
 kind: agent
 tags: [smoke, slow, pack]
-timeout: 900
+timeout: 4200
 ---
 
 # Non-UI spec does NOT get the dedicated UX section

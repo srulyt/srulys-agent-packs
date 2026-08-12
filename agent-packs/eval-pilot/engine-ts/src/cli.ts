@@ -235,6 +235,7 @@ interface RunOpts {
   runner?: string;
   open?: boolean;
   gate?: boolean;
+  sutTimeout?: string;
 }
 
 async function cmdRun(target: string | undefined, opts: RunOpts): Promise<number> {
@@ -255,9 +256,22 @@ async function cmdRun(target: string | undefined, opts: RunOpts): Promise<number
     return 2;
   }
 
+  const sutTimeoutOverride =
+    opts.sutTimeout != null && opts.sutTimeout !== ""
+      ? Number(opts.sutTimeout)
+      : null;
+  if (
+    sutTimeoutOverride != null &&
+    (Number.isNaN(sutTimeoutOverride) || sutTimeoutOverride <= 0)
+  ) {
+    console.log(`invalid --sut-timeout value: ${opts.sutTimeout}`);
+    return 2;
+  }
+
   const report = await runSpecs(specs, {
     parallel: parseInt(opts.parallel, 10) || 1,
     runner: runnerOverride(opts.runner),
+    sutTimeout: sutTimeoutOverride,
   });
   const outDir = path.join(evalRoot, "_runs", report.run_id);
   mkdirSync(outDir, { recursive: true });
@@ -631,6 +645,12 @@ export function buildProgram(): Command {
     .argument("[target]", "spec file or dir (default: eval root)")
     .option("-t, --tags <expr>", "tag filter, e.g. 'smoke,-slow'")
     .option("--parallel <n>", "concurrent workers", "1")
+    .option(
+      "--sut-timeout <seconds>",
+      "authoritative per-run SUT timeout override; RAISES or lowers each " +
+        "spec's frontmatter 'timeout:' (unlike EVALPILOT_SUT_TIMEOUT, which " +
+        "only caps/lowers)",
+    )
     .option("--format <fmt>", "terminal,html,json,all (default: all)", "all")
     .option("--runner <name>", "SUT runner override (e.g. mock)")
     .option("--open", "open the HTML report")

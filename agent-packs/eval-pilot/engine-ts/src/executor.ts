@@ -53,6 +53,8 @@ function hrSeconds(t0: bigint): number {
 export interface RunEvalOptions {
   workRoot?: string;
   runner?: SUTRunner;
+  /** Explicit per-run SUT timeout override (seconds) from `--sut-timeout`. */
+  sutTimeout?: number | null;
 }
 
 /** Execute one spec and return its {@link EvalResult}. */
@@ -121,7 +123,7 @@ export async function runEval(
   }
 
   try {
-    const ws = new Workspace({ root: wsRoot, logsDir, runner });
+    const ws = new Workspace({ root: wsRoot, logsDir, runner, sutTimeout: opts.sutTimeout ?? null });
     arrange(spec, ws);
     const result = await act(spec, ws);
     base.log_path = result.log_path;
@@ -162,6 +164,8 @@ export interface RunSpecsOptions {
   workRoot?: string;
   parallel?: number;
   runner?: SUTRunner;
+  /** Explicit per-run SUT timeout override (seconds) from `--sut-timeout`. */
+  sutTimeout?: number | null;
 }
 
 /** Execute a batch of specs into an {@link EvalRunReport}. */
@@ -179,7 +183,7 @@ export async function runSpecs(
   const parallel = opts.parallel ?? 1;
 
   const one = (sp: EvalSpec): Promise<EvalResult> =>
-    runEval(sp, { workRoot, runner: opts.runner });
+    runEval(sp, { workRoot, runner: opts.runner, sutTimeout: opts.sutTimeout });
 
   let results: EvalResult[];
   if (parallel > 1 && specs.length > 1) {

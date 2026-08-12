@@ -77,6 +77,12 @@ export interface RunAgentArgs {
   log_path: string;
   timeout: number;
   extra_args?: string[];
+  /**
+   * Explicit per-run SUT timeout override (seconds) from `--sut-timeout`.
+   * When set (> 0) it is authoritative and can RAISE or lower the effective
+   * timeout above/below the spec's frontmatter `timeout:`.
+   */
+  sut_timeout_override?: number | null;
 }
 
 export interface RunSkillArgs {
@@ -86,6 +92,8 @@ export interface RunSkillArgs {
   log_path: string;
   timeout: number;
   extra_args?: string[];
+  /** See {@link RunAgentArgs.sut_timeout_override}. */
+  sut_timeout_override?: number | null;
 }
 
 /** Drives one agent runtime non-interactively inside a workspace. */
