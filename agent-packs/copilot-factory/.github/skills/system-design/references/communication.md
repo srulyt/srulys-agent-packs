@@ -32,7 +32,8 @@ Requirements:
 Return: Summary of what was done
 ```
 
-**Copilot CLI**: Use `agent` tool
+**Copilot CLI**: Invoke through the `task` tool exposed by the `agent` tool
+grant. Follow the agent-builder task-mechanics reference.
 
 ## Artifact-Based Handoff
 
@@ -149,8 +150,11 @@ Defaults: What I'll assume if no answer
 ## Platform Considerations
 
 ### Copilot CLI
-- Delegation via the `agent` tool is synchronous: the calling agent pauses until the subagent completes
-- The subagent's final response is returned as the tool result to the caller
+- Delegation is synchronous by default: the caller pauses and receives the
+  subagent's final response.
+- Background mode is conditional. Use it only for independent work when a
+  completion notification can drive the next action; end the launching turn
+  and do not poll.
 - No explicit boomerang protocol or `attempt_completion` needed
 - Use structured return formats (markdown with sections) for parseable results
 

@@ -32,4 +32,6 @@ The factory will:
 4. Present the architecture for your approval
 5. Build the artifacts
 6. Review the implementation
-7. Deliver the completed pack
+7. Run the generated eval suite
+8. If evals fail, ask separately before up to 3 allowlisted fix/rerun turns
+9. Deliver the completed pack with review and eval status

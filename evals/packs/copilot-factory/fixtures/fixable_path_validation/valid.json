@@ -1,0 +1,5 @@
+[
+  "agent-packs/example-pack/.github/agents/main.agent.md",
+  "agent-packs/example-pack/.github/skills/example/SKILL.md",
+  "agent-packs/example-pack/.github/instructions/example.instructions.md"
+]

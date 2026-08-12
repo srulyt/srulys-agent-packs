@@ -44,7 +44,15 @@ Review the agent pack across the following dimensions:
 
 ### After Analysis
 
-Once the analysis is complete, ask the user whether they want to proceed with implementing the improvements through the full Factory workflow (design → review → approval → build).
+Emit the versioned improvement-analysis contract, then ask the user to choose:
+
+- **incremental** — apply only approved findings, then implementation review
+  and changed evals;
+- **rebuild** — design → architecture review → approval → build →
+  implementation review → evals;
+- **cancel** — stop without modifying the pack.
+
+Any automatic eval-fix loop has its own user approval and cap of 3.
 
 ### Tone & Constraints
 

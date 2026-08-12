@@ -121,9 +121,10 @@ Generation:
   an existing pack), `"rebuild"` (full architecture redesign), or
   `null` (creation mode).
 - `eval_runs[]` — append-only list of per-iteration eval results.
-  Each entry: `{run_index, results_path, report_path, status,
+  Each entry derives from `factory.eval-result/v1`:
+  `{schema_version, run_index, results_path, report_path, status, target,
   tests_collected, tests_passed, tests_failed, tests_errored,
-  tests_skipped, wall_clock_seconds, harness_error, started_at,
+  tests_skipped, wall_clock_seconds, resolved_model, harness_error, started_at,
   completed_at, fix_attempt_for_run_index?}`. Path points to
   `.copilot-factory/sessions/{id}/artifacts/eval-run-{n}.json`.
 - `last_eval_verdict` — `{status: "pass"|"fail"|"harness-error",
@@ -139,6 +140,8 @@ Generation:
   changes flagged), or `"error"`.
 - `iteration_counts.eval-fix-loop` — fix-loop counter (cap=3,
   one higher than review caps because the signal is objective).
+- Eval reruns use the canonical `target` selector. `tests_subset` is not a
+  state or contract field.
 
 ## State Transitions
 

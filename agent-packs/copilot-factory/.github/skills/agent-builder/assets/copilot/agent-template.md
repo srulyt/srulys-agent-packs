@@ -2,7 +2,8 @@
 name: Agent Name
 description: "What this agent does. When to use it - specific scenarios. Trigger keywords for natural language. Include: primary purpose, use cases, keywords."
 tools: ["read", "edit", "search"]
-# For orchestrators: tools: ["read", "edit", "search", "execute", "agent"]
+# For orchestrators: tools: ["read", "edit", "search", "agent"]
+# Add execute only when the architecture explicitly justifies shell use.
 #
 # Invocation flags (see agent-builder SKILL.md → Subagent / Orchestrator):
 #   - Orchestrator (user-facing entry point):
@@ -13,7 +14,7 @@ tools: ["read", "edit", "search"]
 #       (do NOT set disable-model-invocation — would remove subagent from
 #        the orchestrator's task-tool registry)
 #
-# model: "gpt-4"  # Optional: override default model
+# model: "<target-available-model>"  # Optional; outcome-justified and recorded
 ---
 
 # {Agent Name}

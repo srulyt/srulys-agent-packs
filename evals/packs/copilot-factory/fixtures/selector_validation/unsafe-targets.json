@@ -1,0 +1,13 @@
+[
+  {"target": ".", "schema_rejects": true, "reason": "dot path"},
+  {"target": "..", "schema_rejects": true, "reason": "parent path"},
+  {"target": "/evals/packs/p/a.eval.md", "schema_rejects": true, "reason": "absolute POSIX path"},
+  {"target": "C:/evals/packs/p/a.eval.md", "schema_rejects": true, "reason": "drive path"},
+  {"target": "C:\\evals\\packs\\p\\a.eval.md", "schema_rejects": true, "reason": "drive/backslash path"},
+  {"target": "\\\\server\\share\\a.eval.md", "schema_rejects": true, "reason": "UNC path"},
+  {"target": "evals/packs/p/./a.eval.md", "schema_rejects": true, "reason": "embedded dot segment"},
+  {"target": "evals/packs/p/../other/a.eval.md", "schema_rejects": true, "reason": "escaping parent segment"},
+  {"target": "evals/packs/p/a/../../other.eval.md", "schema_rejects": true, "reason": "nested escape"},
+  {"target": "evals/packs/p//a.eval.md", "schema_rejects": true, "reason": "empty/repeated separator"},
+  {"target": "evals/packs/other/a.eval.md", "schema_rejects": false, "reason": "different pack; cross-field runtime rejection"}
+]

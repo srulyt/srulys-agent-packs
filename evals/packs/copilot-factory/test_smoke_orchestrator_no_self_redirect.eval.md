@@ -2,7 +2,7 @@
 name: copilot-factory-smoke-orchestrator-no-self-redirect
 target: copilot-factory
 kind: agent
-tags: [pack, slow]
+tags: [pack, smoke, slow]
 timeout: 900
 ---
 

@@ -19,7 +19,9 @@ This workspace contains the Copilot Factory system for creating multi-agent pack
 │       │   └── decisions.md
 │       └── artifacts/       # Output files
 │           ├── architecture.md
-│           └── build-manifest.json
+│           ├── improvement-analysis.md
+│           ├── build-manifest.json
+│           └── eval-run-{n}.json
 └── history/                 # Archived sessions
 ```
 
@@ -28,6 +30,9 @@ This workspace contains the Copilot Factory system for creating multi-agent pack
 - **Session ID format**: `{YYYY-MM-DD}-{8-char-hex}` (e.g., `2026-02-23-a1b2c3d4`)
 - **State file**: `state.json` contains workflow phase and deliverables
 - **Artifacts**: Generated architecture and build manifests go in `artifacts/`
+- **Contracts**: improvement analyses use
+  `factory.improvement-analysis/v1`; eval results use
+  `factory.eval-result/v1` and reruns use selector `target`
 - **User context**: Original requirements saved in `context/user-request.md`
 
 ### Workflow Phases

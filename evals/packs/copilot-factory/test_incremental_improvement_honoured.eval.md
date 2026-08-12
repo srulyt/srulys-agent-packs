@@ -9,7 +9,11 @@ timeout: 900
 # Incremental improvement honoured
 
 ## Description
-Incremental-improvement smoke: a tiny seed pack and a pre-baked improvement-analysis are staged with state.json declaring `improvement_strategy: "incremental"`, `phase: "build"`, `user_approved: true`. The user asks the factory to resume and apply the improvement. The engineer must perform surgical edits (no rebuild) and the critic must run review-prompts once.
+Incremental-improvement regression: a tiny seed pack and a complete
+`factory.improvement-analysis/v1` artifact are staged with state.json declaring
+`improvement_strategy: "incremental"`, `phase: "build"`, and
+`user_approved: true`. The engineer must perform surgical edits (no rebuild)
+and the critic must run `review-prompts` once.
 
 Ported from legacy `cases/incremental-improvement-honoured/`.
 
@@ -37,6 +41,10 @@ files:
   exists:
     - ".copilot-factory/sessions/*/artifacts/build-manifest.json"
     - "agent-packs/seed-pack/**/*.agent.md"
+contains:
+  - { path: ".copilot-factory/sessions/2026-02-01-cafef00d/artifacts/improvement-analysis.md", text: "schema_version: factory.improvement-analysis/v1" }
+  - { path: ".copilot-factory/sessions/2026-02-01-cafef00d/artifacts/improvement-analysis.md", text: "findings-json" }
+  - { path: ".copilot-factory/sessions/2026-02-01-cafef00d/artifacts/improvement-analysis.md", text: "ready-for-orchestrator" }
 judge:
   artifact: ".copilot-factory/sessions/*/artifacts/build-manifest.json"
   threshold: 0.7

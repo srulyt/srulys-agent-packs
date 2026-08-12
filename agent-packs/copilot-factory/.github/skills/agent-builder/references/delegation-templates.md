@@ -50,6 +50,7 @@ Invoke @factory-critic to review architecture.
 Session: {session-id}
 Requirements: .copilot-factory/sessions/{session-id}/context/user-request.md
 Architecture: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
+Output: .copilot-factory/sessions/{session-id}/artifacts/architecture-review.md
 Review Type: architecture
 
 Return:
@@ -60,19 +61,26 @@ Return:
 
 ## Critic Delegation (Improvement Analysis)
 
-```markdown
-Invoke @factory-critic to analyze and improve an existing agent pack.
-
-Session: {session-id}
-Target Pack: {pack-path-or-name}
-Requirements: .copilot-factory/sessions/{session-id}/context/user-request.md
-Review Type: improvement-analysis
-
-Return:
-- Prioritized improvements by category
-- Actionable rewrites or diffs where possible
-- Recommendation: proceed to implementation workflow or stop
+```text
+task(
+  agent_type: "Factory Critic",
+  name: "analyze-improvements",
+  description: "Analyze target pack",
+  mode: "sync",
+  prompt: "You are being invoked as @factory-critic.\n" +
+          "Session: {session-id}\nReview Type: improvement-analysis\n" +
+          "Target Pack: {pack-path-or-name}\n" +
+          "Requirements: .copilot-factory/sessions/{session-id}/context/user-request.md\n" +
+          "Output: .copilot-factory/sessions/{session-id}/artifacts/improvement-analysis.md\n\n" +
+          "Emit factory.improvement-analysis/v1 fences: `verdict`, " +
+          "`recommendation`, `findings-json`, `improvement-plan`, " +
+          "`ready-for-orchestrator`."
+)
 ```
+
+Parse all five fences against
+[`workflow-contracts.md`](workflow-contracts.md). Do not request or accept the
+architecture/implementation issue fences in this mode.
 
 ## Engineer Delegation (Full Build)
 
@@ -122,7 +130,7 @@ Requirements:
 6. Return summary of changes applied vs. skipped
 ```
 
-## Eval Runner Delegation (Phase 7.5 / 7.6)
+## Eval Runner Delegation (Phases 8 / 9)
 
 Used by the orchestrator to launch `@factory-eval-runner` after a
 PASS verdict from `review-prompts`, and again after each
@@ -141,7 +149,7 @@ task(
           "Tests path: evals/packs/{pack-name}/\n" +
           "Guardrails:\n" +
           "  max_wall_clock_seconds_per_loop: {S}\n" +
-          "  tests_subset: {all|<file-or-dir-path>}\n\n" +
+          "  target: {all|evals/packs/{pack-name}/<file-or-dir>}\n\n" +
           "Run evalpilot non-interactively, parse the modeled report JSON " +
           "yourself (the orchestrator does not have read access to " +
           "`evals/`). Emit `eval-summary`, `eval-verdict`, " +
@@ -149,6 +157,10 @@ task(
           "`ready-for-orchestrator`."
 )
 ```
+
+`target` is the sole selector. Reject `tests_subset`. The runner writes
+`factory.eval-result/v1`; each failure includes validated `fixable_in[]`,
+which is copied only from explicit eval/report metadata.
 
 Parse `eval-verdict.status` (`pass` | `fail` | `harness-error`). On
 `harness-error`, escalate per the orchestrator's Iteration Caps; do
@@ -174,7 +186,8 @@ task(
   prompt: "You are being invoked as @factory-engineer.\n" +
           "Session: {session-id}\nMode: fix\n" +
           "Eval run path: .copilot-factory/sessions/{session-id}/artifacts/eval-run-{n}.json\n" +
-          "Loop iteration: {m}\n\nRead `failures[]`. Edit ONLY paths " +
+          "Loop iteration: {m}\n\nRequire schema_version " +
+          "`factory.eval-result/v1`. Read `failures[]`. Edit ONLY paths " +
           "in each failure's `fixable_in[]`. Emit `fix-summary`, " +
           "`failures-addressed-json`, `failures-skipped-json`, " +
           "`files-modified-json`, `ready-for-rerun`."
@@ -194,6 +207,7 @@ Invoke @factory-critic to review implementation.
 Session: {session-id}
 Architecture: .copilot-factory/sessions/{session-id}/artifacts/architecture.md
 Build Manifest: .copilot-factory/sessions/{session-id}/artifacts/build-manifest.json
+Output: .copilot-factory/sessions/{session-id}/artifacts/implementation-review.md
 Review Type: implementation
 
 Return:

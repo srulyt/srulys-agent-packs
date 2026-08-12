@@ -10,8 +10,8 @@ Create multi-agent systems for GitHub Copilot CLI.
 # Copy the .github folder to your project
 cp -r .github /path/to/your/project/
 
-# Start Copilot CLI
-gh copilot
+# Start Copilot CLI (after installing/authenticating it)
+copilot
 
 # Invoke the factory
 @copilot-factory Create an agent pack for [describe your use case]
@@ -28,7 +28,9 @@ The Copilot Factory guides you through creating complete agent packs:
 5. **Approval**: Presents the architecture for your approval
 6. **Build**: Delegates artifact generation to `@factory-engineer` (full build or incremental edits)
 7. **Review-Prompts**: Delegates implementation validation to `@factory-critic`
-8. **Complete**: Provides usage instructions
+8. **Eval-Execute**: Runs changed/full-build evals through `@factory-eval-runner`
+9. **Eval-Fix-Loop** (failure + separate user approval): applies allowlisted fixes and reruns, cap 3
+10. **Complete**: Reports review, validation, and eval status
 
 ## Agents
 
@@ -46,12 +48,28 @@ execution, and metrics are delegated to the separate **Eval Pilot** plugin
 an `evals/packs/<pack>/` suite authored via Eval Pilot's `eval-author` skill
 and executed by `@factory-eval-runner` via Eval Pilot's `eval-runner` skill.
 
-To run Factory-generated evals, install Eval Pilot and its engine:
+Install Eval Pilot and its engine as Factory dependencies:
 
 ```bash
 copilot plugin install eval-pilot@srulys-agent-packs
-npm install --save-dev evalpilot   # or use: npx evalpilot
+npm install --save-dev evalpilot
 ```
+
+For the **Factory production flow**, invoke `@copilot-factory`; do not run
+`evalpilot`, `npx evalpilot`, or an `.mjs` file directly. The Factory delegates
+execution to `@factory-eval-runner`, which must follow the canonical
+guarded-wrapper instructions in
+`.github/skills/agent-builder/references/workflow-contracts.md` (installed
+pack) or
+`agent-packs/copilot-factory/.github/skills/agent-builder/references/workflow-contracts.md`
+(source checkout). That flow resolves the repository root, Node executable,
+validator, and wrapper to absolute paths, then hosts the wrapper through the
+resolved Node executable.
+
+> **Unresolved write-confinement warning:** the guarded wrapper detects
+> repository mutations but does not restore them. The canonical command flow
+> does not fix or waive this blocker and must not be described as fully
+> confining writes.
 
 ## Orchestration Pattern
 
@@ -64,7 +82,9 @@ User Request
     ├── → @factory-critic (review architecture)
     ├── → User approval gate (required)
     ├── → @factory-engineer (build)
-    └── → @factory-critic (review implementation)
+    ├── → @factory-critic (review implementation)
+    ├── → @factory-eval-runner (versioned eval result)
+    └── → approval-gated @factory-engineer fix ↔ eval rerun
          ↓
     Delivery to User
 ```
@@ -99,15 +119,22 @@ sessions/{session-id}/
 ├── context/
 │   └── user-request.md # Your requirements
 └── artifacts/
-    ├── architecture.md # System design
-    └── build-manifest.json
+    ├── architecture.md               # Creation/rebuild design
+    ├── improvement-analysis.md       # Incremental/rebuild recommendation
+    ├── architecture-review.md        # Critic gate, when persisted
+    ├── implementation-review.md      # Critic gate, when persisted
+    ├── build-manifest.json
+    └── eval-run-{n}.json             # factory.eval-result/v1
 ```
 
 ### Cross-Session Learning
 
-For persistent learnings that span across Factory sessions, create memory files in `.github/memory/`:
-- `decisions.md` — Architectural patterns that work well
-- `quirks.md` — Platform-specific gotchas discovered during builds
+Factory workflow decisions are deterministic files under the active session
+and are explicitly read during recovery. A local `.github/memory/*.md` folder
+is not automatically loaded by documented custom-instruction behavior; use it
+only as a convention when an authorized agent explicitly reads it. Prefer
+supported repository/path custom instructions for deterministic context.
+GitHub Copilot Memory is a separate, availability-dependent product feature.
 
 ## Example Usage
 
@@ -130,6 +157,11 @@ agent-packs/{pack-name}/
 **Agent not found**: Ensure `.github/agents/` is in your project root.
 
 **Skill not loading**: Check that `.github/skills/` exists and contains valid `SKILL.md` files.
+
+**Compatibility**: The Factory baseline is `factory-cli-2026-08-12`; see
+`agent-builder/references/copilot-artifacts.md`. Copilot CLI runtime validation
+is **unverified** because no executable or run evidence was available. Targeted
+static checks and Eval Pilot structural checks do not imply smoke-load success.
 
 **Session issues**: Delete `.copilot-factory/` to start fresh.
 

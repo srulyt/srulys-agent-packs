@@ -2,7 +2,7 @@
 name: copilot-factory-smoke-issue-triage
 target: copilot-factory
 kind: agent
-tags: [pack, slow, judge]
+tags: [pack, smoke, slow, judge]
 timeout: 900
 ---
 
@@ -42,8 +42,12 @@ with both agent definitions, a README, and explicit File Access Boundaries
 on every agent. The triage feature is **issue triage** -- keep that
 wording in your architecture document.
 
-Use your standard four-phase workflow (architect -> engineer -> critic) and
-land everything under your normal session directory.
+Use the current approval-gated Factory workflow through phases 1-8: design,
+persist `architecture-review.md`, obtain architecture approval, build, persist
+`implementation-review.md`, and run the eval gate. At the architecture
+approval question, treat this fixture's answer as `approve`; if an eval-fix
+approval is needed, treat the answer as `stop` (do not auto-fix). Land
+everything under the normal session directory.
 ```
 
 ## Assert
@@ -51,10 +55,14 @@ land everything under your normal session directory.
 files:
   exists:
     - ".copilot-factory/sessions/*/artifacts/architecture.md"
+    - ".copilot-factory/sessions/*/artifacts/architecture-review.md"
     - ".copilot-factory/sessions/*/artifacts/build-manifest.json"
+    - ".copilot-factory/sessions/*/artifacts/implementation-review.md"
 glob_count:
   - { pattern: ".copilot-factory/sessions/*/artifacts/architecture.md", equals: 1 }
+  - { pattern: ".copilot-factory/sessions/*/artifacts/architecture-review.md", equals: 1 }
   - { pattern: ".copilot-factory/sessions/*/artifacts/build-manifest.json", equals: 1 }
+  - { pattern: ".copilot-factory/sessions/*/artifacts/implementation-review.md", equals: 1 }
   - { pattern: "agent-packs/*/.github/agents/*.agent.md", equals: 2 }
   - { pattern: "agent-packs/*/README.md", equals: 1 }
 judge:

@@ -9,7 +9,12 @@ timeout: 900
 # Critic blocks weak architecture
 
 ## Description
-Critic-veto smoke: a pre-staged weak architecture (no agents/skills/boundaries) is dropped under `.copilot-factory/sessions/2026-01-15-deadbeef/` and the user asks the factory to resume that session and run review-arch only. The critic must return a BLOCKING verdict captured in `architecture-review.md`.
+Critic-veto regression: a pre-staged weak architecture
+(no agents/skills/boundaries) is in a session already at the current
+`review-arch` phase. Architecture approval has not occurred and is not
+permitted after a BLOCKING verdict. The critic must persist its verdict to
+the canonical `architecture-review.md`; no build or implementation review may
+occur.
 
 Ported from legacy `cases/critic-veto-weak-architecture/`.
 

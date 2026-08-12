@@ -1,30 +1,46 @@
 # Improvement analysis (incremental, seed-pack)
 
-- Session: `2026-02-01-cafef00d`
-- Target pack: `agent-packs/seed-pack/`
-- Strategy: `incremental`
+The seed orchestrator lacks the required negative-scope section. The change is
+additive and does not justify redesigning or rebuilding the pack.
 
-## Findings
-
-### S1 — Add explicit "Must NOT" section to seed-orchestrator
-- **Severity:** blocking
-- **File:** `agent-packs/seed-pack/.github/agents/seed-orchestrator.agent.md`
-- **Concrete change:** Insert immediately after `## File Access Boundaries`:
-
-```markdown
-## Must NOT
-
-- Write outside `.seed-stm/`.
-- Invoke any sub-agent (this pack has none).
+```verdict
+schema_version: factory.improvement-analysis/v1
+review_type: improvement-analysis
+status: BLOCKING
+iteration_count: 0
 ```
-
-## Strategy recommendation
 
 ```recommendation
 strategy: incremental
-rationale: One additive section; no structural change.
+rationale: One additive section in one existing agent; no structural change.
 findings_total: 1
 blocking: 1
 major: 0
 minor: 0
+```
+
+```findings-json
+[
+  {
+    "id": "S1",
+    "severity": "blocking",
+    "category": "negative-scope",
+    "file": "agent-packs/seed-pack/.github/agents/seed-orchestrator.agent.md",
+    "section": "after File Access Boundaries",
+    "action": "add",
+    "fix": "Add a Must NOT section forbidding writes outside .seed-stm/ and sub-agent invocation.",
+    "validation": "The existing agent is otherwise unchanged and contains both prohibitions under ## Must NOT."
+  }
+]
+```
+
+```improvement-plan
+sequence:
+  - S1
+dependencies: none
+preserve_unflagged_content: true
+```
+
+```ready-for-orchestrator
+true
 ```

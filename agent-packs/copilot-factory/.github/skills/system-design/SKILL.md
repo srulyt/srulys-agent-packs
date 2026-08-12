@@ -100,7 +100,7 @@ Every agent in a multi-agent system must have explicit path-scoped read/write bo
 
 | Agent Role | Read Scope | Write Scope |
 |------------|-----------|-------------|
-| Orchestrator | STM, output dir, skills | STM only |
+| Orchestrator | STM only; specialists inspect outputs | STM only |
 | Architect/Designer | STM context, skills | STM artifacts only |
 | Reviewer/Critic | STM, output dir, skills | STM artifacts only |
 | Engineer/Builder | STM, skills/templates | Output dir + STM artifacts |
@@ -204,15 +204,29 @@ Use for: Engineers, builders, writers
 
 ### Coordinators
 ```yaml
-tools: ["read", "edit", "search", "execute", "agent"]
+tools: ["read", "edit", "search", "agent"]
 ```
-Use for: Orchestrators, coordinators
+Use for: Orchestrators and coordinators. Add `execute` only when a stated
+requirement makes shell use part of the coordinator role and the architecture
+records why delegation cannot own it.
 
-### Full Access
-```yaml
-tools: ["*"]  # or omit tools property
-```
-Use for: General-purpose agents, root agents
+### Broad Access
+
+Prefer an explicit minimum tool list. Generated coordinators must never use a
+wildcard grant; any exceptional broad role requires target-specific support
+and an architecture justification.
+
+## Capability Decisions
+
+Every architecture records two concise outcomes:
+
+1. **MCP** — `none` when built-ins satisfy requirements; otherwise name the
+   required capability, target support, server trust/auth, least-privilege
+   tool exposure, data boundary, and fallback. Do not invent a server from a
+   generic desire for integrations.
+2. **Model** — `default` unless an outcome requires an available override.
+   Check target/plan availability and cost; preserve eval comparability. Do
+   not hard-code model rankings.
 
 ## Quality Checklist
 
@@ -229,6 +243,7 @@ Before finalizing design:
 - [ ] Orchestrator includes iteration protocol for user feedback
 - [ ] Orchestrator includes retry bounds on specialist re-requests
 - [ ] Subagents have invocation guards specified
+- [ ] MCP and model decisions are requirement-driven (`none`/`default` valid)
 - [ ] For each piece of extracted content, the skill-visibility rule is applied (see [references/skill-visibility.md](references/skill-visibility.md))
 
 ## Anti-Patterns
