@@ -1,0 +1,119 @@
+{
+  "schema_version": "3.0",
+  "systems": [
+    {
+      "id": "executive-navy",
+      "fonts": {
+        "heading": [
+          "Aptos Display",
+          "Arial"
+        ],
+        "body": [
+          "Aptos",
+          "Arial"
+        ]
+      },
+      "palette": {
+        "background": "#F7F9FC",
+        "text": "#132238",
+        "accent": "#1769AA",
+        "positive": "#197A55",
+        "warning": "#9A6700"
+      },
+      "grid": {
+        "columns": 12,
+        "margin_in": 0.6,
+        "gutter_in": 0.2
+      },
+      "type_pt": {
+        "title": 30,
+        "body": 18,
+        "source": 10
+      },
+      "spacing_pt": [
+        4,
+        8,
+        16,
+        24,
+        32
+      ],
+      "min_contrast": 4.5
+    },
+    {
+      "id": "technical-slate",
+      "fonts": {
+        "heading": [
+          "IBM Plex Sans",
+          "Arial"
+        ],
+        "body": [
+          "IBM Plex Sans",
+          "Arial"
+        ]
+      },
+      "palette": {
+        "background": "#F5F7F8",
+        "text": "#172026",
+        "accent": "#0B7285",
+        "positive": "#2B8A3E",
+        "warning": "#E67700"
+      },
+      "grid": {
+        "columns": 12,
+        "margin_in": 0.55,
+        "gutter_in": 0.18
+      },
+      "type_pt": {
+        "title": 28,
+        "body": 17,
+        "source": 9
+      },
+      "spacing_pt": [
+        4,
+        8,
+        12,
+        20,
+        28
+      ],
+      "min_contrast": 4.5
+    },
+    {
+      "id": "warm-editorial",
+      "fonts": {
+        "heading": [
+          "Georgia",
+          "Times New Roman"
+        ],
+        "body": [
+          "Aptos",
+          "Arial"
+        ]
+      },
+      "palette": {
+        "background": "#FFF9F2",
+        "text": "#2F241F",
+        "accent": "#B5472C",
+        "positive": "#477A59",
+        "warning": "#8A5A00"
+      },
+      "grid": {
+        "columns": 10,
+        "margin_in": 0.7,
+        "gutter_in": 0.22
+      },
+      "type_pt": {
+        "title": 31,
+        "body": 18,
+        "source": 10
+      },
+      "spacing_pt": [
+        4,
+        8,
+        16,
+        24,
+        36
+      ],
+      "min_contrast": 4.5
+    }
+  ]
+}

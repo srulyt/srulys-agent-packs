@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version","deck_id","input_checksums","renderer","environment","render_seed","design_registry_checksum","outputs","slide_count","dimensions","warnings","capabilities","parity","reproducibility","previews"],
+  "properties": {
+    "schema_version":{"const":"3.0"}, "deck_id":{"type":"string","minLength":1},
+    "input_checksums":{"type":"object","additionalProperties":false,"required":["deck_spec"],"properties":{"deck_spec":{"$ref":"#/$defs/sha"}}},
+    "renderer":{"type":"object","additionalProperties":false,"required":["name","version","scripts"],"properties":{"name":{"type":"string"},"version":{"type":"string"},"scripts":{"type":"object","additionalProperties":{"$ref":"#/$defs/sha"}}}},
+    "environment":{"type":"object","additionalProperties":false,"required":["python","platform","dependencies","tools","fonts"],"properties":{
+      "python":{"type":"string"},"platform":{"type":"string"},
+      "dependencies":{"type":"object","additionalProperties":{"type":["string","null"]}},
+      "tools":{"type":"object","additionalProperties":{"type":["string","null"]}},
+      "fonts":{"type":"object","additionalProperties":false,"required":["requested","substitutions"],"properties":{"requested":{"type":"object"},"substitutions":{"type":"array","items":{"type":"object"}}}}
+    }},
+    "render_seed":{"type":["string","integer"]}, "design_registry_checksum":{"$ref":"#/$defs/sha"},
+    "outputs":{"type":"array","minItems":1,"items":{"type":"object","additionalProperties":false,"required":["channel","path","sha256","status","semantic_hash","diagnostics"],"properties":{
+      "channel":{"enum":["pptx","marp","preview"]},"path":{"type":"string"},"sha256":{"anyOf":[{"$ref":"#/$defs/sha"},{"type":"null"}]},"status":{"enum":["rendered","unavailable","failed"]},"semantic_hash":{"anyOf":[{"$ref":"#/$defs/sha"},{"type":"null"}]},"diagnostics":{"type":"array","items":{"type":"string"}}
+    }}},
+    "slide_count":{"type":"integer","minimum":1},
+    "dimensions":{"type":"object","additionalProperties":false,"required":["aspect_ratio","width_in","height_in"],"properties":{"aspect_ratio":{"const":"16:9"},"width_in":{"type":"number"},"height_in":{"type":"number"}}},
+    "warnings":{"type":"array","items":{"type":"string"}},
+    "capabilities":{"type":"object","additionalProperties":{"type":"object"}},
+    "parity":{"type":"object","additionalProperties":false,"required":["status","matching"],"properties":{"status":{"enum":["pass","fail","not-applicable"]},"matching":{"type":["boolean","null"]},"pptx_hash":{"$ref":"#/$defs/sha"},"marp_hash":{"$ref":"#/$defs/sha"}}},
+    "reproducibility":{"type":"object","additionalProperties":false,"required":["model_semantic_hash","normalized_properties","environment_sensitive","second_render_checked","matching","first_normalized_hashes","second_normalized_hashes"],"properties":{"model_semantic_hash":{"$ref":"#/$defs/sha"},"normalized_properties":{"type":"array","items":{"type":"string"}},"environment_sensitive":{"type":"array","items":{"type":"string"}},"second_render_checked":{"const":true},"matching":{"type":"boolean"},"first_normalized_hashes":{"type":"object","additionalProperties":{"$ref":"#/$defs/sha"}},"second_normalized_hashes":{"type":"object","additionalProperties":{"$ref":"#/$defs/sha"}}}},
+    "previews":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["slide_index","path","sha256","dpi"],"properties":{"slide_index":{"type":"integer","minimum":1},"path":{"type":"string"},"sha256":{"$ref":"#/$defs/sha"},"dpi":{"const":150}}}}
+  },
+  "$defs":{"sha":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

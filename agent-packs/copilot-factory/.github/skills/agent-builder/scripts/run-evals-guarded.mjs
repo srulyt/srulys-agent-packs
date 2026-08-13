@@ -55,18 +55,33 @@ export function diffSnapshots(before, after) {
 }
 
 function parseArgs(argv) {
-  const out = { runner: "copilot", tags: null, timeout: "1800" };
+  const out = {
+    runner: "copilot",
+    tags: null,
+    wallClockTimeout: "1800",
+    sutTimeout: null,
+    parallel: "1",
+  };
   for (let i = 2; i < argv.length; i += 2) {
     const key = argv[i];
     const value = argv[i + 1];
-    if (!value || !["--pack", "--target", "--runner", "--tags", "--sut-timeout"].includes(key)) {
+    if (!value || ![
+      "--pack", "--target", "--runner", "--tags", "--wall-clock-timeout",
+      "--sut-timeout", "--parallel",
+    ].includes(key)) {
       throw new Error(`unsupported or incomplete argument: ${key ?? "<missing>"}`);
     }
-    out[key.slice(2).replace("sut-timeout", "timeout")] = value;
+    if (key === "--wall-clock-timeout") out.wallClockTimeout = value;
+    else if (key === "--sut-timeout") out.sutTimeout = value;
+    else out[key.slice(2)] = value;
   }
   if (!out.pack || !out.target) throw new Error("--pack and --target are required");
   if (!["copilot", "mock"].includes(out.runner)) throw new Error("unsupported runner");
-  if (!/^[1-9]\d*$/.test(out.timeout)) throw new Error("invalid timeout");
+  if (!/^[1-9]\d*$/.test(out.wallClockTimeout)) throw new Error("invalid wall-clock timeout");
+  if (out.sutTimeout !== null && !/^[1-9]\d*$/.test(out.sutTimeout)) {
+    throw new Error("invalid SUT timeout");
+  }
+  if (!/^[1-8]$/.test(out.parallel)) throw new Error("invalid parallel worker count");
   if (!validateEvalTarget(out.target, out.pack)) throw new Error("unsafe target");
   return out;
 }
@@ -84,8 +99,9 @@ function main() {
   try {
     const childArgs = [
       cli, "run", target, "--runner", args.runner,
-      "--sut-timeout", args.timeout, "--format", "json",
+      "--parallel", args.parallel, "--format", "json",
     ];
+    if (args.sutTimeout !== null) childArgs.push("--sut-timeout", args.sutTimeout);
     if (args.tags) childArgs.push("--tags", args.tags);
     const child = spawnSync(process.execPath, childArgs, {
       cwd: root,
@@ -95,8 +111,9 @@ function main() {
         EVALPILOT_REPO_ROOT: root,
         EVALPILOT_EVAL_ROOT: isolatedEvalRoot,
         EVALPILOT_METRICS_ROOT: path.join(isolatedEvalRoot, "_metrics"),
+        PYTHONDONTWRITEBYTECODE: "1",
       },
-      timeout: Number(args.timeout) * 1000,
+      timeout: Number(args.wallClockTimeout) * 1000,
     });
 
     const changed = diffSnapshots(before, snapshotTree(root));
@@ -119,6 +136,20 @@ function main() {
       }));
       return 3;
     }
+    const isolatedReport = path.join(runsRoot, runs[0].name, "report.json");
+    try {
+      lstatSync(isolatedReport);
+    } catch {
+      console.error(JSON.stringify({
+        status: "harness-error",
+        reason: "eval process ended without a modeled report",
+        exit_code: child.status,
+        signal: child.signal,
+        stdout: (child.stdout ?? "").slice(-4000),
+        stderr: (child.stderr ?? "").slice(-4000),
+      }));
+      return 3;
+    }
 
     const destination = path.join(root, "evals", "_runs", runs[0].name);
     try {
@@ -136,7 +167,20 @@ function main() {
     console.log(`FACTORY_GUARDED_REPORT=${path.relative(root, path.join(destination, "report.json")).replaceAll("\\", "/")}`);
     return child.status ?? 2;
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    try {
+      rmSync(temporary, {
+        recursive: true,
+        force: true,
+        maxRetries: 30,
+        retryDelay: 500,
+      });
+    } catch (error) {
+      console.error(JSON.stringify({
+        status: "cleanup-warning",
+        reason: error.message,
+        temporary,
+      }));
+    }
   }
 }
 

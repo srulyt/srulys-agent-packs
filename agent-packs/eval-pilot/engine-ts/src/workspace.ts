@@ -95,12 +95,8 @@ export class Workspace {
     const info = discovery.findAgent(name, this.repoRoot);
     copyTree(info.agents_dir, path.join(this.root, ".github", "agents"), true);
     if (includeSkills) {
-      for (const src of supportDirsForAgent(info)) {
-        copyTree(
-          src,
-          path.join(this.root, ".github", path.basename(src)),
-          true,
-        );
+      for (const support of supportDirsForAgent(info)) {
+        copyTree(support.src, path.join(this.root, support.destination), true);
       }
     }
   }
@@ -279,9 +275,15 @@ function copyTree(src: string, dest: string, merge: boolean): void {
   cpSync(src, dest, { recursive: true, force: true });
 }
 
-/** Return skills/instructions dirs that should be staged with an agent. */
-function supportDirsForAgent(info: discovery.AgentInfo): string[] {
+interface AgentSupportDir {
+  src: string;
+  destination: string;
+}
+
+/** Return plugin support/runtime dirs that should be staged with an agent. */
+function supportDirsForAgent(info: discovery.AgentInfo): AgentSupportDir[] {
   let base: string;
+  const pluginLayout = info.plugin_root !== null;
   if (info.plugin_root !== null) {
     base = info.plugin_root;
   } else if (path.basename(path.dirname(info.agents_dir)) === ".github") {
@@ -289,10 +291,18 @@ function supportDirsForAgent(info: discovery.AgentInfo): string[] {
   } else {
     return [];
   }
-  const out: string[] = [];
+  const out: AgentSupportDir[] = [];
   for (const sub of ["skills", "instructions"]) {
     const src = path.join(base, sub);
-    if (existsSync(src)) out.push(src);
+    if (existsSync(src)) {
+      out.push({ src, destination: path.join(".github", sub) });
+    }
+  }
+  if (pluginLayout) {
+    for (const sub of ["schemas", "scripts", "design-systems", "examples"]) {
+      const src = path.join(base, sub);
+      if (existsSync(src)) out.push({ src, destination: sub });
+    }
   }
   return out;
 }

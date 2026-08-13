@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "created_at",
+    "updated_at",
+    "phase",
+    "requested_formats",
+    "effective_formats",
+    "input_manifest",
+    "artifact_manifest",
+    "staging_manifest",
+    "publication_manifest",
+    "events",
+    "validation_receipt_ids",
+    "validation_receipts",
+    "capability_preflight",
+    "retry_counters",
+    "invalidated_artifact_ids",
+    "transition_history",
+    "publication_gate",
+    "publication_destination",
+    "active_lineage_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "phase": {
+      "enum": [
+        "new",
+        "initialized",
+        "intake-validating",
+        "intake-validation-retry",
+        "intake-valid",
+        "strategy-validating",
+        "strategy-validation-retry",
+        "strategy-ready",
+        "awaiting-approval",
+        "approved",
+        "awaiting-revision",
+        "composing",
+        "awaiting-render-decision",
+        "rendered",
+        "reviewing",
+        "passed",
+        "qa-residuals-pending-user",
+        "publication-preflighting",
+        "awaiting-publication-decision",
+        "publishing",
+        "publishing-residual",
+        "delivered",
+        "delivered-with-accepted-residuals",
+        "aborted",
+        "error"
+      ]
+    },
+    "requested_formats": {
+      "enum": [
+        "pptx",
+        "marp",
+        "both"
+      ]
+    },
+    "effective_formats": {
+      "enum": [
+        "pptx",
+        "marp",
+        "both"
+      ]
+    },
+    "input_manifest": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/artifact"}
+    },
+    "artifact_manifest": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/artifact"}
+    },
+    "staging_manifest": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/artifact"}
+    },
+    "publication_manifest": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/artifact"}
+    },
+    "events": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/event"}
+    },
+    "validation_receipt_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "validation_receipts": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/receiptLineage"}
+    },
+    "capability_preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status","checked_at","evidence_id","available_formats","capabilities"],
+      "properties": {
+        "status":{"enum":["ok","degraded","error"]},
+        "checked_at":{"type":"string"},
+        "evidence_id":{"type":"string","minLength":1},
+        "available_formats":{"enum":["pptx","marp","both"]},
+        "capabilities":{"type":"object","additionalProperties":{"type":"object"}}
+      }
+    },
+    "retry_counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake_producer_retry",
+        "intake_validator_contract_retry",
+        "strategy_producer_retry",
+        "strategy_validator_contract_retry",
+        "render_retry",
+        "quality_retry",
+        "qa_contract_retry",
+        "publication_contract_retry",
+        "publication_retry"
+      ],
+      "properties": {
+        "intake_producer_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "intake_validator_contract_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "strategy_producer_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "strategy_validator_contract_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "render_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "quality_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "qa_contract_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "publication_contract_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "publication_retry": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      }
+    },
+    "invalidated_artifact_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "transition_history": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/transition"}
+    },
+    "publication_gate": {
+      "enum": [
+        "none",
+        "pass",
+        "residual"
+      ]
+    },
+    "publication_destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake_output_dir",
+        "intake_sha256",
+        "effective_output_dir",
+        "effective_destination_event_id",
+        "revision"
+      ],
+      "properties": {
+        "intake_output_dir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intake_sha256": {
+          "type": "string",
+          "pattern": "^sha256:"
+        },
+        "effective_output_dir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effective_destination_event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "active_lineage_id": {
+      "type": "string"
+    },
+    "approval_event_id": {
+      "type": "string"
+    },
+    "qa_acceptance_event_id": {
+      "type": "string"
+    },
+    "residual_acceptance_event_id": {
+      "type": "string"
+    },
+    "publication_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "receiptLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receipt_id", "run_id", "handoff_id", "artifact_kind",
+        "artifact_id", "artifact_sha256", "producer_agent",
+        "validator_agent", "validator_operation", "predecessor_event_id",
+        "lineage_id", "valid", "superseded", "capability_status",
+        "render_manifest_sha256", "approval_event_id", "acceptance_event_id"
+      ],
+      "properties": {
+        "receipt_id": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1},
+        "handoff_id": {"type": "string", "minLength": 1},
+        "artifact_kind": {"type": "string", "minLength": 1},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "producer_agent": {"type": "string", "minLength": 1},
+        "validator_agent": {"type": "string", "minLength": 1},
+        "validator_operation": {"type": "string", "minLength": 1},
+        "predecessor_event_id": {"type": "string", "minLength": 1},
+        "lineage_id": {"type": "string", "minLength": 1},
+        "valid": {"const": true},
+        "superseded": {"const": false},
+        "capability_status": {"enum": ["complete", "raster-unavailable", "not-applicable"]},
+        "render_manifest_sha256": {
+          "anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]
+        },
+        "approval_event_id": {"type": ["string", "null"]},
+        "acceptance_event_id": {"type": ["string", "null"]}
+      }
+    },
+    "artifact": {
+      "type":"object","additionalProperties":false,
+      "required":["artifact_id","kind","path","sha256","producer","status","lineage_id"],
+      "properties":{"artifact_id":{"type":"string"},"kind":{"type":"string"},"path":{"type":"string"},"sha256":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"},"producer":{"type":"string"},"status":{"enum":["untrusted","validated","staged","accepted","published","invalidated","superseded"]},"lineage_id":{"type":"string"}}
+    },
+    "event": {
+      "type":"object","additionalProperties":false,
+      "required":["event_id","type","run_id","at","actor","evidence_ids"],
+      "properties":{"event_id":{"type":"string"},"type":{"enum":["initialize","validate-intake-started","intake-validation-succeeded","intake-producer-invalid","intake-validator-failed","retry-intake-validation","strategy-produced","strategy-validation-succeeded","strategy-producer-invalid","strategy-validator-failed","retry-strategy-validation","retry-strategy-producer","retry-composition","proposal-presented","approve","revise","compose-started","render-completed","render-degraded","composition-failed","accept-degraded-format","retry-render","review-started","qa-passed","qa-revise","qa-unverified","qa-contract-failed","retry-quality","retry-visual-environment","accept-residuals","publish-requested","preflight-clear","preflight-clear-residual","preflight-collision","preflight-failed","destination-selected","replace-authorized","publication-race","publication-failed","publication-committed","revise-strategy","revise-deck","resume","integrity-error","cancel","transition-rejected"]},"run_id":{"type":"string"},"at":{"type":"string"},"actor":{"type":"string"},"evidence_ids":{"type":"array","items":{"type":"string"}},"receipt_ids":{"type":"array","items":{"type":"string"}},"handoff_id":{"type":"string"},"invalidate_artifact_ids":{"type":"array","items":{"type":"string"}},"render_manifest_sha256":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"},"accepted_finding_ids":{"type":"array","items":{"type":"string"}},"acceptance_event_id":{"type":"string"},"approval_event_id":{"type":"string"},"capability_evidence_id":{"type":"string"},"effective_formats":{"enum":["pptx","marp","both"]},"counter":{"enum":["intake_producer_retry","intake_validator_contract_retry","strategy_producer_retry","strategy_validator_contract_retry","render_retry","quality_retry","qa_contract_retry","publication_contract_retry","publication_retry"]},"destination":{"type":"string"},"intake_sha256":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"},"preflight_fingerprint":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"},"resume_phase":{"enum":["initialized","intake-valid","strategy-ready","awaiting-approval","approved","rendered","passed","qa-residuals-pending-user","publication-preflighting","awaiting-publication-decision","publishing","publishing-residual"]},"rejected_event_type":{"type":"string"},"reason":{"type":"string"}}
+    },
+    "transition": {
+      "type":"object","additionalProperties":false,
+      "required":["transition_id","event_type","from_phase","to_phase","at","status","reason"],
+      "properties":{"transition_id":{"type":"string"},"event_type":{"type":"string"},"from_phase":{"type":"string"},"to_phase":{"type":"string"},"at":{"type":"string"},"status":{"enum":["applied","rejected"]},"reason":{"type":["string","null"]}}
+    }
+  }
+}

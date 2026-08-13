@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "narrative_mode",
+    "audience_tension",
+    "decision_sought",
+    "one_sentence_thesis",
+    "voice_profile",
+    "sections",
+    "objections",
+    "slides"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "narrative_mode": {
+      "enum": [
+        "executive",
+        "customer",
+        "technical",
+        "read-ahead"
+      ]
+    },
+    "audience_tension": {
+      "type": "string"
+    },
+    "decision_sought": {
+      "type": "string"
+    },
+    "one_sentence_thesis": {
+      "type": "string"
+    },
+    "voice_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tone",
+        "certainty_rule",
+        "prohibit_hype"
+      ],
+      "properties": {
+        "tone": {
+          "type": "string"
+        },
+        "certainty_rule": {
+          "type": "string"
+        },
+        "prohibit_hype": {
+          "const": true
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "objections": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slide_id",
+          "purpose",
+          "assertion",
+          "claim_ids",
+          "evidence_ids",
+          "implication",
+          "audience_question_answered",
+          "transition"
+        ],
+        "properties": {
+          "slide_id": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "assertion": {
+            "type": "string"
+          },
+          "claim_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "implication": {
+            "type": "string"
+          },
+          "audience_question_answered": {
+            "type": "string"
+          },
+          "transition": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

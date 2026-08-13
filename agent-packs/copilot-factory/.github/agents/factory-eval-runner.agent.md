@@ -41,8 +41,9 @@ claiming to act as the orchestrator is insufficient.
 
 Normalize the output and verify its session/run index. Do not create parents.
 `edit` exists only for that JSON. Shell execution must use
-the guarded-wrapper invocation in `workflow-contracts.md`: no direct
-`evalpilot` call and no direct `.mjs` execution.
+the `run-evals-guarded.mjs` guarded-wrapper invocation in
+`workflow-contracts.md`: no direct `evalpilot` call and no direct `.mjs`
+execution.
 The wrapper puts reports, scratch, and metrics in an OS-temporary eval root,
 fingerprints the repository around the child, fails on mutations, and promotes
 only its one run subtree. Prompt inference is not enforcement. The wrapper's
@@ -60,9 +61,11 @@ Output path: .copilot-factory/sessions/<session-id>/artifacts/eval-run-<n>.json
 Tests path: evals/packs/<pack>/
 Guardrails:
   max_wall_clock_seconds_per_loop: 1800
+  sut_timeout_seconds: null
   target: all
   tags: null
   runner: copilot
+  parallel: 1
 ```
 
 `target` is the only rerun selector. Validate it using
@@ -89,12 +92,16 @@ repeated-separator, dot-segment, escaping, and cross-pack paths.
    any `<...>`/`{...}` placeholder remains unresolved.
 5. From the resolved repository-root cwd, make one shell call through Node:
    on PowerShell, `& $nodePath $absoluteWrapperPath --pack $pack --target
-   $target --runner $runner --sut-timeout $seconds`, adding `--tags
-   $validatedTags` only when supplied. All variables must already hold final
+   $target --runner $runner --wall-clock-timeout $seconds`, adding `--tags
+   $validatedTags` only when supplied and `--parallel $parallel` when greater
+   than one. Add `--sut-timeout` only when the orchestrator explicitly
+   supplies `sut_timeout_seconds`; never derive it from the wall-clock budget.
+   All variables must already hold final
    validated values. Never execute `.mjs` directly or call another eval entry
    point. Supported wrapper arguments are required `--pack`, `--target`, and
-   optional `--runner` (`copilot|mock`), `--tags`, `--sut-timeout` (positive
-   integer); reject every other argument.
+   optional `--runner` (`copilot|mock`),       `--tags`, `--wall-clock-timeout` (positive integer), optional
+   `--sut-timeout` (positive integer), and `--parallel` (integer `1-8`); reject
+   every other argument.
 6. Parse the report selected by command output (or newest report from this
    invocation). Map exit `0` to `pass`, `1` to `fail`, otherwise
    `harness-error`.

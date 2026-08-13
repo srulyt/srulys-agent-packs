@@ -22,11 +22,12 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import * as path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { Command, Option } from "commander";
 import fg from "fast-glob";
 import { collectSpecs } from "./collect.js";
@@ -718,10 +719,19 @@ export async function main(argv?: string[]): Promise<number> {
   return process.exitCode ? Number(process.exitCode) : 0;
 }
 
-// Entry point when executed as the `evalpilot` bin.
-const isMain =
-  process.argv[1] &&
-  pathToFileURL(process.argv[1]).href === import.meta.url;
-if (isMain) {
+export function isMainModule(
+  argvPath: string | undefined,
+  moduleUrl: string,
+): boolean {
+  if (!argvPath) return false;
+  try {
+    return realpathSync(argvPath) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return path.resolve(argvPath) === path.resolve(fileURLToPath(moduleUrl));
+  }
+}
+
+// Entry point when executed as the `evalpilot` bin, including npm-linked bins.
+if (isMainModule(process.argv[1], import.meta.url)) {
   main().then((code) => process.exit(code));
 }

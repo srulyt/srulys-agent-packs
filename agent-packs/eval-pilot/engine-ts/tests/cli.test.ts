@@ -3,9 +3,10 @@
  * which regressed to "unknown option" when the program had no `.version()`.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildProgram } from "../src/cli.js";
+import { buildProgram, isMainModule } from "../src/cli.js";
 
 const pkgVersion = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -26,5 +27,11 @@ describe("evalpilot CLI", () => {
     expect(names).toEqual(
       ["discover", "init", "lint", "metrics", "new", "run", "show"].sort(),
     );
+  });
+
+  it("recognizes npm-linked bin paths as the main module", () => {
+    const cliPath = realpathSync(new URL("../src/cli.ts", import.meta.url));
+    expect(isMainModule(cliPath, pathToFileURL(cliPath).href)).toBe(true);
+    expect(isMainModule(undefined, pathToFileURL(cliPath).href)).toBe(false);
   });
 });

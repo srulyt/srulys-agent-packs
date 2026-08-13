@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "goal",
+    "audience",
+    "decision",
+    "deck_mode",
+    "formats",
+    "output_dir",
+    "research_policy",
+    "context_files",
+    "design_system_id",
+    "accessibility",
+    "template_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audience": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deck_mode": {
+      "enum": [
+        "presentation",
+        "read-ahead"
+      ]
+    },
+    "formats": {
+      "enum": [
+        "pptx",
+        "marp",
+        "both"
+      ]
+    },
+    "output_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "research_policy": {
+      "enum": [
+        "none",
+        "public-web-approved"
+      ]
+    },
+    "context_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "design_system_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "require_alt_text"
+      ],
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "require_alt_text": {
+          "type": "boolean"
+        }
+      }
+    },
+    "template_policy": {
+      "enum": [
+        "registry",
+        "approved-template"
+      ]
+    }
+  }
+}

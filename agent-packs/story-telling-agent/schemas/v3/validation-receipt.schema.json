@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_version",
+    "receipt_id",
+    "run_id",
+    "handoff_id",
+    "artifact_kind",
+    "artifact_path",
+    "artifact_sha256",
+    "schema_path",
+    "schema_sha256",
+    "validator_agent",
+    "validator_operation",
+    "producer_agent",
+    "tool_version",
+    "validated_at",
+    "valid",
+    "diagnostic_class",
+    "diagnostics_hash",
+    "diagnostic_count",
+    "diagnostics",
+    "inspection_profile",
+    "superseded",
+    "accepted_qa_event_id",
+    "accepted_residual_event_id",
+    "render_manifest_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "receipt_version": {
+      "const": "1.0"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^sha256:"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "handoff_id": {
+      "type": "string"
+    },
+    "artifact_kind": {
+      "type": "string"
+    },
+    "artifact_path": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^sha256:"
+    },
+    "schema_path": {
+      "type": ["string", "null"]
+    },
+    "schema_sha256": {
+      "anyOf": [
+        {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        {"type": "null"}
+      ]
+    },
+    "validator_agent": {
+      "type": "string"
+    },
+    "validator_operation": {
+      "type": "string"
+    },
+    "producer_agent": {
+      "type": "string"
+    },
+    "tool_version": {
+      "type": "string"
+    },
+    "validated_at": {
+      "type": "string"
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "diagnostic_class": {
+      "enum": [
+        "none",
+        "producer-artifact-invalid",
+        "validator-internal-error"
+      ]
+    },
+    "diagnostics_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "diagnostic_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "inspection_profile": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "artifact_format", "completed_diagnostics", "unavailable_diagnostics", "capability_status"],
+          "properties": {
+            "id": {"enum": ["story-staged-pptx/1", "story-staged-marp/1"]},
+            "artifact_format": {"enum": ["pptx", "marp"]},
+            "completed_diagnostics": {
+              "type": "array",
+              "items": {"enum": ["identity", "structural", "semantic", "raster-150dpi", "parity", "reproducibility"]}
+            },
+            "unavailable_diagnostics": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["diagnostic", "reason"],
+                "properties": {
+                  "diagnostic": {"enum": ["raster-150dpi"]},
+                  "reason": {"type": "string", "minLength": 1}
+                }
+              }
+            },
+            "capability_status": {
+              "enum": ["complete", "raster-unavailable"]
+            }
+          }
+        },
+        {"type": "null"}
+      ]
+    },
+    "superseded": {
+      "type": "boolean"
+    },
+    "accepted_qa_event_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "accepted_residual_event_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "render_manifest_sha256": {
+      "anyOf": [
+        {"type":"string","pattern":"^sha256:[0-9a-f]{64}$"},
+        {"type":"null"}
+      ]
+    }
+  }
+}

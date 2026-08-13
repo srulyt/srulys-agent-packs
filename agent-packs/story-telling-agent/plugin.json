@@ -1,0 +1,7 @@
+{
+  "name": "story-telling-agent",
+  "description": "Evidence-led storytelling and deterministic PPTX/Marp deck production.",
+  "version": "3.0.0",
+  "agents": ["./agents/story-orchestrator.agent.md", "./agents/narrative-strategist.agent.md", "./agents/deck-composer.agent.md", "./agents/deck-critic.agent.md"],
+  "skills": "./skills/"
+}

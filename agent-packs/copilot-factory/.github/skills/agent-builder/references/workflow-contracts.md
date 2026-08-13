@@ -59,8 +59,11 @@ The wrapper accepts key/value pairs only. Required arguments are `--pack
 <kebab-case-pack>` and canonical `--target <all|validated
 evals/packs/{pack}/...>`. Optional arguments are `--runner <copilot|mock>`
 (default `copilot`), `--tags <tag-expression>`, and `--sut-timeout
-<positive-integer-seconds>` (default `1800`). No other argument or selector,
-including `tests_subset`, is supported.
+`--wall-clock-timeout <positive-integer-seconds>` (default `1800`) bounds the
+whole eval process. `--sut-timeout <positive-integer-seconds>` is optional and
+must be omitted unless the orchestrator explicitly intends to override every
+spec's own timeout. No other argument or selector, including `tests_subset`,
+is supported. `--parallel <1-8>` is optional and defaults to `1`.
 
 On PowerShell, invoke the fully resolved paths explicitly:
 
@@ -69,7 +72,8 @@ On PowerShell, invoke the fully resolved paths explicitly:
   --pack $pack `
   --target $target `
   --runner $runner `
-  --sut-timeout $seconds
+  --wall-clock-timeout $seconds `
+  --parallel $parallel
 ```
 
 Here every variable MUST already contain its final validated value; the

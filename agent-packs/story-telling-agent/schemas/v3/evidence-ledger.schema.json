@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "producer",
+    "sources",
+    "evidence",
+    "claims"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "producer": {
+      "const": "narrative-strategist"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "source_kind",
+          "locator",
+          "title",
+          "publisher",
+          "published_at",
+          "accessed_at"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accessed_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_id",
+          "source_id",
+          "source_kind",
+          "locator",
+          "title",
+          "publisher",
+          "published_at",
+          "accessed_at",
+          "excerpt_or_summary",
+          "allowed_claims",
+          "confidence",
+          "verification_status"
+        ],
+        "properties": {
+          "evidence_id": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accessed_at": {
+            "type": "string"
+          },
+          "excerpt_or_summary": {
+            "type": "string"
+          },
+          "allowed_claims": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "verification_status": {
+            "enum": [
+              "verified",
+              "user-supplied",
+              "unverified"
+            ]
+          }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim_id",
+          "normalized_claim",
+          "evidence_ids",
+          "qualification",
+          "allowed_use",
+          "unsupported"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "normalized_claim": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "qualification": {
+            "type": "string"
+          },
+          "allowed_use": {
+            "type": "string"
+          },
+          "unsupported": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# Story Telling Agent evals
+
+Covers plugin shape, all 14 recipes, every allowed chart relationship/type/render-mode combination and invalid pairing, inspection-derived receipts, transition and publication lineage negatives, degraded modes, interruption/rollback, real LibreOffice 150-DPI defect fixtures, parity, legacy generation, a temporary live-registry marketplace updater, and representative judged storytelling behavior. Run `evalpilot run evals/packs/story-telling-agent/` or `node scripts/run-evals.mjs story-telling-agent`; lint first with `evalpilot lint evals/packs/story-telling-agent/`.
