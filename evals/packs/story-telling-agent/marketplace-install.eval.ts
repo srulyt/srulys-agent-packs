@@ -17,12 +17,12 @@ export default new Eval("story-telling-agent-marketplace-install", { target: "st
       (process.platform==="win32" && durability.parent_directory_fsync.status==="unavailable");
     return first.status===0 && second.status===0 && durability.post_replace_verified===true &&
       durability.after_sha256.startsWith("sha256:") && directoryDurable &&
-      matches.length===1 && matches[0].source==="./agent-packs/story-telling-agent"
+      matches.length===1 && matches[0].source==="agent-packs/story-telling-agent"
       ? true : [false,first.stdout+first.stderr+second.stdout+second.stderr];
   })
   .check("dry-run, source collision, and stale-live guards are fail closed", (ctx) => {
     const dir=mkdtempSync(join(tmpdir(),"story-market-negative-")); const target=join(dir,"marketplace.json");
-    const original=JSON.stringify({plugins:[{name:"other",source:"./agent-packs/story-telling-agent"}]},null,2)+"\n";
+    const original=JSON.stringify({plugins:[{name:"other",source:"agent-packs/story-telling-agent"}]},null,2)+"\n";
     writeFileSync(target,original);
     const script="agent-packs/story-telling-agent/scripts/update-marketplace.py";
     const collision=spawnSync("python",[script,"--target",target,"--apply"],{cwd:ctx.root,encoding:"utf8"});
@@ -54,7 +54,7 @@ export default new Eval("story-telling-agent-marketplace-install", { target: "st
       cpSync(join(ctx.root,"agent-packs","story-telling-agent"),join(repo,"agent-packs","story-telling-agent"),{recursive:true});
       writeFileSync(join(repo,".github","plugin","marketplace.json"),JSON.stringify({
         name:"story-fixture-market", owner:{name:"Fixture"},
-        plugins:[{name:"story-telling-agent",source:"./agent-packs/story-telling-agent"}],
+        plugins:[{name:"story-telling-agent",source:"agent-packs/story-telling-agent"}],
       },null,2));
       const run=(command:string,args:string[],env=process.env)=>spawnSync(command,args,{
         cwd:repo,encoding:"utf8",env,shell:process.platform==="win32",

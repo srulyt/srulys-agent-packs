@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 NAME = "story-telling-agent"
-SOURCE = "./agent-packs/story-telling-agent"
+SOURCE = "agent-packs/story-telling-agent"
 
 def digest(data):
     return "sha256:" + hashlib.sha256(data).hexdigest()

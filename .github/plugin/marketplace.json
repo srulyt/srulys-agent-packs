@@ -31,6 +31,12 @@
       "description": "Generate and update codebase context packs as progressively-disclosed Copilot Skills, with multi-layer discovery and a write+copy-back round-trip.",
       "version": "0.1.0",
       "source": "agent-packs/context-pack-builder"
+    },
+    {
+      "name": "story-telling-agent",
+      "description": "Evidence-led storytelling and deterministic PPTX/Marp deck production.",
+      "version": "3.0.0",
+      "source": "agent-packs/story-telling-agent"
     }
   ]
 }
