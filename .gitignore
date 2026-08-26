@@ -26,6 +26,10 @@
 # Pattern: .{pack-name}-stm/ or any *-stm/ directory
 agent-packs/**/*-stm/
 
+# ux-interaction-spec writes its STM at the *workspace* root, not under
+# agent-packs/, so the pattern above does not cover it.
+.ux-interaction-spec-stm/
+
 # SaaS Design Studio - Short-Term Memory
 # Generated files, workflow state, and component output
 agent-packs/**/.design-studio/

@@ -128,6 +128,8 @@ copilot plugin install <name>@srulys-agent-packs
 | prd-pilot | Guided EARS-style PRD authoring workflow. | [agent-packs/prd-pilot/README.md](agent-packs/prd-pilot/README.md) |
 | product-knowledge-brain | Maintain and evolve a Product Management knowledge base / living wiki. | [agent-packs/product-knowledge-brain/README.md](agent-packs/product-knowledge-brain/README.md) |
 | context-pack-builder | Generate and update codebase **context packs** as progressively-disclosed Copilot Skills: multi-agent multi-layer discovery, idempotent update-over-rewrite, and a write+copy-back round-trip. | [agent-packs/context-pack-builder/README.md](agent-packs/context-pack-builder/README.md) |
+| story-telling-agent | Evidence-led storytelling and deterministic PPTX/Marp deck production. | [agent-packs/story-telling-agent/README.md](agent-packs/story-telling-agent/README.md) |
+| ux-interaction-spec | Turn a PRD, brief, notes or a rough concept into a research-backed **Experience Interaction Specification**, a UX pattern research document and a decision log — specifying behaviour before interface. | [agent-packs/ux-interaction-spec/README.md](agent-packs/ux-interaction-spec/README.md) |
 
 ## Documentation
 

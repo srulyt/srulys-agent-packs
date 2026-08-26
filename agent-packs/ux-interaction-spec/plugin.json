@@ -1,0 +1,10 @@
+{
+  "name": "ux-interaction-spec",
+  "description": "Turn product context into a research-backed Experience Interaction Specification: a 22-section EIS, a 10-section UX pattern research document, and a decision log. Behaviour-before-interface, evidence-labeled, adversarially reviewed.",
+  "version": "1.0.0",
+  "author": { "name": "srulyt" },
+  "agents": "agents/",
+  "skills": "skills/",
+  "repository": "https://github.com/srulyt/srulys-agent-packs",
+  "keywords": ["ux", "interaction-design", "specification", "product", "research"]
+}

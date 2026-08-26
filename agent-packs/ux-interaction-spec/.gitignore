@@ -1,0 +1,3 @@
+# Session short-term memory this pack writes at the *workspace* root.
+# Kept here so a clone of the pack directory never carries run state.
+.ux-interaction-spec-stm/

@@ -37,6 +37,12 @@
       "description": "Evidence-led storytelling and deterministic PPTX/Marp deck production.",
       "version": "3.0.0",
       "source": "agent-packs/story-telling-agent"
+    },
+    {
+      "name": "ux-interaction-spec",
+      "description": "Turn a PRD, brief, notes or a rough concept into a research-backed Experience Interaction Specification, a UX pattern research document and a decision log — specifying behaviour before interface.",
+      "version": "1.0.0",
+      "source": "agent-packs/ux-interaction-spec"
     }
   ]
 }
