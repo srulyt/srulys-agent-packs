@@ -6,7 +6,7 @@ A collection of agent packs for Roo Code, including the Agent Factory meta-syste
 
 ```
 srulys-agent-packs/
-├── init.cmd                 # Install factories to root (roo/copilot/both)
+├── init.cmd                 # Install the skill-first factory for Copilot
 ├── .gitignore               # Ignores installed factory files
 ├── .factory/                # Factory STM (gitignored)
 ├── docs/                    # Documentation for all packs
@@ -24,31 +24,30 @@ srulys-agent-packs/
 
 ## Agent Factories
 
-Two factory packs are available for creating agent systems:
+The skill-first factory and two legacy factory packs are available:
 
 | Factory | Target Platform | Location |
 |---------|----------------|----------|
+| Agent Factory (skill-first) | Copilot, Codex, Claude Code | `agent-packs/agent-factory/` |
 | Roo Agent Factory | Roo Code (VS Code) | `agent-packs/roo-agent-factory/` |
 | Copilot Factory | GitHub Copilot CLI | `agent-packs/copilot-factory/` |
 
 ### Quick Start - Using the Factories
 
-Run `init.cmd` to install the factories to the repository root:
+Install the [Agent Factory](agent-packs/agent-factory/README.md) as a project-local
+Copilot skill:
 
-```cmd
-:: Install both factories (default)
-init.cmd
-
-:: Install only the Roo Agent Factory
-init.cmd roo
-
-:: Install only the Copilot Factory
-init.cmd copilot
+```powershell
+.\init.cmd
 ```
 
-After installation:
-- **Roo**: Open the repository in VS Code → Factory modes appear in the mode selector → Activate **Factory Orchestrator**
-- **Copilot**: Use `gh copilot` and invoke `@copilot-factory`
+It chooses the smallest useful customization, including no artifact.
+Ask the default agent to use the **`agent-factory` skill**.
+
+`init.cmd` copies only the new skill to `.github\skills\agent-factory`, overwriting
+matching files. It no longer installs the legacy factories or accepts `roo`,
+`copilot`, or `both` switches. Existing legacy installations are left alone;
+their packs remain available for manual installation.
 
 ## Installing Agent Packs
 
@@ -108,6 +107,7 @@ ln -s /path/to/agent-packs/{pack-name}/.roo .roo
 
 | Pack | Description | Docs |
 |------|-------------|------|
+| Agent Factory | Portable skill-first customization creation and knowledge-preserving modernization | [docs/agent-factory.md](docs/agent-factory.md) |
 | Roo Agent Factory | Multi-agent system for creating Roo Code agent packs | [docs/roo-agent-factory.md](docs/roo-agent-factory.md) |
 | Copilot Factory | Multi-agent system for creating Copilot CLI agent packs | [docs/copilot-factory.md](docs/copilot-factory.md) |
 | Example Pack | Starter template | [docs/example-pack.md](docs/example-pack.md) |
@@ -124,6 +124,7 @@ copilot plugin install <name>@srulys-agent-packs
 
 | Plugin | Description | Docs |
 |--------|-------------|------|
+| agent-factory | Skill-first customization creation and semantic modernization; no fixed agent hierarchy. | [agent-packs/agent-factory/README.md](agent-packs/agent-factory/README.md) |
 | **eval-pilot** | Portable evals for Copilot agents/skills: binary **rubric** pass/fail checks, LLM-as-judge, and numeric **metric** history compared over time. Bundles the TypeScript `evalpilot` engine + `eval-author` / `eval-runner` / `eval-metrics` skills. | [agent-packs/eval-pilot/README.md](agent-packs/eval-pilot/README.md) |
 | prd-pilot | Guided EARS-style PRD authoring workflow. | [agent-packs/prd-pilot/README.md](agent-packs/prd-pilot/README.md) |
 | product-knowledge-brain | Maintain and evolve a Product Management knowledge base / living wiki. | [agent-packs/product-knowledge-brain/README.md](agent-packs/product-knowledge-brain/README.md) |
@@ -140,7 +141,7 @@ Full documentation is in the [`docs/`](docs/) folder:
 
 ## Creating New Packs
 
-Use the Factory Orchestrator to create new packs automatically (run `init.cmd roo` first), or create manually:
+Use the `agent-factory` skill to create the smallest useful customization (run `init.cmd` first). For a legacy Roo pack, the manual structure is:
 
 1. Create `agent-packs/{pack-name}/`
 2. Add `.roomodes` with mode definitions

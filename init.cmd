@@ -1,97 +1,37 @@
 @echo off
-setlocal enabledelayedexpansion
-
-:: ============================================
-:: Agent Factory Installer
-:: Usage: init.cmd [roo|copilot|both]
-:: Default: both
-:: ============================================
-
-set "ACTION=%~1"
-if "%ACTION%"=="" set "ACTION=both"
-
-:: Validate argument
-if /i "%ACTION%"=="roo" goto :valid
-if /i "%ACTION%"=="copilot" goto :valid
-if /i "%ACTION%"=="both" goto :valid
-echo Usage: init.cmd [roo^|copilot^|both]
-echo   roo     - Install the Roo Agent Factory ^(.roo/ and .roomodes^)
-echo   copilot - Install the Copilot Factory ^(.github/^)
-echo   both    - Install both ^(default^)
-exit /b 1
-:valid
+setlocal
 
 set "ROOT=%~dp0"
+set "SOURCE=%ROOT%agent-packs\agent-factory\skills\agent-factory"
+set "DESTINATION=%ROOT%.github\skills\agent-factory"
 
-:: ============================================
-:: Install Roo Agent Factory
-:: ============================================
-if /i "%ACTION%"=="roo" goto :install_roo
-if /i "%ACTION%"=="both" goto :install_roo
-goto :check_copilot
-
-:install_roo
-echo Installing Roo Agent Factory...
-
-if not exist "%ROOT%agent-packs\roo-agent-factory\.roomodes" (
-    echo ERROR: agent-packs\roo-agent-factory not found.
+if not "%~1"=="" (
+    echo Usage: init.cmd
+    echo Installs the skill-first Agent Factory for Copilot in this checkout.
     exit /b 1
 )
 
-:: Copy .roo directory
-xcopy "%ROOT%agent-packs\roo-agent-factory\.roo" "%ROOT%.roo" /E /I /Y /Q >nul
-if errorlevel 1 (
-    echo ERROR: Failed to copy .roo directory.
+if not exist "%SOURCE%\SKILL.md" (
+    echo ERROR: agent-packs\agent-factory\skills\agent-factory not found.
     exit /b 1
 )
 
-:: Copy .roomodes file
-copy /Y "%ROOT%agent-packs\roo-agent-factory\.roomodes" "%ROOT%.roomodes" >nul
-if errorlevel 1 (
-    echo ERROR: Failed to copy .roomodes file.
-    exit /b 1
-)
-
-echo   [OK] .roo/ directory installed
-echo   [OK] .roomodes file installed
-
-:check_copilot
-:: ============================================
-:: Install Copilot Factory
-:: ============================================
-if /i "%ACTION%"=="copilot" goto :install_copilot
-if /i "%ACTION%"=="both" goto :install_copilot
-goto :done
-
-:install_copilot
-echo Installing Copilot Factory...
-
-if not exist "%ROOT%agent-packs\copilot-factory\.github" (
-    echo ERROR: agent-packs\copilot-factory not found.
-    exit /b 1
-)
-
-:: Copy all .github subdirectories dynamically
-for /d %%D in ("%ROOT%agent-packs\copilot-factory\.github\*") do (
-    xcopy "%%D" "%ROOT%.github\%%~nxD" /E /I /Y /Q >nul
+if not exist "%DESTINATION%\" (
+    mkdir "%DESTINATION%"
     if errorlevel 1 (
-        echo   [WARN] Failed to copy .github/%%~nxD/
-    ) else (
-        echo   [OK] .github/%%~nxD/ installed
+        echo ERROR: Failed to create the agent-factory skill directory.
+        exit /b 1
     )
 )
 
-:: Evalpilot bundles its judge agent as package data; no separate judge pack is installed.
+echo Installing skill-first Agent Factory...
+xcopy "%SOURCE%" "%DESTINATION%\" /E /I /Y /Q >nul
+if errorlevel 1 (
+    echo ERROR: Failed to copy the agent-factory skill.
+    exit /b 1
 )
 
-:done
-echo.
-echo Factory installation complete!
-if /i "%ACTION%"=="roo" echo   Roo Agent Factory is ready. Open in VS Code with Roo Code.
-if /i "%ACTION%"=="copilot" echo   Copilot Factory is ready. Use with GitHub Copilot CLI.
-if /i "%ACTION%"=="both" (
-    echo   Roo Agent Factory is ready. Open in VS Code with Roo Code.
-    echo   Copilot Factory is ready. Use with GitHub Copilot CLI.
-)
-
+echo   [OK] .github\skills\agent-factory installed
+echo Use the agent-factory skill with GitHub Copilot.
 endlocal
+exit /b 0

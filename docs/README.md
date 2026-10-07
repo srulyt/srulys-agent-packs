@@ -4,6 +4,7 @@
 
 | Pack | Location | Description | Status |
 |------|----------|-------------|--------|
+| [Agent Factory](./agent-factory.md) | `agent-packs/agent-factory/` | Portable skill-first customization creation and semantic modernization, adjacent to legacy factories | New |
 | [Roo Agent Factory](./roo-agent-factory.md) | `agent-packs/roo-agent-factory/` | Multi-agent factory for creating Roo Code agent systems | Stable |
 | [Factory (legacy)](./factory.md) | See roo-agent-factory | Legacy documentation — see Roo Agent Factory | Deprecated |
 | [Example Pack](./example-pack.md) | `agent-packs/example-pack/` | Starter template demonstrating pack structure | Template |
@@ -26,6 +27,7 @@ Installable GitHub Copilot plugins (manifest + skills/agents, registered in
 
 | Plugin | Location | Description |
 |--------|----------|-------------|
+| agent-factory | `agent-packs/agent-factory/` | Minimal customization creation and knowledge-preserving migration; no fixed agent hierarchy. |
 | eval-pilot | `agent-packs/eval-pilot/` | Portable evals for Copilot agents/skills: binary **rubric** pass/fail checks, LLM-as-judge, and numeric **metric** history compared over time. Bundles the pip-installable `evalpilot` engine + `eval-author` / `eval-runner` / `eval-metrics` skills. See its [README](../agent-packs/eval-pilot/README.md). |
 | prd-pilot | `agent-packs/prd-pilot/` | Guided EARS-style PRD authoring workflow. |
 | product-knowledge-brain | `agent-packs/product-knowledge-brain/` | Maintain and evolve a Product Management knowledge base / living wiki. |
@@ -35,9 +37,9 @@ Installable GitHub Copilot plugins (manifest + skills/agents, registered in
 
 ### Using the Factories (creating agent packs)
 
-1. Run `init.cmd` from the repository root (installs both factories)
-2. Open this repository in VS Code
-3. Use Factory Orchestrator to create new packs
+1. Run `init.cmd` from the repository root (installs the skill-first Agent Factory for Copilot)
+2. Open this repository in your Copilot environment
+3. Ask the default agent to use the `agent-factory` skill
 
 ### Using other packs
 

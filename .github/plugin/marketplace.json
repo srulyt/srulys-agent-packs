@@ -9,6 +9,12 @@
   },
   "plugins": [
     {
+      "name": "agent-factory",
+      "description": "Create minimal reusable agent customizations and modernize legacy packs without losing domain knowledge.",
+      "version": "1.0.0",
+      "source": "agent-packs/agent-factory"
+    },
+    {
       "name": "prd-pilot",
       "description": "Lightweight guided workflow that produces a high-quality EARS-style PRD fast: gather context, grill-me interrogation to close gaps, outline approval, then format with EARS best practices.",
       "version": "0.1.0",

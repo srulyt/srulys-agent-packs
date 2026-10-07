@@ -1,6 +1,6 @@
 # Factory Pack (Deprecated)
 
-> **Note:** This pack has been moved to `agent-packs/roo-agent-factory/`. See [roo-agent-factory.md](./roo-agent-factory.md) for current documentation. Install via `init.cmd roo` from the repository root.
+> **Note:** This pack has been moved to `agent-packs/roo-agent-factory/`. See [roo-agent-factory.md](./roo-agent-factory.md) for manual installation. `init.cmd` now installs only the skill-first Agent Factory.
 
 ## Overview
 

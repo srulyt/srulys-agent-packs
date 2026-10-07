@@ -4,7 +4,7 @@ A multi-agent system for designing and building other Roo Code agent packs.
 
 ## Quick Start
 
-1. From the repository root, run `init.cmd roo` (or `init.cmd` for both factories)
+1. From the repository root, copy `agent-packs\roo-agent-factory\.roo` to `.roo` and its `.roomodes` to `.roomodes` (see [manual installation](../../docs/roo-agent-factory.md#installation)); `init.cmd` now installs only the skill-first factory
 2. Open the repository in VS Code with Roo Code
 3. Factory modes appear in the mode selector
 4. Activate **Factory Orchestrator** and describe the pack you want to create

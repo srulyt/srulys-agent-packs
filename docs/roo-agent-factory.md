@@ -8,7 +8,7 @@ The Roo Agent Factory is a multi-agent system for designing and building Roo Cod
 
 `agent-packs/roo-agent-factory/`
 
-Installed to the repository root via `init.cmd roo` or `init.cmd` (both).
+Install manually if needed; `init.cmd` now installs only the skill-first Agent Factory.
 
 - `.roomodes` - Mode definitions
 - `.roo/` - Rules, skills, templates
@@ -18,7 +18,8 @@ Installed to the repository root via `init.cmd roo` or `init.cmd` (both).
 
 ```cmd
 :: From the repository root
-init.cmd roo
+xcopy "agent-packs\roo-agent-factory\.roo" ".roo" /E /I /Y /Q
+copy /Y "agent-packs\roo-agent-factory\.roomodes" ".roomodes"
 ```
 
 ## Agents
@@ -75,7 +76,7 @@ All sub-agents return control to the Orchestrator:
 
 ## Usage
 
-1. Run `init.cmd roo` from the repository root
+1. Follow the manual installation commands above from the repository root
 2. Open the repository in VS Code with Roo Code
 3. Factory modes appear in the mode selector
 4. Activate **Factory Orchestrator** to begin

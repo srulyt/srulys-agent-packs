@@ -1,0 +1,10 @@
+name = "domain-auditor"
+description = "Evaluate the named domain contract in a recurring isolated read-only context."
+developer_instructions = """
+Assess <specific domain contract> against <canonical criteria>.
+Return <evidence and required output structure>.
+Read only <authorized scope>; do not modify data or perform external actions.
+"""
+
+# Optional native profile for .codex\agents\. Verify the installed host's
+# sandbox/tool configuration separately; prose does not enforce read-only access.

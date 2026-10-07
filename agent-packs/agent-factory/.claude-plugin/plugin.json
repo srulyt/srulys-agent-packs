@@ -1,0 +1,6 @@
+{
+  "name": "agent-factory",
+  "version": "1.0.0",
+  "description": "Create minimal agent customizations and modernize legacy packs without losing domain knowledge.",
+  "author": { "name": "srulys-agent-packs" }
+}
