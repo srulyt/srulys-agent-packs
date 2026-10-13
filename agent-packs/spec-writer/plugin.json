@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "spec-writer",
+  "version": "1.0.0",
+  "description": "Write, update, and publish EARS-style specifications with a fixed template, conditional sections, proactive what-if coverage, and a draft/publish lifecycle.",
+  "author": { "name": "srulys-agent-packs" },
+  "repository": "https://github.com/srulyt/srulys-agent-packs",
+  "keywords": ["ears", "prd", "spec", "specification", "requirements"]
+}
