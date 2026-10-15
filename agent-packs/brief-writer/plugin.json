@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "brief-writer",
+  "version": "1.0.0",
+  "description": "Create or edit decision-grade product briefs and one-pagers: audience-calibrated, championing-ready, evidence-grounded, and free of filler and AI-isms.",
+  "author": { "name": "srulys-agent-packs" },
+  "repository": "https://github.com/srulyt/srulys-agent-packs",
+  "keywords": ["product-brief", "one-pager", "decision-memo", "executive-writing", "stakeholder"]
+}
